@@ -11,5 +11,5 @@
     <MAP src="but:0:3" dst="/event/lshoulder" />
     <MAP src="but:0:2" dst="/event/rshoulder" />
     <MAP src="but:0:5" dst="/event/start" />
-    <!-- Select (button 4) is unassigned. -->
+    <MAP src="but:0:4" dst="/event/select" />
 </MAPPINGS>

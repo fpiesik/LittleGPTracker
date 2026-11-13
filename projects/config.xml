@@ -1,4 +1,5 @@
 <CONFIG>
+    <WIDESCREEN value="YES" />
     <FULLSCREEN value="YES" />
     <DUMPEVENT value="YES"/>
     <AUTO_LOAD_LAST value="YES"/> <!-- change to disable auto loading -->

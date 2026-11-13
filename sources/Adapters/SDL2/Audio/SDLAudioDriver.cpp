@@ -4,6 +4,110 @@
 #include "System/Console/Trace.h"
 #include "System/System/System.h"
 
+// The UI requests clicks; synthesis and phase state stay on the audio thread.
+static SDL_atomic_t countInRequest;
+void SDLAudioDriver::CountInClick(bool enabled) {
+    SDL_AtomicSet(&countInRequest, enabled ? 1 : -1);
+}
+
+namespace {
+SDL_AudioDeviceID captureDevice = 0;
+// Four seconds of mono PCM. Idle input is discarded, never queued indefinitely.
+const unsigned captureCapacity = 44100 * 2 * 4;
+Uint8 captureBuffer[captureCapacity];
+unsigned captureRead = 0, captureSize = 0;
+bool capturing = false, captureOverflow = false;
+
+void captureCallback(void *, Uint8 *stream, int length) {
+    if (!capturing || length <= 0)
+        return;
+    unsigned size = static_cast<unsigned>(length);
+    if (size > captureCapacity - captureSize) {
+        captureOverflow = true;
+        capturing = false;
+        return;
+    }
+    unsigned write = (captureRead + captureSize) % captureCapacity;
+    unsigned first = SDL_min(size, captureCapacity - write);
+    memcpy(captureBuffer + write, stream, first);
+    memcpy(captureBuffer, stream + first, size - first);
+    captureSize += size;
+}
+} // namespace
+
+SDL_AudioDeviceID SDLAudioDriver::OpenCapture() {
+    if (captureDevice &&
+        SDL_GetAudioDeviceStatus(captureDevice) != SDL_AUDIO_STOPPED)
+        return captureDevice;
+    CloseCapture();
+    if (!(SDL_WasInit(SDL_INIT_AUDIO) & SDL_INIT_AUDIO) &&
+        SDL_InitSubSystem(SDL_INIT_AUDIO) != 0)
+        return 0;
+    SDL_AudioSpec wanted = {}, obtained = {};
+    wanted.freq = 44100;
+    wanted.format = AUDIO_S16LSB;
+    wanted.channels = 1;
+    wanted.samples = 1024;
+    wanted.callback = captureCallback;
+    SDL_SetHint("SDL_AUDIO_DEVICE_APP_NAME", "LittleGPTracker");
+    captureDevice = SDL_OpenAudioDevice(NULL, 1, &wanted, &obtained, 0);
+    if (captureDevice) {
+        // Keep the stream running so patchbay links survive between takes.
+        SDL_PauseAudioDevice(captureDevice, 0);
+    } else {
+        Trace::Log("AUDIO", "Cannot open persistent input: %s", SDL_GetError());
+    }
+    return captureDevice;
+}
+
+void SDLAudioDriver::CloseCapture() {
+    if (captureDevice)
+        SDL_CloseAudioDevice(captureDevice);
+    captureDevice = 0;
+    capturing = false;
+    captureOverflow = false;
+    captureRead = captureSize = 0;
+}
+
+void SDLAudioDriver::StartCapture() {
+    if (!captureDevice)
+        return;
+    SDL_LockAudioDevice(captureDevice);
+    captureRead = captureSize = 0;
+    captureOverflow = false;
+    capturing = true;
+    SDL_UnlockAudioDevice(captureDevice);
+}
+
+void SDLAudioDriver::StopCapture() {
+    if (!captureDevice)
+        return;
+    SDL_LockAudioDevice(captureDevice);
+    capturing = false;
+    SDL_UnlockAudioDevice(captureDevice);
+}
+
+int SDLAudioDriver::ReadCapture(Uint8 *buffer, int size) {
+    if (!captureDevice ||
+        SDL_GetAudioDeviceStatus(captureDevice) == SDL_AUDIO_STOPPED)
+        return -1;
+    if (size <= 0)
+        return 0;
+    SDL_LockAudioDevice(captureDevice);
+    int result = -1;
+    if (!captureOverflow) {
+        unsigned count = SDL_min(static_cast<unsigned>(size), captureSize);
+        unsigned first = SDL_min(count, captureCapacity - captureRead);
+        memcpy(buffer, captureBuffer + captureRead, first);
+        memcpy(buffer + first, captureBuffer, count - first);
+        captureRead = (captureRead + count) % captureCapacity;
+        captureSize -= count;
+        result = count;
+    }
+    SDL_UnlockAudioDevice(captureDevice);
+    return result;
+}
+
 void sdl_callback(void *userdata, Uint8 *stream, int len) {
     SDLAudioDriver *sound = (SDLAudioDriver *)userdata;
     sound->OnChunkDone(stream, len);
@@ -204,6 +308,24 @@ void SDLAudioDriver::OnChunkDone(Uint8 *stream, int len) {
 
     SYS_MEMCPY(stream, (short *)(mainBuffer_ + bufferPos_), len);
     bufferPos_ += len;
+
+    static int clickRemaining = 0;
+    int request = SDL_AtomicSet(&countInRequest, 0);
+    int clickLength = sampleRate_ / 20;
+    if (request)
+        clickRemaining = request > 0 ? clickLength : 0;
+    short *output = reinterpret_cast<short *>(stream);
+    for (int frame = 0; frame < len / 4 && clickRemaining > 0; ++frame) {
+        int phase = clickLength - clickRemaining;
+        int click = ((phase * 2000 / sampleRate_) & 1) ? 3000 : -3000;
+        click = click * clickRemaining / clickLength;
+        for (int channel = 0; channel < 2; ++channel) {
+            int mixed = output[frame * 2 + channel] + click;
+            output[frame * 2 + channel] =
+                mixed > 32767 ? 32767 : (mixed < -32768 ? -32768 : mixed);
+        }
+        --clickRemaining;
+    }
 }
 
 int SDLAudioDriver::GetPlayedBufferPercentage() {

@@ -30,7 +30,7 @@ SDLGUIWindowImp::SDLGUIWindowImp(GUICreateWindowParams &p) {
 
     // SDL Prioritises screens so just take the first for now.
 
-    int displayModeRet = SDL_GetDisplayMode(0, 0, &displayMode);
+    int displayModeRet = SDL_GetDesktopDisplayMode(0, &displayMode);
 
     if (displayModeRet < 0) {
         Trace::Error("DISPLAY", "No display mode found.  Error Code: %d.",
@@ -65,6 +65,11 @@ SDLGUIWindowImp::SDLGUIWindowImp(GUICreateWindowParams &p) {
     Trace::Log("DISPLAY", "Using driver %s. Screen (%d,%d) Bpp:%d", driverName,
                screenWidth, screenHeight, bitDepth_);
 
+    const char *widescreenValue = Config::GetInstance()->GetValue("WIDESCREEN");
+    const bool widescreen = widescreenValue && !strcmp(widescreenValue, "YES");
+    appWidth = widescreen ? 480 : 320;
+    appHeight = widescreen ? 270 : 240;
+
     bool fullscreen = false;
 
     const char *fullscreenValue = Config::GetInstance()->GetValue("FULLSCREEN");
@@ -92,19 +97,29 @@ SDLGUIWindowImp::SDLGUIWindowImp(GUICreateWindowParams &p) {
         }
     }
 #endif
+    // Keep square pixels and fit the canvas inside the native desktop.
+    if (fullscreen) {
+        mult_ =
+            MIN(mult_, MIN(screenWidth / appWidth, screenHeight / appHeight));
+    }
+    if (mult_ < 1) {
+        mult_ = 1;
+    }
     // Create a window that is the requested size
 
     screenRect_._topLeft._x = 0;
     screenRect_._topLeft._y = 0;
-    screenRect_._bottomRight._x = windowed_ ? appWidth * mult_ : screenWidth;
-    screenRect_._bottomRight._y = windowed_ ? appHeight * mult_ : screenHeight;
+    screenRect_._bottomRight._x =
+        (windowed_ && !fullscreen) ? appWidth * mult_ : screenWidth;
+    screenRect_._bottomRight._y =
+        (windowed_ && !fullscreen) ? appHeight * mult_ : screenHeight;
 
     Trace::Log("DISPLAY", "Creating SDL Window (%d,%d)", screenRect_.Width(),
                screenRect_.Height());
     window_ = SDL_CreateWindow(
         "LittleGPTracker", SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED,
         screenRect_.Width(), screenRect_.Height(),
-        fullscreen ? SDL_WINDOW_FULLSCREEN : SDL_WINDOW_SHOWN);
+        fullscreen ? SDL_WINDOW_FULLSCREEN_DESKTOP : SDL_WINDOW_SHOWN);
     NAssert(window_);
 
     // Compute the x & y offset to locate our app window

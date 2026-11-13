@@ -79,32 +79,34 @@ void EventDispatcher::Execute(FourCC id,float value) {
 			case TRIG_EVENT_START:
 				mapping=EPBT_START;
 				break ;
-				//	EPBT_SELECT
-		}
+            case TRIG_EVENT_SELECT:
+                mapping = EPBT_SELECT;
+                break;
+            }
 
-		// Compute mask and repeat if needed
+            // Compute mask and repeat if needed
 
-		if (value>0.5) {
-			eventMask_|=(1<<mapping) ;
-		} else {
-			eventMask_^=(1<<mapping) ;
-		}
+            if (value > 0.5) {
+                eventMask_ |= (1 << mapping);
+            } else {
+                eventMask_ ^= (1 << mapping);
+            }
 
-		// Dispatch event to window
+            // Dispatch event to window
 
-		unsigned long now=System::GetInstance()->GetClock();
-		GUIEventType type=(value>0.5)? ET_PADBUTTONDOWN:ET_PADBUTTONUP ;
-		GUIEvent event(mapping,type,now,0,0,0) ;
-		window_->DispatchEvent(event) ;
+            unsigned long now = System::GetInstance()->GetClock();
+            GUIEventType type =
+                (value > 0.5) ? ET_PADBUTTONDOWN : ET_PADBUTTONUP;
+            GUIEvent event(mapping, type, now, 0, 0, 0);
+            window_->DispatchEvent(event);
 
-
-		if (eventMask_&repeatMask_) {
-			timer_->SetPeriod(float(keyDelay_)) ;
-			timer_->Start() ;
-		} else {
-			timer_->Stop() ;
-		}
-	} ;
+            if (eventMask_ & repeatMask_) {
+                timer_->SetPeriod(float(keyDelay_));
+                timer_->Start();
+            } else {
+                timer_->Stop();
+            }
+    } ;
 };
 
 void EventDispatcher::SetWindow(GUIWindow *window) {

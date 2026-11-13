@@ -388,3 +388,16 @@ int SamplePool::loadSoundFont(const char *path) {
     */
     return SLOAD_OK;
 } ;
+
+// Register an already completed WAV in the project's samples directory.
+int SamplePool::RegisterRecordedSample(Path &path) {
+    int status = loadSample(path.GetPath().c_str());
+    if (status != SLOAD_OK)
+        return -status;
+    SetChanged();
+    SamplePoolEvent event;
+    event.index_ = count_ - 1;
+    event.type_ = SPET_INSERT;
+    NotifyObservers(&event);
+    return event.index_;
+}

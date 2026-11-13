@@ -4,6 +4,7 @@
 #include "Application/Model/ProjectDatas.h"
 #include "Application/Player/Player.h"
 #include "Application/Utils/char.h"
+#include "ModalDialogs/RecordDialog.h"
 #include "System/Console/Trace.h"
 #include "System/System/System.h"
 #include "UIController.h"
@@ -20,6 +21,9 @@
 SongView::SongView(GUIWindow &w, ViewData *viewData, const char *song)
     : View(w, viewData) {
 
+#if defined(PLATFORM_X64)
+    recordDialog_ = 0;
+#endif
     updatingChain_ = false;
     lastChain_ = 0;
     songname_ = song;
@@ -42,6 +46,10 @@ SongView::SongView(GUIWindow &w, ViewData *viewData, const char *song)
  ****************/
 
 SongView::~SongView() {
+#if defined(PLATFORM_X64)
+    delete recordDialog_;
+    recordDialog_ = 0;
+#endif
     if (clipboard_.data_ != 0)
         SYS_FREE((void *)clipboard_.data_);
 };
@@ -589,6 +597,22 @@ void SongView::jumpToNextSection(int direction) {
 
 void SongView::ProcessButtonMask(unsigned short mask, bool pressed) {
 
+#if defined(PLATFORM_X64)
+    if (mask & EPBM_SELECT) {
+        if (pressed && mask == (EPBM_SELECT | EPBM_A)) {
+            if (Player::GetInstance()->IsRunning() ||
+                viewData_->renderMode_ != 0) {
+                SetNotification("Stop playback and disable render");
+            } else {
+                clipboard_.active_ = false;
+                viewMode_ = VM_NORMAL;
+                recordDialog_ = new RecordDialog(*this);
+                DoModal(recordDialog_, RecordClosed);
+            }
+        }
+        return;
+    }
+#endif
     if (!pressed) {
         if (viewMode_ == VM_MUTEON) {
             if (mask & EPBM_R) {
@@ -957,6 +981,12 @@ void SongView::DrawVuBars() {
  ******************************************************/
 
 void SongView::AnimationUpdate() {
+#if defined(PLATFORM_X64)
+    if (recordDialog_) {
+        recordDialog_->AnimationUpdate();
+        return;
+    }
+#endif
     DrawVuBars();
 }
 
@@ -1120,6 +1150,10 @@ void SongView::DrawView() {
  ******************************************************/
 
 void SongView::OnPlayerUpdate(PlayerEventType eventType, unsigned int tick) {
+#if defined(PLATFORM_X64)
+    if (recordDialog_)
+        return;
+#endif
 
     Player *player = Player::GetInstance();
 
@@ -1256,4 +1290,19 @@ void SongView::nudgeTempo(int direction) {
         dispatcher->OnNudgeUp();
         break;
     }
+}
+
+#if defined(PLATFORM_X64)
+void SongView::RecordClosed(View &view, ModalView &dialog) {
+    SongView &song = static_cast<SongView &>(view);
+    song.recordDialog_ = 0;
+    song.isDirty_ = true;
+}
+#endif
+
+void SongView::CancelRecording() {
+#if defined(PLATFORM_X64)
+    if (recordDialog_)
+        recordDialog_->CancelRecording();
+#endif
 }

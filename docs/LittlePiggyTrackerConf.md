@@ -95,6 +95,19 @@ To have the screen bigger than the original GP2X resolution, use **SCREEMULT** t
 
 Be careful as large values take a lot of juice and interfere with sound playback.
 
+For SDL2 builds, enable a 480 x 270 (16:9) canvas with:
+
+```xml
+<WIDESCREEN value="YES" />
+```
+
+The existing tracker occupies its original 320 x 240 area at the top left
+of the canvas. The extra space to the right and below is reserved for future
+views; existing tracker columns are not expanded. Fullscreen uses the native
+desktop resolution and caps `SCREENMULT` to fit, with equal integer scaling
+in both directions. Unused screen space is filled with the background color.
+Without `WIDESCREEN`, the canvas remains 320 x 240.
+
 ### Auto-Load Last Project
 
 By default, LittleGPTracker will automatically load the last project that was open on the previous session. To disable this behavior and show the project selection dialog instead, set:
@@ -597,3 +610,38 @@ the rough description of the `src string` is
 `note/cc`: selects the midi message
 
 `val`: the value that it's connected to
+
+## Audio-input recording (native Linux SDL2 / X64 build)
+
+In the Song screen, select an empty slot, hold **Select**, then press **A**.
+The uConsole must be in gamecontroller mode. Select needs the mapping
+`<MAP src="but:0:4" dst="/event/select" />` for its built-in controller.
+Existing X+A solo controls are unchanged.
+
+Stop playback and disable rendering before starting a take. Four audible
+clicks and a visible countdown use the current project tempo. The default
+SDL audio input is then recorded while the song plays from the selected row.
+The input stream opens when LGPT starts and stays active between takes, so
+connections made in qpwgraph remain available. Incoming audio is discarded
+outside recording; it is neither saved nor monitored. Capture uses a bounded
+four-second buffer and reports an error on overflow instead of silently losing
+audio. If the input was unavailable at startup, starting a take retries opening it.
+Capture is mono, 44.1 kHz, 16-bit PCM; a take is limited to ten minutes.
+Use headphones to avoid recording the playback through a microphone.
+
+**Start** stops capture and playback and opens **Save Record?**. Choose with
+Up/Down and confirm with A:
+
+- **Yes** saves `record-XXXXXX.wav` in the current project's `samples` folder,
+  assigns a free sample instrument, and creates a new chain and phrase in the
+  chosen slot. Phrase step 00 plays the default root note (60, displayed as C 3) with that instrument.
+- **No, abort** discards the temporary take and closes recording mode.
+- **No, rec again** discards the take and repeats the four-beat count-in at
+  the same slot and song row.
+
+Start during count-in cancels. Occupied slots and exhausted chain, phrase,
+instrument or sample pools are rejected. Save the project normally to persist
+its new chain/phrase/instrument assignments. The sample WAV is saved immediately.
+Input/output device latency is not compensated; verify alignment on your audio
+hardware before recording longer overdubs. Other build targets do not expose
+this recording dialog yet.

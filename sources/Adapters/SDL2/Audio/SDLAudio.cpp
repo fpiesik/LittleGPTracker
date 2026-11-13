@@ -21,9 +21,15 @@ void SDLAudio::Init() {
     drv_ = new SDLAudioDriver(settings);
     AudioOut *out = new AudioOutDriver(*drv_);
     Insert(out);
+#ifdef PLATFORM_X64
+    SDLAudioDriver::OpenCapture();
+#endif
 };
 
 void SDLAudio::Close() {
+#ifdef PLATFORM_X64
+    SDLAudioDriver::CloseCapture();
+#endif
     IteratorPtr<AudioOut> it(GetIterator());
     for (it->Begin(); !it->IsDone(); it->Next()) {
         AudioOut &current = it->CurrentItem();

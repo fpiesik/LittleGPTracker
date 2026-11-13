@@ -34,6 +34,12 @@ class SDLAudioDriver : public AudioDriver {
     virtual int GetSampleRate();
     virtual bool Interlaced() { return true; };
     virtual double GetStreamTime();
+    static void CountInClick(bool enabled);
+    static SDL_AudioDeviceID OpenCapture();
+    static void CloseCapture();
+    static void StartCapture();
+    static void StopCapture();
+    static int ReadCapture(Uint8 *buffer, int size);
     // Additional
     void OnChunkDone(Uint8 *stream, int len);
 

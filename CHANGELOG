@@ -1,3 +1,10 @@
+Unreleased
+    Keep the Linux SDL2 recording input active between takes for patchbay routing.
+    Add Linux SDL2 input recording from empty song slots with Select+A,
+    four-beat count-in, playback, and save/abort/retry dialog.
+    Add optional SDL2 16:9 canvas (WIDESCREEN) with unscaled layout.
+    Use native desktop fullscreen with uniform integer scaling.
+
 1.6.0-bacon20
     Fixed MIDI muting
     Added MIDI chord command (MCHD)

@@ -421,6 +421,8 @@ void AppWindow::LoadProject(const Path &p) {
 }
 
 void AppWindow::CloseProject() {
+    if (_songView)
+        _songView->CancelRecording();
 
     _closeProject = false;
     Player *player = Player::GetInstance();
@@ -642,6 +644,8 @@ void AppWindow::Update(Observable &o, I_ObservableData *d) {
 }
 
 void AppWindow::onQuitApp() {
+    if (_songView)
+        _songView->CancelRecording();
     Player *player = Player::GetInstance();
     player->Stop();
     player->RemoveObserver(*this);

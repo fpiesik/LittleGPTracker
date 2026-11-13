@@ -5,11 +5,13 @@
 #include "BaseClasses/View.h"
 
 class SongView;
+class RecordDialog;
 
 class SongView : public View {
   public:
     SongView(GUIWindow &w, ViewData *viewData, const char *song);
     ~SongView();
+    void CancelRecording();
 
     // View implementation
     virtual void ProcessButtonMask(unsigned short mask, bool pressed);
@@ -49,6 +51,10 @@ class SongView : public View {
     void jumpToNextSection(int dir);
 
   private:
+#if defined(PLATFORM_X64)
+    RecordDialog *recordDialog_;
+    static void RecordClosed(View &view, ModalView &dialog);
+#endif
     bool updatingChain_; // .Flag that tells we're updating chain
                          //  so we don't allocate chains while
                          //  doing multiple A+ARROWS

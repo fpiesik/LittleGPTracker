@@ -39,6 +39,7 @@ public:
   char **GetNameList();
   int GetNameListSize();
   int ImportSample(Path &path);
+  int RegisterRecordedSample(Path &path);
   bool IsImported(std::string name);
   // int InsertSample(const std::string& sampleName, bool imported, std::string fi);
   int Reassign(std::string name, bool imported);

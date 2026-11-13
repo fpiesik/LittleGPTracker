@@ -11,6 +11,8 @@
 #define URL_EVENT_RIGHT "/event/right"
 #define URL_EVENT_LSHOULDER "/event/lshoulder"
 #define URL_EVENT_RSHOULDER "/event/rshoulder"
+#define URL_EVENT_SELECT "/event/select"
+#define TRIG_EVENT_SELECT MAKE_FOURCC('E', 'V', 'S', 'L')
 #define URL_EVENT_START "/event/start"
 
 #define URL_TEMPO_TAP "/tempo/tap"
