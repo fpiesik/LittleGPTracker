@@ -104,8 +104,9 @@ For SDL2 builds, enable a 480 x 270 (16:9) canvas with:
 The existing tracker occupies its original 320 x 240 area at the top left
 of the canvas. The extra space to the right and below is reserved for future
 views; existing tracker columns are not expanded. Fullscreen uses the native
-desktop resolution and caps `SCREENMULT` to fit, with equal integer scaling
-in both directions. Unused screen space is filled with the background color.
+desktop resolution and scales the canvas proportionally to the full display
+height, including fractional scale factors. `SCREENMULT` applies to windowed
+mode. On displays narrower than the canvas aspect ratio, the sides are clipped.
 Without `WIDESCREEN`, the canvas remains 320 x 240.
 
 ### Auto-Load Last Project

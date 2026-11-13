@@ -49,16 +49,17 @@ protected:
   void transform(const GUIPoint &srcPoint, int *x, int *y);
 
 private:
-    SDL_Window *window_;
-    SDL_Surface *surface_;
-//	SDL_Surface *offscreen_ ;
-    GUIRect screenRect_ ;
-	unsigned int currentColor_ ;
-	unsigned int backgroundColor_ ;
-	unsigned int foregroundColor_ ;
-	int bitDepth_ ;
-	bool cacheFonts_ ;
-	bool framebuffer_ ;
+  SDL_Window *window_;
+  bool scaleToHeight_;
+  SDL_Surface *surface_;
+  //	SDL_Surface *offscreen_ ;
+  GUIRect screenRect_;
+  unsigned int currentColor_;
+  unsigned int backgroundColor_;
+  unsigned int foregroundColor_;
+  int bitDepth_;
+  bool cacheFonts_;
+  bool framebuffer_;
   bool windowed_;
 	SDL_Rect updateRects_[MAX_OVERLAYS] ;
 	int updateCount_ ;

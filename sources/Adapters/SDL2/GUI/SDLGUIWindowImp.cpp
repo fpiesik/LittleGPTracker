@@ -131,6 +131,17 @@ SDLGUIWindowImp::SDLGUIWindowImp(GUICreateWindowParams &p) {
     surface_ = SDL_GetWindowSurface(window_);
 
     NAssert(surface_);
+    scaleToHeight_ = fullscreen;
+    if (scaleToHeight_) {
+        // Render at logical resolution, then scale both axes by the same
+        // factor.
+        surface_ = SDL_CreateRGBSurfaceWithFormat(0, appWidth, appHeight, 32,
+                                                  SDL_PIXELFORMAT_ARGB8888);
+        NAssert(surface_);
+        mult_ = 1;
+        appAnchorX_ = appAnchorY_ = 0;
+        screenRect_ = GUIRect(0, 0, appWidth, appHeight);
+    }
 
     Uint32 rmask, gmask, bmask, amask;
 
@@ -160,7 +171,9 @@ SDLGUIWindowImp::SDLGUIWindowImp(GUICreateWindowParams &p) {
     updateCount_ = 0;
 };
 
-SDLGUIWindowImp::~SDLGUIWindowImp() {}
+SDLGUIWindowImp::~SDLGUIWindowImp() {
+    if (scaleToHeight_) SDL_FreeSurface(surface_);
+}
 
 static SDL_Surface *fonts[FONT_COUNT];
 
@@ -496,6 +509,26 @@ void SDLGUIWindowImp::Unlock() {
 }
 
 void SDLGUIWindowImp::Flush() {
+    if (scaleToHeight_) {
+        if (updateCount_) {
+            SDL_Surface *windowSurface = SDL_GetWindowSurface(window_);
+            if (windowSurface) {
+                SDL_Rect destination;
+                destination.h = windowSurface->h;
+                destination.w = surface_->w * destination.h / surface_->h;
+                destination.x = (windowSurface->w - destination.w) / 2;
+                destination.y = 0;
+                Uint8 r, g, b;
+                SDL_GetRGB(backgroundColor_, surface_->format, &r, &g, &b);
+                SDL_FillRect(windowSurface, NULL,
+                             SDL_MapRGB(windowSurface->format, r, g, b));
+                SDL_BlitScaled(surface_, NULL, windowSurface, &destination);
+                SDL_UpdateWindowSurface(window_);
+            }
+        }
+        updateCount_ = 0;
+        return;
+    }
     // blit partial updates on resource constrained platforms
     if ((!framebuffer_) && (updateCount_ != 0)) {
         if (updateCount_ < MAX_OVERLAYS) {
@@ -514,7 +547,8 @@ void SDLGUIWindowImp::Flush() {
 
 void SDLGUIWindowImp::ProcessExpose() {
     // Expose and resize events will cause a new surface to be needed.
-    surface_ = SDL_GetWindowSurface(window_);
+    if (!scaleToHeight_)
+        surface_ = SDL_GetWindowSurface(window_);
     _window->Update();
 }
 

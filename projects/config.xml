@@ -3,7 +3,7 @@
     <FULLSCREEN value="YES" />
     <DUMPEVENT value="YES"/>
     <AUTO_LOAD_LAST value="YES"/> <!-- change to disable auto loading -->
-    <SCREENMULT value="3"/> <!-- increase screen size -->
+    <SCREENMULT value="4"/> <!-- increase screen size -->
     <!--
     <KEY_A value="key:0:x"/>
     <KEY_B value="key:0:z"/>
