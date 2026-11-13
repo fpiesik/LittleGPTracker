@@ -1,0 +1,15 @@
+<MAPPINGS>
+    <!-- Built-in uConsole gamepad, joystick 0. -->
+    <MAP src="joy:0:1-" dst="/event/up" />
+    <MAP src="joy:0:1+" dst="/event/down" />
+    <MAP src="joy:0:0-" dst="/event/left" />
+    <MAP src="joy:0:0+" dst="/event/right" />
+
+    <MAP src="but:0:0" dst="/event/a" />
+    <MAP src="but:0:1" dst="/event/b" />
+    <!-- Y = left shoulder, X = right shoulder. -->
+    <MAP src="but:0:3" dst="/event/lshoulder" />
+    <MAP src="but:0:2" dst="/event/rshoulder" />
+    <MAP src="but:0:5" dst="/event/start" />
+    <!-- Select (button 4) is unassigned. -->
+</MAPPINGS>
