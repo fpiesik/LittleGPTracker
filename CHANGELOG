@@ -1,4 +1,5 @@
 Unreleased
+    Smooth sample starts, slice changes, PLOF and RTRG jumps with a 2 ms blend.
     Fix 8-bit stereo WAV loading and sample-rate conversion in browser preview.
     Validate WAV chunks and PCM parameters; reject truncated or empty samples.
     Add Record Options with mono/stereo capture and input metering during recording.

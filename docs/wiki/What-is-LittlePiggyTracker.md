@@ -398,6 +398,13 @@ In oscillator modes, under 0x80 the feedback of specified length is added to the
 - **automation:** If On, the table play arrows will advance one row every time the instrument is triggered, and execute only the commands on the new rows. If this is Off, table behavior is normal (play arrows cruise around real fast).
 - **table:** Select a table the instrument will always run. Clone a table here: LT+(B,A). Make a new table here: A,A.
 
+### Sample position transitions
+
+Sample starts, slice changes, PLOF jumps, and each RTRG repeat blend from the
+previous output frame over 2 ms to reduce clicks. The requested sample position
+and timing are preserved. Very fast repeats can soften the attack; ordinary
+loop boundaries and note stops are not smoothed by this mechanism.
+
 ## Sample Import Screen
 
 **NOTE: THE NEWEST GHETTOS HAVE A NEW SAMPLE BROWSER. THIS APPLIES TO PRE 1.0 VERSIONS.**

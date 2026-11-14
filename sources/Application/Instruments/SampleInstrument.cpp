@@ -22,8 +22,6 @@ fixed SampleInstrument::feedback_[SONG_CHANNEL_COUNT][FB_BUFFER_LENGTH*2] ;
 
 bool SampleInstrument::useDirtyDownsampling_ = false;
 
-#define SHOULD_KILL_CLICKS false
-
 int SampleInstrument::lastMidiNote_[SONG_CHANNEL_COUNT]= {
 	-1,-1,-1,-1,-1,-1,-1,-1
 } ;
@@ -131,6 +129,7 @@ SampleInstrument::SampleInstrument() {
 
      for (int i = 0; i < SONG_CHANNEL_COUNT; i++) {
          renderParams *rp = renderParams_ + i;
+         rp->couldClick_ = false;
          rp->updaters_.push_back(&rp->volumeRamp_);
          rp->updaters_.push_back(&rp->panner_);
          rp->updaters_.push_back(&rp->cutRamp_);
@@ -251,6 +250,7 @@ bool SampleInstrument::Start(int channel, unsigned char midinote, int flags) {
              rp->rendFirst_ =
                  (isSliced) ? rp->rendLoopStart_ : start_->GetInt();
              rp->position_ = float(rp->rendFirst_);
+             rp->couldClick_ = true;
              rp->baseSpeed_ =
                  fl2fp(source_->GetSampleRate(rp->midiNote_) / driverRate);
              rp->reverse_ = (rp->rendLoopEnd_ < rp->position_);
@@ -349,12 +349,12 @@ bool SampleInstrument::Start(int channel, unsigned char midinote, int flags) {
 
 	// Could click
 
-		rp->couldClick_=SHOULD_KILL_CLICKS ;
+        rp->couldClick_ = true;
 
-	// Init filter params
+        // Init filter params
 
-		rp->cutoff_=rp->baseFCut_=fl2fp(cutoff_->GetInt()/255.0f); 
-		rp->reso_=rp->baseFRes_=fl2fp(reso_->GetInt()/255.0f) ;
+        rp->cutoff_ = rp->baseFCut_ = fl2fp(cutoff_->GetInt() / 255.0f);
+        rp->reso_=rp->baseFRes_=fl2fp(reso_->GetInt()/255.0f) ;
 
 	// Init crush params
 
@@ -377,6 +377,12 @@ bool SampleInstrument::Start(int channel, unsigned char midinote, int flags) {
 		rp->activeUpdaters_.clear() ;
 	}	
 	return true ;
+}
+
+bool SampleInstrument::ConsumePositionJump(int channel) {
+    bool jumped = renderParams_[channel].couldClick_;
+    renderParams_[channel].couldClick_ = false;
+    return jumped;
 }
 
 void SampleInstrument::Stop(int channel) {
@@ -521,6 +527,8 @@ bool SampleInstrument::Render(int channel, fixed *buffer, int size, int flags) {
                     long offset =
                         long(ticks *
                              SyncMaster::GetInstance()->GetTickSampleCount());
+                    if (offset != 0)
+                        rp->couldClick_ = true;
                     rp->position_ += offset * fp2fl(rp->speed_);
                     if (rp->position_ < 0) {
                         rp->position_ = 0;
@@ -1149,7 +1157,10 @@ void SampleInstrument::ProcessCommand(int channel,FourCC cc,ushort value) {
     case I_CMD_PLOF: {
         if (!source_)
             return;
+        float previousPosition = rp->position_;
         int wavSize = source_->GetSize(rp->midiNote_);
+        if (wavSize <= 0)
+            break;
         float chkSize = wavSize / 256.0f;
         int absShft = value >> 8;
         if (absShft != 0) {
@@ -1165,8 +1176,8 @@ void SampleInstrument::ProcessCommand(int channel,FourCC cc,ushort value) {
         while (rp->position_ >= wavSize) {
             rp->position_ -= wavSize;
         };
-        rp->couldClick_ = SHOULD_KILL_CLICKS;
-			}
+        rp->couldClick_ |= rp->position_ != previousPosition;
+            }
 			break ;
 
 		case I_CMD_ARPG:
@@ -1379,8 +1390,7 @@ void SampleInstrument::ProcessCommand(int channel,FourCC cc,ushort value) {
                     rp->retrig_=true ;
                     rp->retrigLoop_=loop ;
                     rp->retrigCount_=loop ;
-                    rp->retrigOffset_=offset ;
-					rp->couldClick_=SHOULD_KILL_CLICKS ;
+                    rp->retrigOffset_ = offset;
                 } else {
                     rp->retrig_=false ;
                 }

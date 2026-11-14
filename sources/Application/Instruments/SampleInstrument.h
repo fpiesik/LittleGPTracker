@@ -62,6 +62,7 @@ public:
        virtual bool Start(int channel, unsigned char note, int flags = 1);
        virtual void Stop(int channel) ;
        virtual bool Render(int channel, fixed *buffer, int size, int flags);
+       virtual bool ConsumePositionJump(int channel);
        virtual bool IsInitialized() ;
 	   virtual bool IsEmpty() ;
 

@@ -40,6 +40,9 @@ public:
   // flags & 2 indicated muting (i.e. stop notes)
       virtual bool Render(int channel,fixed *buffer,int size,int flags)=0 ;
 
+      // Queried after Render, since a tick can retrigger the sample there.
+      virtual bool ConsumePositionJump(int channel) { return false; }
+
       virtual bool IsInitialized()=0 ;
 
 	  virtual bool IsEmpty()=0 ;
