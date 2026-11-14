@@ -16,19 +16,20 @@ class I_GUIWindowImp: public I_GUIGraphics {
 public:
 
 	virtual ~I_GUIWindowImp() {} ;
+    virtual bool SupportsPixelRects() const { return false; }
+    virtual void DrawRect(GUIRect &) {}
 
-	// This method allows to have back pointer to the framework window
-	// to avoid heavy searches when having to forward system events
+    // This method allows to have back pointer to the framework window
+    // to avoid heavy searches when having to forward system events
 
-	void SetWindow(GUIWindow &) ;
+    void SetWindow(GUIWindow &);
 
-	virtual void PushEvent(GUIEvent &)=0 ;
+    virtual void PushEvent(GUIEvent &) = 0;
 
-//	virtual void Save()=0 ;
-//	virtual void Restore()=0 ;
+    //	virtual void Save()=0 ;
+    //	virtual void Restore()=0 ;
 
-protected:
-
-	GUIWindow *_window ; // The GUIWindow associated to the Imp.
+  protected:
+    GUIWindow *_window ; // The GUIWindow associated to the Imp.
 } ;
 #endif

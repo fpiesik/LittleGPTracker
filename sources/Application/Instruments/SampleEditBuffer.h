@@ -1,6 +1,9 @@
 #ifndef SAMPLE_EDIT_BUFFER_H
 #define SAMPLE_EDIT_BUFFER_H
 
+// TinyXML can define FILE as I_File before this header is included.
+#pragma push_macro("FILE")
+#undef FILE
 #include "SoundSource.h"
 #include <algorithm>
 #include <cmath>
@@ -64,16 +67,18 @@ class SampleEditBuffer : public SoundSource {
             return false;
         if (!outputRate)
             outputRate = rate;
-        unsigned long frames = (static_cast<unsigned long long>(last - first) *
-                                outputRate + rate - 1) / rate;
+        unsigned long frames =
+            (static_cast<unsigned long long>(last - first) * outputRate + rate -
+             1) /
+            rate;
         if (frames > (0xffffffffUL - 36) / (2 * channels))
             return false;
         unsigned long bytes = frames * channels * 2;
         bool ok = fwrite("RIFF", 1, 4, file) == 4;
         ok = Put(file, bytes + 36, 4) && ok;
         ok = (fwrite("WAVEfmt ", 1, 8, file) == 8) && ok;
-        ok = Put(file, 16, 4) && Put(file, 1, 2) &&
-             Put(file, channels, 2) && Put(file, outputRate, 4) &&
+        ok = Put(file, 16, 4) && Put(file, 1, 2) && Put(file, channels, 2) &&
+             Put(file, outputRate, 4) &&
              Put(file, outputRate * channels * 2, 4) &&
              Put(file, channels * 2, 2) && Put(file, 16, 2) && ok;
         ok = (fwrite("data", 1, 4, file) == 4) && ok;
@@ -84,8 +89,9 @@ class SampleEditBuffer : public SoundSource {
             int next = std::min(f + 1, last - 1);
             double fraction = pos - int(pos);
             for (int c = 0; c < channels; ++c) {
-                short value = short(pcm[size_t(f) * channels + c] * (1 - fraction) +
-                                    pcm[size_t(next) * channels + c] * fraction);
+                short value =
+                    short(pcm[size_t(f) * channels + c] * (1 - fraction) +
+                          pcm[size_t(next) * channels + c] * fraction);
                 ok = Put(file, static_cast<unsigned short>(value), 2) && ok;
             }
         }
@@ -102,4 +108,5 @@ class SampleEditBuffer : public SoundSource {
         return true;
     }
 };
+#pragma pop_macro("FILE")
 #endif

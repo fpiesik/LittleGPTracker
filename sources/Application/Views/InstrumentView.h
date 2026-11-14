@@ -25,8 +25,9 @@ protected:
 	void Update(Observable &o,I_ObservableData *d) ;
 
 private:
-	Project *project_ ;
-	FourCC lastFocusID_ ;
-	I_Instrument *current_ ;
+  Variable editSample_;
+  Project *project_;
+  FourCC lastFocusID_;
+  I_Instrument *current_;
 } ;
 #endif

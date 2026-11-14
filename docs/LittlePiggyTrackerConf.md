@@ -646,3 +646,10 @@ its new chain/phrase/instrument assignments. The sample WAV is saved immediately
 Input/output device latency is not compensated; verify alignment on your audio
 hardware before recording longer overdubs. Other build targets do not expose
 this recording dialog yet.
+
+### Short press duration
+
+`<SHORT_PRESS_MS value="250" />` sets the general maximum short press duration
+in milliseconds (1–2000, default 250). Currently used by the sample editor:
+longer A presses and A+arrow combinations do not execute actions. Invalid values use the default.
+Restart LGPT after changing `config.xml`.

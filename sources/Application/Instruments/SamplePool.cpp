@@ -401,3 +401,19 @@ int SamplePool::RegisterRecordedSample(Path &path) {
     NotifyObservers(&event);
     return event.index_;
 }
+
+void SamplePool::InstallEditedSample(int index, char *name,
+                                     SoundSource *source) {
+    NAssert(index >= 0 && index <= count_ && index < MAX_PIG_SAMPLES);
+    delete wav_[index];
+    SAFE_FREE(names_[index]);
+    wav_[index] = source;
+    names_[index] = name;
+    if (index == count_)
+        ++count_;
+    SetChanged();
+    SamplePoolEvent event;
+    event.index_ = index;
+    event.type_ = SPET_INSERT;
+    NotifyObservers(&event);
+}

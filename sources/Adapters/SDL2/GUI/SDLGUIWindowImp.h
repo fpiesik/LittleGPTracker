@@ -26,7 +26,8 @@ public: // I_GUIWindowImp implementation
 
 	virtual void SetColor(GUIColor &) ;
 	virtual void DrawRect(GUIRect &) ;
-	virtual void DrawChar(const char c,GUIPoint &pos,GUITextProperties &);
+    virtual bool SupportsPixelRects() const { return true; }
+    virtual void DrawChar(const char c,GUIPoint &pos,GUITextProperties &);
 	virtual void DrawString(const char *string,GUIPoint &pos,GUITextProperties &,bool overlay=false);
 	virtual GUIRect GetRect() ;
 	virtual void Invalidate() ;

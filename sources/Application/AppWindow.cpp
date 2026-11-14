@@ -14,6 +14,7 @@
 #include "Services/Midi/MidiService.h"
 #include "System/Console/Trace.h"
 #include "UIFramework/Interfaces/I_GUIWindowFactory.h"
+#include "UIFramework/Interfaces/I_GUIWindowImp.h"
 #include "Views/UIController.h"
 #include <string.h>
 
@@ -174,6 +175,7 @@ void AppWindow::DrawString(const char *string, GUIPoint &pos,
 };
 
 void AppWindow::Clear(bool all) {
+    pixelRects_.clear();
     memset(_charScreen, ' ', 1200);
     memset(_charScreenProp, 0, 1200);
     if (all) {
@@ -182,7 +184,27 @@ void AppWindow::Clear(bool all) {
     };
 };
 
+bool AppWindow::SupportsPixelRects() {
+    return GetImpWindow()->SupportsPixelRects();
+}
+
+void AppWindow::AddPixelRect(const GUIRect &rect, bool selected) {
+    pixelRects_.push_back(PixelRect(rect, selected));
+}
+
 void AppWindow::ClearRect(GUIRect &r) {
+    // Clearing a modal's cells also removes graphics covered by that modal.
+    for (std::vector<PixelRect>::iterator it = pixelRects_.begin();
+         it != pixelRects_.end();) {
+        const GUIRect &p = it->rect;
+        if (p.Left() < r.Right() * charWidth_ &&
+            p.Right() > r.Left() * charWidth_ &&
+            p.Top() < r.Bottom() * charHeight_ &&
+            p.Bottom() > r.Top() * charHeight_)
+            it = pixelRects_.erase(it);
+        else
+            ++it;
+    }
 
     int x = r.Left();
     int y = r.Top();
@@ -313,11 +335,29 @@ void AppWindow::Flush() {
         pos._y += AppWindow::charHeight_;
         pos._x = 0;
     }
+    for (size_t i = 0; i < pixelRects_.size(); ++i) {
+        GUIColor color =
+            pixelRects_[i].selected ? highlight2Color_ : highlightColor_;
+        GUIWindow::SetColor(color);
+        GetImpWindow()->DrawRect(pixelRects_[i].rect);
+    }
     long flushEnd = System::GetInstance()->GetClock();
     GUIWindow::Flush();
     Unlock();
     memcpy(_preScreen, _charScreen, 1200);
     memcpy(_preScreenProp, _charScreenProp, 1200);
+    // Redraw cells under graphics even when their text is unchanged. This
+    // erases old waveform pixels after edits, modal dialogs, and leaving the
+    // editor.
+    for (size_t i = 0; i < pixelRects_.size(); ++i) {
+        const GUIRect &r = pixelRects_[i].rect;
+        for (int y = r.Top() / charHeight_; y <= (r.Bottom() - 1) / charHeight_;
+             ++y)
+            for (int x = r.Left() / charWidth_;
+                 x <= (r.Right() - 1) / charWidth_; ++x)
+                if (x >= 0 && x < 40 && y >= 0 && y < 30)
+                    _preScreenProp[y * 40 + x] = 0xff;
+    }
 };
 
 void AppWindow::LoadProject(const Path &p) {

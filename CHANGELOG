@@ -1,4 +1,9 @@
 Unreleased
+    Add SHORT_PRESS_MS to configure the general maximum short press duration (default 250 ms).
+    Execute sample editor actions on an unmodified A release; add one-step Undo.
+    Render sample waveforms at native pixel resolution on SDL/SDL2 displays.
+    Add instrument sample editor with waveform, exact frame selection, preview,
+    Crop/Delete/Normalize/Silence/Fades, Save As and Overwrite.
     Keep the Linux SDL2 recording input active between takes for patchbay routing.
     Add Linux SDL2 input recording from empty song slots with Select+A,
     four-beat count-in, playback, and save/abort/retry dialog.

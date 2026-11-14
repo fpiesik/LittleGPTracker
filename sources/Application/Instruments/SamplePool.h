@@ -40,6 +40,9 @@ public:
   int GetNameListSize();
   int ImportSample(Path &path);
   int RegisterRecordedSample(Path &path);
+  // Caller stops playback and holds the mixer lock. Takes ownership of both
+  // pointers.
+  void InstallEditedSample(int index, char *name, SoundSource *source);
   bool IsImported(std::string name);
   // int InsertSample(const std::string& sampleName, bool imported, std::string fi);
   int Reassign(std::string name, bool imported);

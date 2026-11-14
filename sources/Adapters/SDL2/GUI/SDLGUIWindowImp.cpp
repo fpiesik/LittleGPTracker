@@ -431,6 +431,7 @@ void SDLGUIWindowImp::DrawRect(GUIRect &r) {
     SDL_Rect rect;
     transform(r, &rect);
     SDL_FillRect(surface_, &rect, currentColor_);
+    updateCount_ = MAX_OVERLAYS;
 };
 
 void SDLGUIWindowImp::Clear(GUIColor &c, bool overlay) {

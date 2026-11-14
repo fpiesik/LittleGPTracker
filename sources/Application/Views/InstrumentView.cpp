@@ -1,4 +1,7 @@
 #include "InstrumentView.h"
+#include "ModalDialogs/SampleEditorDialog.h"
+
+#define SIP_EDIT MAKE_FOURCC('E', 'D', 'I', 'T')
 #include "Application/Instruments/MidiInstrument.h"
 #include "Application/Instruments/SampleInstrument.h"
 #include "Application/Instruments/SamplePool.h"
@@ -16,10 +19,11 @@ void ImportSampleDialogCallback(View &v, ModalView &dialog) {
     ((InstrumentView &)v).OnFocus();
 }
 
-InstrumentView::InstrumentView(GUIWindow &w,ViewData *data):FieldView(w,data) {
+InstrumentView::InstrumentView(GUIWindow &w, ViewData *data)
+    : FieldView(w, data), editSample_("edit", SIP_EDIT, 0) {
 
-	project_=data->project_ ;
-	lastFocusID_=0 ;
+    project_ = data->project_;
+    lastFocusID_=0 ;
 	current_=0 ;
 	onInstrumentChange() ;
 }
@@ -90,6 +94,9 @@ void InstrumentView::fillSampleParameters() {
 	f1->SetFocus() ;
 
     position._y += 1;
+    f1 = new UIIntVarField(position, editSample_, "Edit", 0, 0, 0, 0);
+    T_SimpleList<UIField>::Insert(f1);
+    position._y += 1;
 #ifdef FFMPEG_ENABLED
     v = instrument->FindVariable(SIP_PRINTFX);
     f1 = new UIIntVarField(position, *v, "%s", 0, 3, 1, 2);
@@ -106,7 +113,7 @@ void InstrumentView::fillSampleParameters() {
     T_SimpleList<UIField>::Insert(f1);
     position._x -= 16;
 #endif
-    position._y += 2;
+    position._y += 1;
     v=instrument->FindVariable(SIP_VOLUME) ;
 	f1=new UIIntVarField(position,*v,"volume: %d [%2.2X]",0,255,1,10) ;
 	T_SimpleList<UIField>::Insert(f1) ;
@@ -285,8 +292,14 @@ void InstrumentView::ProcessButtonMask(unsigned short mask,bool pressed) {
 	if (!pressed) return ;
 
 	isDirty_=false ;
+    if (mask == EPBM_A && GetFocus() &&
+        ((UIIntVarField *)GetFocus())->GetVariableID() == SIP_EDIT) {
+        viewMode_ = VM_NORMAL;
+        DoModal(new SampleEditorDialog(*this), ImportSampleDialogCallback);
+        return;
+    }
 
-	if (viewMode_==VM_NEW) {
+    if (viewMode_==VM_NEW) {
 		if (mask==EPBM_A) {
 			UIIntVarField *field=(UIIntVarField *)GetFocus() ;
 			Variable &v=field->GetVariable() ;

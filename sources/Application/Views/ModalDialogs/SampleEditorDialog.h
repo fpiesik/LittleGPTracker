@@ -2,6 +2,7 @@
 #define SAMPLE_EDITOR_DIALOG_H
 #include "Application/Instruments/SampleEditBuffer.h"
 #include "Application/Views/BaseClasses/ModalView.h"
+#include "SampleEditorAction.h"
 #include <string>
 
 class SampleEditorDialog : public ModalView {
@@ -20,7 +21,10 @@ class SampleEditorDialog : public ModalView {
     void stopPreview();
     void preview();
     void text(int x, int y, const char *s, bool selected = false);
-    SampleEditBuffer buffer_;
+    SampleEditorAction action_;
+    SampleEditBuffer buffer_, undoBuffer_;
+    int undoFirst_, undoLast_;
+    bool undoAvailable_, undoDirty_, undoZoom_;
     int first_, last_, row_, digit_, operation_, nameCursor_, sampleIndex_;
     bool dirty_, playing_, zoom_;
     std::string original_, name_, status_, previewPath_;

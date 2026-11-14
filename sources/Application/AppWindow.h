@@ -18,6 +18,8 @@
 #include "System/io/Status.h"
 #include "UIFramework/SimpleBaseClasses/GUIWindow.h"
 
+#include <vector>
+
 #define PROP_INVERT 0x80
 
 class AppWindow : public GUIWindow, I_Observer, Status {
@@ -35,6 +37,10 @@ class AppWindow : public GUIWindow, I_Observer, Status {
     virtual void ClearRect(GUIRect &rect);
     virtual void SetColor(ColorDefinition cd);
     void SetDirty();
+    bool SupportsPixelRects();
+    static int GetCharWidth() { return charWidth_; }
+    static int GetCharHeight() { return charHeight_; }
+    void AddPixelRect(const GUIRect &rect, bool selected);
 
   protected: // GUIWindow implementation
     virtual bool onEvent(GUIEvent &event);
@@ -61,6 +67,12 @@ class AppWindow : public GUIWindow, I_Observer, Status {
     void onQuitApp();
 
   private:
+    struct PixelRect {
+        GUIRect rect;
+        bool selected;
+        PixelRect(const GUIRect &r, bool s) : rect(r), selected(s) {}
+    };
+    std::vector<PixelRect> pixelRects_;
     View *_currentView;
     ViewData *_viewData;
     SongView *_songView;
