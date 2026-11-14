@@ -6,7 +6,7 @@
     <DUMPEVENT value="YES"/>
     <AUTO_LOAD_LAST value="YES"/> <!-- change to disable auto loading -->
     <SCREENMULT value="4"/> <!-- increase screen size -->
-    
+    <SAMPLELIB value="/home/frank/Samples/" />
     <KEY_UP value="key:0:up" />
     <KEY_DOWN value="key:0:down" />
     <KEY_LEFT value="key:0:left" />
@@ -24,23 +24,24 @@
     
     <KEY_START value="key:0:return" />
     -->
-    <!-- Default colors below -->
-    <!-- Default colors below -->
-    <BACKGROUND   value = "1D0A1F" />
-    <FOREGROUND   value = "F5EBFF" /> <!-- Text and cursor in cursor -->
-    <BORDER       value = "FF00DD" /> <!--Dialog Border-->
-    <HICOLOR1     value = "B750D1" /> <!-- Highlight color 1 -->
-    <HICOLOR2     value = "DB33DB" /> <!-- Highlight color 2 -->
-    <SONGVIEW_FE  value = "A55B8F" /> <!-- Color of the chain "FE" in song screen-->
-    <SONGVIEW_00  value = "853B6F" /> <!-- Color of the chain "00" in song screen-->
-    <CURSORCOLOR  value = "FF00DD" /> <!--Cursor color-->
-    <PLAYCOLOR    value = "FF00DD" /> <!--Cursor color-->
-    <MUTECOLOR    value = "F5EBFF" /> <!-- Text and cursor in cursor -->
-    <ROWCOLOR1    value = "BA28F9" /> <!--Row count color 1 -->
-    <ROWCOLOR2    value = "FF00FF" /> <!--Row count color 2-->
+    <!-- Muted teal and beige palette with high contrast on a dark background -->
+    <BACKGROUND   value = "09181E" />
+    <FOREGROUND   value = "E8DDC5" /> <!-- Text and cursor in cursor -->
+    <CONSOLE      value = "E8DDC5" /> <!-- Console text -->
+    <BORDER       value = "86B8B5" /> <!--Dialog Border-->
+    <HICOLOR1     value = "60879C" /> <!-- Highlight color 1 / unselected waveform -->
+    <HICOLOR2     value = "D9B477" /> <!-- Highlight color 2 / selected waveform -->
+    <SONGVIEW_FE  value = "A8B9B2" /> <!-- Color of the chain "FE" in song screen-->
+    <SONGVIEW_00  value = "8FA6AA" /> <!-- Color of the chain "00" in song screen-->
+    <CURSORCOLOR  value = "80C4BC" /> <!--Cursor color-->
+    <PLAYCOLOR    value = "E6C890" /> <!-- Playback indicator -->
+    <MUTECOLOR    value = "B7AD9B" /> <!-- Mute indicator -->
+    <ROWCOLOR1    value = "91B6C6" /> <!--Row count color 1 -->
+    <ROWCOLOR2    value = "D0C1A4" /> <!--Row count color 2-->
+    <MAJORBEAT    value = "86B8B5" /> <!-- Major beat markers -->
     <ALTROWNUMBER value = "4"/>       <!--How many rows of each ROWCOLOR-->
     <ALTROWNUMBER value = "4"/>
     <FONTTYPE     value = '0' />     <!-- '0':original '1':digital '2':monster 'CUSTOM': load custom_font.xml-->
-    <COL_TITLE    value = "853B6F" /> <!-- Color of the column title -->
+    <COL_TITLE    value = "D0C1A4" /> <!-- Color of the column title -->
 
 </CONFIG>
