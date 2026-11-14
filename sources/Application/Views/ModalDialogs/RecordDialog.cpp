@@ -3,6 +3,7 @@
 #include "Adapters/SDL2/Audio/SDLAudioDriver.h"
 #include "Application/Instruments/SampleInstrument.h"
 #include "Application/Instruments/SamplePool.h"
+#include "Application/Model/Config.h"
 #include "Application/Views/ViewData.h"
 #include <errno.h>
 #include <stdlib.h>
@@ -23,8 +24,12 @@ bool writeAll(int fd, const unsigned char *data, size_t size) {
     return true;
 }
 
+void startRecordedSong() {
+    Player::GetInstance()->OnSongStartButton(0, 7, false, false);
+}
+
 const Uint32 sampleRate = 44100;
-const Uint32 maxBytes = sampleRate * 2 * 600; // Ten minutes, mono 16-bit.
+const Uint32 maxBytes = sampleRate * 2 * 600; // Ten minutes per channel.
 void put32(unsigned char *p, Uint32 value) {
     for (int i = 0; i < 4; ++i)
         p[i] = (value >> (8 * i)) & 255;
@@ -32,8 +37,8 @@ void put32(unsigned char *p, Uint32 value) {
 } // namespace
 
 RecordDialog::RecordDialog(View &parent)
-    : ModalView(parent), state_(ERROR), device_(0), file_(-1), started_(0),
-      beatMs_(500), bytes_(0), selected_(1) {
+    : ModalView(parent), state_(ERROR), device_(0), file_(-1), bytes_(0),
+      channels_(SDLAudioDriver::RecordChannels), selected_(1) {
     row_ = viewData_->songY_ + viewData_->songOffset_;
     column_ = viewData_->songX_;
     previousMode_ = Player::GetInstance()->GetSequencerMode();
@@ -46,12 +51,11 @@ RecordDialog::~RecordDialog() {
 }
 
 void RecordDialog::discardTake() {
-    SDLAudioDriver::CountInClick(false);
     if (device_) {
         SDLAudioDriver::StopCapture();
         device_ = 0;
     }
-    if (state_ == RECORDING)
+    if (state_ == COUNT_IN || state_ == RECORDING)
         Player::GetInstance()->Stop();
     if (file_ >= 0) {
         close(file_);
@@ -69,7 +73,7 @@ void RecordDialog::fail(const char *message) {
         SDLAudioDriver::StopCapture();
         device_ = 0;
     }
-    if (state_ == RECORDING)
+    if (state_ == COUNT_IN || state_ == RECORDING)
         Player::GetInstance()->Stop();
     error_ = message;
     state_ = ERROR;
@@ -124,12 +128,19 @@ void RecordDialog::beginTake() {
         return;
     }
     Player::GetInstance()->Stop();
-    int tempo = viewData_->project_->GetTempo();
-    beatMs_ = 60000 / (tempo > 0 ? tempo : 120);
-    started_ = SDL_GetTicks();
+    viewData_->chainRow_ = 0;
+    Player::GetInstance()->SetSequencerMode(SM_SONG);
+    double latencyMs = -1; // Automatic estimate unless explicitly calibrated.
+    const char *value = Config::GetInstance()->GetValue("RECORD_LATENCY_MS");
+    if (value) {
+        char *end;
+        double parsed = strtod(value, &end);
+        if (end != value && !*end && parsed >= 0 && parsed <= 2000)
+            latencyMs = parsed;
+    }
     state_ = COUNT_IN;
-    lastBeat_ = 0;
-    SDLAudioDriver::CountInClick(true);
+    SDLAudioDriver::BeginRecording(viewData_->project_->GetTempo(), latencyMs,
+                                   startRecordedSong);
     selected_ = 1;
     isDirty_ = true;
 }
@@ -141,10 +152,10 @@ bool RecordDialog::writeHeader() {
     memcpy(header + 8, "WAVEfmt ", 8);
     put32(header + 16, 16);
     header[20] = 1; // PCM
-    header[22] = 1; // Mono
+    header[22] = channels_;
     put32(header + 24, sampleRate);
-    put32(header + 28, sampleRate * 2);
-    header[32] = 2;
+    put32(header + 28, sampleRate * 2 * channels_);
+    header[32] = 2 * channels_;
     header[34] = 16;
     memcpy(header + 36, "data", 4);
     put32(header + 40, bytes_);
@@ -156,11 +167,11 @@ bool RecordDialog::writeHeader() {
 bool RecordDialog::drain() {
     unsigned char buffer[8192];
     // Bound each UI update even while new input arrives.
-    Uint32 remaining = sampleRate * 2 * 4;
-    while (remaining && bytes_ < maxBytes) {
+    Uint32 remaining = sampleRate * 2 * channels_ * 4;
+    while (remaining && bytes_ < maxBytes * channels_) {
         Uint32 size = remaining < sizeof(buffer) ? remaining : sizeof(buffer);
-        if (size > maxBytes - bytes_)
-            size = maxBytes - bytes_;
+        if (size > maxBytes * channels_ - bytes_)
+            size = maxBytes * channels_ - bytes_;
         int read = SDLAudioDriver::ReadCapture(buffer, size);
         if (read < 0) {
             fail("Input lost or capture overflow");
@@ -180,10 +191,13 @@ bool RecordDialog::drain() {
 }
 
 void RecordDialog::stopTake() {
+    if (SDLAudioDriver::RecordingBeat() == -2) {
+        fail("Output underrun: retry take");
+        return;
+    }
     SDLAudioDriver::StopCapture();
     if (!drain())
         return;
-    SDLAudioDriver::StopCapture();
     device_ = 0;
     Player::GetInstance()->Stop();
     if (!writeHeader() || fsync(file_) != 0) {
@@ -196,27 +210,20 @@ void RecordDialog::stopTake() {
 }
 
 void RecordDialog::AnimationUpdate() {
-    if (state_ == COUNT_IN) {
-        int beat = (SDL_GetTicks() - started_) / beatMs_;
-        if (beat != lastBeat_ && beat < 4)
-            SDLAudioDriver::CountInClick(true);
-        lastBeat_ = beat;
+    if (state_ == COUNT_IN || state_ == RECORDING) {
+        int beat = SDLAudioDriver::RecordingBeat();
+        if (beat == -2)
+            fail("Output underrun: retry take");
+        else if (beat >= 4)
+            state_ = RECORDING;
     }
-    if (state_ == COUNT_IN && SDL_GetTicks() - started_ >= beatMs_ * 4) {
-        SDLAudioDriver::CountInClick(false);
-        viewData_->chainRow_ = 0;
-        Player *player = Player::GetInstance();
-        player->SetSequencerMode(SM_SONG);
-        SDLAudioDriver::StartCapture();
-        state_ = RECORDING;
-        player->OnSongStartButton(0, 7, false, false);
-    }
-    if (state_ == RECORDING) {
-        if (SDL_GetAudioDeviceStatus(device_) == SDL_AUDIO_STOPPED) {
+    // Also drain during count-in: a calibrated input boundary can precede the
+    // next UI update. No disk operations run on either audio thread.
+    if (state_ == COUNT_IN || state_ == RECORDING) {
+        if (SDL_GetAudioDeviceStatus(device_) == SDL_AUDIO_STOPPED)
             fail("Audio input disconnected");
-        } else if (drain() && bytes_ >= maxBytes) {
+        else if (drain() && bytes_ >= maxBytes * channels_)
             stopTake();
-        }
     }
     DrawView();
 }
@@ -308,15 +315,17 @@ void RecordDialog::DrawView() {
     GUITextProperties props;
     if (state_ == COUNT_IN) {
         char message[32];
-        unsigned beat = (SDL_GetTicks() - started_) / beatMs_;
-        snprintf(message, sizeof(message), "Count in: %u",
+        int beat = SDLAudioDriver::RecordingBeat();
+        if (beat < 0)
+            beat = 0;
+        snprintf(message, sizeof(message), "Count in: %d",
                  beat < 4 ? 4 - beat : 1);
         DrawString(0, 0, message, props);
         DrawString(0, 2, "Start: cancel", props);
     } else if (state_ == RECORDING) {
         char message[32];
         snprintf(message, sizeof(message), "Recording: %us",
-                 bytes_ / (sampleRate * 2));
+                 bytes_ / (sampleRate * 2 * channels_));
         DrawString(0, 0, message, props);
         DrawString(0, 2, "Start: stop recording", props);
     } else if (state_ == ERROR) {

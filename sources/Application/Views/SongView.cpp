@@ -1,4 +1,7 @@
 #include "SongView.h"
+#if defined(PLATFORM_X64)
+#include "Adapters/SDL2/Audio/SDLAudioDriver.h"
+#endif
 #include "Application/Commands/ApplicationCommandDispatcher.h"
 #include "Application/Mixer/MixerService.h"
 #include "Application/Model/ProjectDatas.h"
@@ -939,7 +942,14 @@ void SongView::DrawVuBars() {
     float peakLevelsR[1];
 
     // Read master peak level (post-volume) to match MixerView's Master meter
-    if (!player->IsRunning()) {
+#if defined(PLATFORM_X64)
+    unsigned int inputLevel = 0;
+    if (SDLAudioDriver::CapturePeak(inputLevel)) {
+        peakLevelsL[0] = float(inputLevel >> 16) / 32767.0f;
+        peakLevelsR[0] = float(inputLevel & 65535) / 32767.0f;
+    } else
+#endif
+        if (!player->IsRunning()) {
         peakLevelsL[0] = peakLevelsR[0] = 0.0f;
     } else {
         MixerService *ms = MixerService::GetInstance();
@@ -984,6 +994,7 @@ void SongView::AnimationUpdate() {
 #if defined(PLATFORM_X64)
     if (recordDialog_) {
         recordDialog_->AnimationUpdate();
+        DrawVuBars();
         return;
     }
 #endif

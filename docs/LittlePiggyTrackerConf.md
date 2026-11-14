@@ -620,7 +620,9 @@ The uConsole must be in gamecontroller mode. Select needs the mapping
 Existing X+A solo controls are unchanged.
 
 Stop playback and disable rendering before starting a take. Four audible
-clicks and a visible countdown use the current project tempo. The default
+clicks and a visible countdown use the current project tempo. Clicks and song
+playback share the audio sample timeline, so UI refreshes do not schedule the
+transition. The default
 SDL audio input is then recorded while the song plays from the selected row.
 The input stream opens when LGPT starts and stays active between takes, so
 connections made in qpwgraph remain available. Incoming audio is discarded
@@ -643,9 +645,26 @@ Up/Down and confirm with A:
 Start during count-in cancels. Occupied slots and exhausted chain, phrase,
 instrument or sample pools are rejected. Save the project normally to persist
 its new chain/phrase/instrument assignments. The sample WAV is saved immediately.
-Input/output device latency is not compensated; verify alignment on your audio
-hardware before recording longer overdubs. Other build targets do not expose
-this recording dialog yet.
+Recording trims the input to the scheduled song onset, including input/output
+latency. `<RECORD_LATENCY_MS value="AUTO" />` (the default when absent or invalid)
+estimates latency from one obtained SDL output buffer plus one input buffer.
+SDL buffer sizes are in sample frames; see [SDL_AudioSpec](https://wiki.libsdl.org/SDL2/SDL_AudioSpec).
+This is an estimate, not a hardware measurement. For your interface and audio
+server, replace `AUTO` with the measured round-trip latency in milliseconds
+(decimal values from 0 to 2000 are accepted). LGPT's internal playback queue is
+accounted for separately; do not add it to this value. Restart LGPT after edits.
+
+To calibrate, set the value to `0`, route an output back to the recording input,
+and record a song with a short impulse at a known position after the start.
+Measure how many milliseconds later that impulse appears in the recorded WAV
+and use that delay as `RECORD_LATENCY_MS`. Record again to verify alignment.
+Increasing the value trims more input and moves the recorded material earlier.
+Recalibrate after changing devices, routing, sample rate or buffer sizes.
+
+An output underrun during a take reports an error; retry instead of saving a
+misaligned recording. Timing still depends on device/OS callback scheduling;
+separate input/output clocks can drift during long takes. Verify on your audio
+hardware. Other build targets do not expose this recording dialog yet.
 
 ### Short press duration
 
@@ -653,3 +672,11 @@ this recording dialog yet.
 in milliseconds (1–2000, default 250). Currently used by the sample editor:
 longer A presses and A+arrow combinations do not execute actions. Invalid values use the default.
 Restart LGPT after changing `config.xml`.
+
+### Recording channels (Linux SDL2)
+
+Project > Record Options selects Mono (default) or Stereo for subsequent takes.
+Use Left/Right or A to change the mode and B to return. The selection lasts for
+the application session. During count-in and recording, the song level meter
+shows the input peaks; afterward it returns to the output level. Mono input is
+shown on both meter bars. Stereo recordings retain both input channels.

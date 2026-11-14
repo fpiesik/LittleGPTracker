@@ -1,4 +1,5 @@
 <CONFIG>
+    <RECORD_LATENCY_MS value="AUTO" /> <!-- input/output latency; replace AUTO with measured milliseconds -->
     <SHORT_PRESS_MS value="250" /> <!-- maximum short press duration in milliseconds -->
     <WIDESCREEN value="YES" />
     <FULLSCREEN value="YES" />

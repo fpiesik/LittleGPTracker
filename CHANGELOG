@@ -1,4 +1,9 @@
 Unreleased
+    Fix 8-bit stereo WAV loading and sample-rate conversion in browser preview.
+    Validate WAV chunks and PCM parameters; reject truncated or empty samples.
+    Add Record Options with mono/stereo capture and input metering during recording.
+    Queue recording count-in and playback on one sample timeline; compensate
+    estimated input/output latency with optional RECORD_LATENCY_MS calibration.
     Add SHORT_PRESS_MS to configure the general maximum short press duration (default 250 ms).
     Execute sample editor actions on an unmodified A release; add one-step Undo.
     Render sample waveforms at native pixel resolution on SDL/SDL2 displays.

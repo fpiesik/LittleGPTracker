@@ -4,23 +4,58 @@
 #include "System/Console/Trace.h"
 #include "System/System/System.h"
 
-// The UI requests clicks; synthesis and phase state stay on the audio thread.
-static SDL_atomic_t countInRequest;
-void SDLAudioDriver::CountInClick(bool enabled) {
-    SDL_AtomicSet(&countInRequest, enabled ? 1 : -1);
-}
+SDLAudioDriver *SDLAudioDriver::instance_ = 0;
+static SDL_atomic_t recordingBeat;
+int SDLAudioDriver::RecordChannels = 1;
 
 namespace {
 SDL_AudioDeviceID captureDevice = 0;
-// Four seconds of mono PCM. Idle input is discarded, never queued indefinitely.
-const unsigned captureCapacity = 44100 * 2 * 4;
+// Four seconds of stereo PCM. Idle input is discarded, never queued
+// indefinitely.
+const unsigned captureCapacity = 44100 * 4 * 4;
 Uint8 captureBuffer[captureCapacity];
 unsigned captureRead = 0, captureSize = 0;
 bool capturing = false, captureOverflow = false;
+bool captureWaiting = false;
+double captureTarget = 0;
+Sint64 captureSkip = 0;
+int capturePeriod = 1024;
+int captureChannels = 1;
+unsigned inputPeak = 0;
 
 void captureCallback(void *, Uint8 *stream, int length) {
     if (!capturing || length <= 0)
         return;
+    unsigned peaks[2] = {0, 0};
+    for (int i = 0; i < length / 2; ++i) {
+        int value = Sint16(SDL_SwapLE16(reinterpret_cast<Uint16 *>(stream)[i]));
+        unsigned magnitude = value < 0 ? -value : value;
+        int channel = i % captureChannels;
+        peaks[channel] = SDL_max(peaks[channel], magnitude);
+    }
+    if (captureChannels == 1)
+        peaks[1] = peaks[0];
+    inputPeak = (SDL_max(inputPeak >> 16, peaks[0]) << 16) |
+                SDL_max(inputPeak & 65535, peaks[1]);
+    if (captureWaiting) {
+        if (!captureTarget)
+            return;
+        double now =
+            double(SDL_GetPerformanceCounter()) / SDL_GetPerformanceFrequency();
+        if (now > captureTarget) {
+            captureOverflow =
+                true; // Input stalled past the recording boundary.
+            capturing = false;
+            return;
+        }
+        captureSkip = RecordTiming::CaptureSkip(captureTarget - now);
+        captureWaiting = false;
+    }
+    int skip =
+        int(SDL_min(captureSkip, Sint64(length / (2 * captureChannels))));
+    captureSkip -= skip;
+    stream += skip * 2 * captureChannels;
+    length -= skip * 2 * captureChannels;
     unsigned size = static_cast<unsigned>(length);
     if (size > captureCapacity - captureSize) {
         captureOverflow = true;
@@ -35,8 +70,19 @@ void captureCallback(void *, Uint8 *stream, int length) {
 }
 } // namespace
 
+bool SDLAudioDriver::CapturePeak(unsigned int &peak) {
+    if (!captureDevice)
+        return false;
+    SDL_LockAudioDevice(captureDevice);
+    bool active = capturing;
+    peak = inputPeak;
+    inputPeak = 0;
+    SDL_UnlockAudioDevice(captureDevice);
+    return active;
+}
+
 SDL_AudioDeviceID SDLAudioDriver::OpenCapture() {
-    if (captureDevice &&
+    if (captureDevice && captureChannels == RecordChannels &&
         SDL_GetAudioDeviceStatus(captureDevice) != SDL_AUDIO_STOPPED)
         return captureDevice;
     CloseCapture();
@@ -46,12 +92,14 @@ SDL_AudioDeviceID SDLAudioDriver::OpenCapture() {
     SDL_AudioSpec wanted = {}, obtained = {};
     wanted.freq = 44100;
     wanted.format = AUDIO_S16LSB;
-    wanted.channels = 1;
+    captureChannels = RecordChannels == 2 ? 2 : 1;
+    wanted.channels = captureChannels;
     wanted.samples = 1024;
     wanted.callback = captureCallback;
     SDL_SetHint("SDL_AUDIO_DEVICE_APP_NAME", "LittleGPTracker");
     captureDevice = SDL_OpenAudioDevice(NULL, 1, &wanted, &obtained, 0);
     if (captureDevice) {
+        capturePeriod = obtained.samples;
         // Keep the stream running so patchbay links survive between takes.
         SDL_PauseAudioDevice(captureDevice, 0);
     } else {
@@ -66,25 +114,97 @@ void SDLAudioDriver::CloseCapture() {
     captureDevice = 0;
     capturing = false;
     captureOverflow = false;
+    inputPeak = 0;
     captureRead = captureSize = 0;
 }
 
-void SDLAudioDriver::StartCapture() {
-    if (!captureDevice)
+void SDLAudioDriver::BeginRecording(int tempo, double latencyMs,
+                                    void (*start)()) {
+    SDLAudioDriver *driver = instance_;
+    if (!driver || !captureDevice)
         return;
+    SDL_LockMutex(driver->recordMutex_);
+    SDL_LockAudio();
     SDL_LockAudioDevice(captureDevice);
+    inputPeak = 0;
     captureRead = captureSize = 0;
     captureOverflow = false;
-    capturing = true;
+    captureWaiting = capturing = true;
+    captureTarget = 0;
+    driver->countTempo_ = tempo > 0 ? tempo : 120;
+    driver->countFrame_ = 0;
+    driver->countLength_ =
+        RecordTiming::BeatFrame(4, driver->sampleRate_, driver->countTempo_);
+    // SDL2 has no portable hardware latency query. Estimate one period each
+    // way, or use the user's measured callback-to-input round-trip latency.
+    driver->recordLatency_ =
+        latencyMs >= 0 ? latencyMs / 1000.0
+                       : double(driver->fragSize_ / 4) / driver->sampleRate_ +
+                             double(capturePeriod) / 44100;
+    driver->recordStart_ = start;
+    driver->recordOutputStarted_ = false;
+    SDL_AtomicSet(&recordingBeat, 0);
     SDL_UnlockAudioDevice(captureDevice);
+    SDL_UnlockAudio();
+    SDL_UnlockMutex(driver->recordMutex_);
 }
 
+int SDLAudioDriver::RecordingBeat() { return SDL_AtomicGet(&recordingBeat); }
+
 void SDLAudioDriver::StopCapture() {
-    if (!captureDevice)
-        return;
-    SDL_LockAudioDevice(captureDevice);
-    capturing = false;
-    SDL_UnlockAudioDevice(captureDevice);
+    if (instance_) {
+        SDL_LockMutex(instance_->recordMutex_);
+        instance_->recordStart_ = 0;
+        SDL_LockAudio();
+        for (int i = 0; i < SOUND_BUFFER_COUNT; ++i) {
+            if (instance_->countTags_[i] >= 0 && instance_->pool_[i].buffer_)
+                memset(instance_->pool_[i].buffer_, 0,
+                       instance_->pool_[i].size_);
+            instance_->countTags_[i] = -1;
+        }
+        if (captureDevice) {
+            SDL_LockAudioDevice(captureDevice);
+            captureOverflow =
+                captureOverflow || SDL_AtomicGet(&recordingBeat) == -2;
+            capturing = false;
+            SDL_UnlockAudioDevice(captureDevice);
+        }
+        SDL_AtomicSet(&recordingBeat, -1);
+        SDL_UnlockAudio();
+        SDL_UnlockMutex(instance_->recordMutex_);
+    }
+}
+
+// The worker queues count-in and song audio consecutively. Starting the player
+// here avoids both UI jitter and a second trip through the playback queue.
+void SDLAudioDriver::RenderBuffer() {
+    SDL_LockMutex(recordMutex_);
+    if (SDL_AtomicGet(&recordingBeat) == -2)
+        recordStart_ = 0;
+    if (recordStart_ && countFrame_ < countLength_) {
+        short buffer[SOUND_BUFFER_MAX / 2];
+        int frames =
+            SDL_min(SOUND_BUFFER_MAX / 4, sampleRate_ * 60 / countTempo_ / 24);
+        frames = int(
+            SDL_min(Sint64(SDL_max(frames, 1)), countLength_ - countFrame_));
+        for (int i = 0; i < frames; ++i)
+            buffer[i * 2] = buffer[i * 2 + 1] =
+                RecordTiming::Click(countFrame_ + i, sampleRate_, countTempo_);
+        SDL_LockAudio();
+        countTags_[poolQueuePosition_] = countFrame_;
+        AddBuffer(buffer, frames);
+        SDL_UnlockAudio();
+        countFrame_ += frames;
+        MidiService::GetInstance()->AdvancePlayQueue();
+    } else {
+        if (recordStart_) {
+            void (*start)() = recordStart_;
+            recordStart_ = 0;
+            start();
+        }
+        OnNewBufferNeeded();
+    }
+    SDL_UnlockMutex(recordMutex_);
 }
 
 int SDLAudioDriver::ReadCapture(Uint8 *buffer, int size) {
@@ -122,7 +242,7 @@ SDLAudioDriverThread::SDLAudioDriverThread(SDLAudioDriver *driver) {
 bool SDLAudioDriverThread::Execute() {
     while (!shouldTerminate()) {
         semaphore_->Wait();
-        driver_->OnNewBufferNeeded();
+        driver_->RenderBuffer();
     };
     SysSemaphore *semaphore = semaphore_;
     semaphore_ = 0;
@@ -150,9 +270,19 @@ SDLAudioDriver::SDLAudioDriver(AudioSettings &settings)
     : AudioDriver(settings), unalignedMain_(0), miniBlank_(0) {
     isPlaying_ = false;
     thread_ = 0;
+    recordMutex_ = SDL_CreateMutex();
+    recordStart_ = 0;
+    recordOutputStarted_ = false;
+    for (int i = 0; i < SOUND_BUFFER_COUNT; ++i)
+        countTags_[i] = -1;
+    SDL_AtomicSet(&recordingBeat, -1);
+    instance_ = this;
 }
 
-SDLAudioDriver::~SDLAudioDriver() {}
+SDLAudioDriver::~SDLAudioDriver() {
+    SDL_DestroyMutex(recordMutex_);
+    instance_ = 0;
+}
 
 struct SDL_AudioSpec input;
 struct SDL_AudioSpec returned;
@@ -256,6 +386,8 @@ double SDLAudioDriver::GetStreamTime() {
 }
 
 void SDLAudioDriver::OnChunkDone(Uint8 *stream, int len) {
+    const double callbackTime =
+        double(SDL_GetPerformanceCounter()) / SDL_GetPerformanceFrequency();
 
     // Look if we have enough data in main buffer
 
@@ -268,6 +400,9 @@ void SDLAudioDriver::OnChunkDone(Uint8 *stream, int len) {
         // then get next queued buffer and copy data from it
 
         if (pool_[poolPlayPosition_].buffer_ == 0) {
+            if (recordOutputStarted_ && SDL_AtomicGet(&recordingBeat) >= 0)
+                SDL_AtomicSet(&recordingBeat,
+                              -2); // Never save an unaligned take.
             // Use fragSize_ instead of len! miniBlank_ is only allocated to
             // fragSize_. Using len causes a buffer over-read if SDL requests a
             // larger chunk.
@@ -276,7 +411,31 @@ void SDLAudioDriver::OnChunkDone(Uint8 *stream, int len) {
             bufferSize_ = bufferSize_ - bufferPos_ + fragSize_;
             bufferPos_ = 0;
         } else {
-
+            Sint64 tag = countTags_[poolPlayPosition_];
+            if (SDL_AtomicGet(&recordingBeat) >= 0) {
+                if (tag == 0 && captureDevice) {
+                    recordOutputStarted_ = true;
+                    SDL_LockAudioDevice(captureDevice);
+                    captureTarget =
+                        callbackTime +
+                        double((bufferSize_ - bufferPos_) / 4 + countLength_) /
+                            sampleRate_ +
+                        recordLatency_;
+                    SDL_UnlockAudioDevice(captureDevice);
+                }
+                int beat = 4;
+                if (tag >= 0) {
+                    beat = 0;
+                    while (beat < 3 &&
+                           tag >= RecordTiming::BeatFrame(beat + 1, sampleRate_,
+                                                          countTempo_))
+                        ++beat;
+                }
+                // Untagged buffers ahead of the first click are still idle.
+                if (recordOutputStarted_)
+                    SDL_AtomicSet(&recordingBeat, beat);
+            }
+            countTags_[poolPlayPosition_] = -1;
             memcpy(mainBuffer_ + bufferSize_ - bufferPos_,
                    pool_[poolPlayPosition_].buffer_,
                    pool_[poolPlayPosition_].size_);
@@ -308,24 +467,6 @@ void SDLAudioDriver::OnChunkDone(Uint8 *stream, int len) {
 
     SYS_MEMCPY(stream, (short *)(mainBuffer_ + bufferPos_), len);
     bufferPos_ += len;
-
-    static int clickRemaining = 0;
-    int request = SDL_AtomicSet(&countInRequest, 0);
-    int clickLength = sampleRate_ / 20;
-    if (request)
-        clickRemaining = request > 0 ? clickLength : 0;
-    short *output = reinterpret_cast<short *>(stream);
-    for (int frame = 0; frame < len / 4 && clickRemaining > 0; ++frame) {
-        int phase = clickLength - clickRemaining;
-        int click = ((phase * 2000 / sampleRate_) & 1) ? 3000 : -3000;
-        click = click * clickRemaining / clickLength;
-        for (int channel = 0; channel < 2; ++channel) {
-            int mixed = output[frame * 2 + channel] + click;
-            output[frame * 2 + channel] =
-                mixed > 32767 ? 32767 : (mixed < -32768 ? -32768 : mixed);
-        }
-        --clickRemaining;
-    }
 }
 
 int SDLAudioDriver::GetPlayedBufferPercentage() {

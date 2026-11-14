@@ -155,13 +155,16 @@ Trace::Log("loadSample", "%s", path);
 
 Path wavPath(path);
 WavFile *wave = WavFile::Open(path);
+if (wave && !wave->GetBuffer(0, wave->GetSize(-1))) {
+    delete wave;
+    wave = 0;
+}
 if (wave) {
     wav_[count_] = wave;
     const std::string name = wavPath.GetName();
     names_[count_] = (char *)SYS_MALLOC(name.length() + 1);
     strcpy(names_[count_], name.c_str());
     count_++;
-    wave->GetBuffer(0, wave->GetSize(-1));
     wave->Close();
     return SLOAD_OK;
 } else {

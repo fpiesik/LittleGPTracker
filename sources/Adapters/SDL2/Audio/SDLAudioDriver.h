@@ -1,6 +1,7 @@
 #ifndef _SDL_SOUND_H_
 #define _SDL_SOUND_H_
 
+#include "RecordTiming.h"
 #include "Services/Audio/AudioDriver.h"
 #include "System/Process/Process.h"
 #include <SDL2/SDL.h>
@@ -10,7 +11,7 @@ class SDLAudioDriver;
 class SDLAudioDriverThread : public SysThread {
   public:
     SDLAudioDriverThread(SDLAudioDriver *driver);
-    virtual ~SDLAudioDriverThread() {};
+    virtual ~SDLAudioDriverThread(){};
     virtual bool Execute();
     virtual void RequestTermination();
     void Notify();
@@ -34,16 +35,27 @@ class SDLAudioDriver : public AudioDriver {
     virtual int GetSampleRate();
     virtual bool Interlaced() { return true; };
     virtual double GetStreamTime();
-    static void CountInClick(bool enabled);
+    static void BeginRecording(int tempo, double latencyMs, void (*start)());
+    static int RecordingBeat();
     static SDL_AudioDeviceID OpenCapture();
+    static int RecordChannels;
+    static bool CapturePeak(unsigned int &peak);
     static void CloseCapture();
-    static void StartCapture();
     static void StopCapture();
     static int ReadCapture(Uint8 *buffer, int size);
     // Additional
     void OnChunkDone(Uint8 *stream, int len);
+    void RenderBuffer();
 
   private:
+    static SDLAudioDriver *instance_;
+    SDL_mutex *recordMutex_;
+    void (*recordStart_)();
+    Sint64 countFrame_, countLength_;
+    int countTempo_;
+    Sint64 countTags_[SOUND_BUFFER_COUNT];
+    double recordLatency_;
+    bool recordOutputStarted_;
     int fragSize_; // Actual fragsize used by the driver
     char *unalignedMain_;
     char *mainBuffer_;

@@ -38,8 +38,9 @@ class RecordDialog : public ModalView {
     int file_;
     std::string path_;
     std::string error_;
-    Uint32 started_, beatMs_, bytes_;
-    int row_, column_, selected_, lastBeat_;
+    Uint32 bytes_;
+    int channels_;
+    int row_, column_, selected_;
     SequencerMode previousMode_;
 };
 #endif

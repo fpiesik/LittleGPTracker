@@ -14,12 +14,47 @@
 #include "Services/Midi/MidiService.h"
 #include "System/System/System.h"
 
-#define ACTION_PURGE            MAKE_FOURCC('P','U','R','G')
-#define ACTION_SAVE             MAKE_FOURCC('S','A','V','E')
-#define ACTION_SAVE_AS          MAKE_FOURCC('S','V','A','S')
-#define ACTION_LOAD             MAKE_FOURCC('L','O','A','D')
-#define ACTION_QUIT             MAKE_FOURCC('Q','U','I','T')
-#define ACTION_PURGE_INSTRUMENT MAKE_FOURCC('P','R','G','I')
+#if defined(PLATFORM_X64)
+#include "Adapters/SDL2/Audio/SDLAudioDriver.h"
+class RecordOptionsDialog : public ModalView {
+  public:
+    explicit RecordOptionsDialog(View &parent) : ModalView(parent) {}
+    virtual void OnFocus() {}
+    virtual void OnPlayerUpdate(PlayerEventType, unsigned int) {}
+    virtual void DrawView() {
+        SetWindow(29, 5);
+        SetColor(CD_NORMAL);
+        GUITextProperties props;
+        DrawString(0, 0, "Record Options", props);
+        props.invert_ = true;
+        DrawString(0, 2,
+                   SDLAudioDriver::RecordChannels == 2 ? "Channels: Stereo"
+                                                       : "Channels: Mono",
+                   props);
+        props.invert_ = false;
+        DrawString(0, 4, "Left/Right: change  B: back", props);
+    }
+    virtual void ProcessButtonMask(unsigned short mask, bool pressed) {
+        if (!pressed)
+            return;
+        if (mask == EPBM_LEFT || mask == EPBM_RIGHT || mask == EPBM_A) {
+            SDLAudioDriver::RecordChannels = 3 - SDLAudioDriver::RecordChannels;
+            isDirty_ = true;
+        }
+        if (mask == EPBM_B)
+            EndModal(0);
+    }
+};
+static void RecordOptionsClosed(View &, ModalView &) {}
+#define ACTION_RECORD_OPTIONS MAKE_FOURCC('R', 'O', 'P', 'T')
+#endif
+
+#define ACTION_PURGE MAKE_FOURCC('P', 'U', 'R', 'G')
+#define ACTION_SAVE MAKE_FOURCC('S', 'A', 'V', 'E')
+#define ACTION_SAVE_AS MAKE_FOURCC('S', 'V', 'A', 'S')
+#define ACTION_LOAD MAKE_FOURCC('L', 'O', 'A', 'D')
+#define ACTION_QUIT MAKE_FOURCC('Q', 'U', 'I', 'T')
+#define ACTION_PURGE_INSTRUMENT MAKE_FOURCC('P', 'R', 'G', 'I')
 #define ACTION_TEMPO_CHANGED    MAKE_FOURCC('T','E','M','P')
 
 static void SaveAsProjectCallback(View &v,ModalView &dialog) {
@@ -195,6 +230,13 @@ ProjectView::ProjectView(GUIWindow &w,ViewData *data):FieldView(w,data) {
     T_SimpleList<UIField>::Insert(field);
 
     position._y += 2;
+#if defined(PLATFORM_X64)
+    position._y -= 1;
+    a1 = new UIActionField("Record Options", ACTION_RECORD_OPTIONS, position);
+    a1->AddObserver(*this);
+    T_SimpleList<UIField>::Insert(a1);
+    position._y += 1;
+#endif
     a1 = new UIActionField("Exit", ACTION_QUIT, position);
     a1->AddObserver(*this);
     T_SimpleList<UIField>::Insert(a1);
@@ -293,6 +335,11 @@ void ProjectView::Update(Observable &,I_ObservableData *data) {
 	}
     Player *player = Player::GetInstance();
     switch (fourcc) {
+#if defined(PLATFORM_X64)
+    case ACTION_RECORD_OPTIONS:
+        DoModal(new RecordOptionsDialog(*this), RecordOptionsClosed);
+        break;
+#endif
 		case ACTION_PURGE:
 			project_->Purge() ;
 			break ;
