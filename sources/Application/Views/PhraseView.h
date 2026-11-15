@@ -73,6 +73,7 @@ class PhraseView : public View {
         int width_;
         int height_;
         uchar note_[16];
+        uchar velocity_[16];
         uchar instr_[16];
         uint cmd1_[16];
         ushort param1_[16];
@@ -83,7 +84,7 @@ class PhraseView : public View {
     int saveCol_;
     int saveRow_;
 
-    static short offsets_[2][4];
+    static short offsets_[3][4];
 };
 
 #endif

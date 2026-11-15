@@ -5,7 +5,11 @@
 #include "Phrase.h"
 #include "Application/Persistency/Persistent.h"
 
+#ifdef SDL2
+#define SONG_CHANNEL_COUNT 12
+#else
 #define SONG_CHANNEL_COUNT 8
+#endif
 #define SONG_ROW_COUNT 256
 
 #define MAX_SAMPLEINSTRUMENT_COUNT 0x80

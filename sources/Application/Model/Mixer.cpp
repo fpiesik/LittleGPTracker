@@ -71,12 +71,16 @@ void Mixer::Clear() {
 };
 
 void Mixer::SaveContent(TiXmlNode *node) {
-    saveHexBuffer(node, "BUS", (unsigned char *)channelBus_,
-                  SONG_CHANNEL_COUNT);
-    saveHexBuffer(node, "VOL", channelVolume_, SONG_CHANNEL_COUNT);
-    saveHexBuffer(node, "HPF", channelHPF_, SONG_CHANNEL_COUNT);
-    saveHexBuffer(node, "LPF", channelLPF_, SONG_CHANNEL_COUNT);
-    saveHexBuffer(node, "SEND", channelSend_, SONG_CHANNEL_COUNT);
+    // Legacy readers see only eight channels; extended nodes carry all tracks.
+    for (int extended = 0; extended <= (SONG_CHANNEL_COUNT > 8); ++extended) {
+        int count = extended ? SONG_CHANNEL_COUNT : 8;
+        saveHexBuffer(node, extended ? "BUS12" : "BUS",
+                      (unsigned char *)channelBus_, count);
+        saveHexBuffer(node, extended ? "VOL12" : "VOL", channelVolume_, count);
+        saveHexBuffer(node, extended ? "HPF12" : "HPF", channelHPF_, count);
+        saveHexBuffer(node, extended ? "LPF12" : "LPF", channelLPF_, count);
+        saveHexBuffer(node, extended ? "SEND12" : "SEND", channelSend_, count);
+    }
     TiXmlElement reverb("REVERB");
     for (int i = 0; i < FX_COUNT; ++i)
         reverb.SetAttribute(reverb_[i]->GetName(), reverb_[i]->GetInt());
@@ -107,5 +111,17 @@ void Mixer::RestoreContent(TiXmlElement *element) {
             }
         }
         current = current->NextSiblingElement();
+    }
+    if (SONG_CHANNEL_COUNT > 8) {
+        const char *names[] = {"BUS12", "VOL12", "HPF12", "LPF12", "SEND12"};
+        unsigned char *buffers[] = {(unsigned char *)channelBus_,
+                                    channelVolume_, channelHPF_,
+                                    (unsigned char *)channelLPF_, channelSend_};
+        for (int i = 0; i < 5; ++i) {
+            TiXmlElement *extended = element->FirstChildElement(names[i]);
+            if (extended)
+                restoreHexBuffer(extended, buffers[i],
+                                 SONG_CHANNEL_COUNT * (i == 3 ? 2 : 1));
+        }
     }
 }

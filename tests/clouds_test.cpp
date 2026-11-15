@@ -11,6 +11,7 @@
 #include "Application/Views/ChainView.h"
 #include "Application/Views/FxView.h"
 #include "Application/Views/MixerView.h"
+#include "Application/Views/PhraseView.h"
 #include "Application/Views/SongView.h"
 #include "Application/Views/UIController.h"
 #include "Services/Audio/Audio.h"
@@ -147,7 +148,7 @@ static void TestDSP() {
 static void TestPersistence() {
     Mixer mixer;
     for (int i = 0; i < SONG_CHANNEL_COUNT; ++i)
-        mixer.SetChannelSend(i, i * 31);
+        mixer.SetChannelSend(i, i * 20);
     for (int i = 0; i < Mixer::FX_COUNT; ++i)
         mixer.GetReverbParameter(i).SetInt(i * 41);
     TiXmlElement saved("MIXER");
@@ -155,7 +156,7 @@ static void TestPersistence() {
     Mixer restored;
     restored.RestoreContent(&saved);
     for (int i = 0; i < SONG_CHANNEL_COUNT; ++i)
-        assert(restored.GetChannelSend(i) == i * 31);
+        assert(restored.GetChannelSend(i) == i * 20);
     for (int i = 0; i < Mixer::FX_COUNT; ++i)
         assert(restored.GetReverbParameter(i).GetInt() == i * 41);
     TiXmlDocument legacy;
@@ -164,7 +165,7 @@ static void TestPersistence() {
     restored.RestoreContent(legacy.RootElement());
     for (int i = 0; i < SONG_CHANNEL_COUNT; ++i) {
         assert(restored.GetChannelSend(i) == 0);
-        assert(restored.GetChannelVolume(i) == 128);
+        assert(restored.GetChannelVolume(i) == (i < 8 ? 128 : 255));
     }
     assert(restored.GetReverbParameter(Mixer::FX_LEVEL).GetInt() == 96);
     TiXmlDocument invalid;
@@ -194,7 +195,8 @@ static void TestSharedMixer() {
     PlaitsInstrument::InitVoices(44100);
     ReverbBus reverb;
     AudioMixer master("clouds-test");
-    PlayerChannel sampleChannel(0), synthChannel(1);
+    PlayerChannel sampleChannel(SONG_CHANNEL_COUNT - 2),
+        synthChannel(SONG_CHANNEL_COUNT - 1);
     sampleChannel.SetReverbSend(&reverb, 0);
     synthChannel.SetReverbSend(&reverb, 255);
     master.SetSendEffect(&reverb);
@@ -204,6 +206,12 @@ static void TestSharedMixer() {
     sampleChannel.StartInstrument(&sampler, 60, true);
     assert(master.Render(out, 512));
     assert(Energy(out, 512) > 0 && !reverb.IsActive());
+    sampleChannel.SetNoteVelocity(0);
+    assert(master.Render(out, 512));
+    assert(Energy(out, 512) == 0);
+    sampleChannel.SetNoteVelocity(127);
+    assert(master.Render(out, 512));
+    assert(Energy(out, 512) > 0);
     sampleChannel.SetReverbSend(&reverb, 255);
     sampleChannel.SetVolume(0);
     assert(master.Render(out, 512));
@@ -251,18 +259,18 @@ class LoudChannel : public AudioModule {
 
 static void TestOverload() {
     AudioMixer mixer("overload-test");
-    LoudChannel channels[8];
-    for (int i = 0; i < 8; ++i)
+    LoudChannel channels[SONG_CHANNEL_COUNT];
+    for (int i = 0; i < SONG_CHANNEL_COUNT; ++i)
         mixer.Insert(channels[i]);
     fixed out[2];
     for (int sign = -1; sign <= 1; sign += 2) {
-        for (int i = 0; i < 8; ++i)
+        for (int i = 0; i < SONG_CHANNEL_COUNT; ++i)
             channels[i].value = sign * 30000 * FIXED_SCALE;
         assert(mixer.Render(out, 1));
         assert(mixer.Clipped());
         assert(out[0] == (sign > 0 ? 32767 : -32768) * FIXED_SCALE);
     }
-    std::puts("Eight-channel overload clips without integer wraparound");
+    std::puts("All-track overload clips without integer wraparound");
 }
 
 class TestWindowImp : public I_GUIWindowImp {
@@ -309,17 +317,32 @@ static void GestureButton(void *view, unsigned short mask, bool pressed) {
     static_cast<T *>(view)->ProcessButtonMask(mask, pressed);
 }
 
+class TestPhraseView : public PhraseView {
+  public:
+    TestPhraseView(GUIWindow &w, ViewData *d) : PhraseView(w, d) {}
+    using PhraseView::cutPosition;
+    using PhraseView::pasteClipboard;
+    using PhraseView::updateCursor;
+};
+
 static void TestViews() {
     Mixer::GetInstance()->SetChannelSend(0, 255);
     ViewData data(new Project);
     assert(Mixer::GetInstance()->GetChannelSend(0) == 0);
-    data.songX_ = 0;
+    data.UpdateSongCursor(SONG_CHANNEL_COUNT + 1, 1);
+    assert(data.songX_ == SONG_CHANNEL_COUNT - 1);
+    data.SetSongChain(23);
+    assert(data.song_->data_[2 * SONG_CHANNEL_COUNT - 1] == 23);
+    assert(data.GetCurrentSongPointer() ==
+           data.song_->data_ + 2 * SONG_CHANNEL_COUNT - 1);
+    data.UpdateSongCursor(-SONG_CHANNEL_COUNT, -1);
+    assert(data.songX_ == 0);
     TestWindow window;
     MixerView mixer(window, &data);
     mixer.OnFocus();
     for (int i = 0; i < 3; ++i)
         mixer.ProcessButtonMask(EPBM_DOWN, true);
-    for (int channel = 0; channel < 8; ++channel) {
+    for (int channel = 0; channel < SONG_CHANNEL_COUNT; ++channel) {
         mixer.ProcessButtonMask(EPBM_A | EPBM_UP, true);
         mixer.ProcessButtonMask(EPBM_A | EPBM_RIGHT, true);
         mixer.ProcessButtonMask(EPBM_A | EPBM_RIGHT, false);
@@ -327,31 +350,31 @@ static void TestViews() {
         mixer.ProcessButtonMask(EPBM_RIGHT, true);
     }
     mixer.ProcessButtonMask(EPBM_B | EPBM_A, true);
-    assert(Mixer::GetInstance()->GetChannelSend(7) == 0);
+    assert(Mixer::GetInstance()->GetChannelSend((SONG_CHANNEL_COUNT - 1)) == 0);
     // Cutting either filter must leave volume and the other filter untouched.
     Mixer *model = Mixer::GetInstance();
-    model->SetChannelVolume(7, 73);
-    model->SetChannelHPF(7, 2);
-    model->SetChannelLPF(7, 1000);
+    model->SetChannelVolume((SONG_CHANNEL_COUNT - 1), 73);
+    model->SetChannelHPF((SONG_CHANNEL_COUNT - 1), 2);
+    model->SetChannelLPF((SONG_CHANNEL_COUNT - 1), 1000);
     mixer.ProcessButtonMask(EPBM_UP, true); // LPF
     mixer.ProcessButtonMask(EPBM_B | EPBM_A, true);
-    assert(model->GetChannelLPF(7) == 0);
-    assert(model->GetChannelHPF(7) == 2);
-    assert(model->GetChannelVolume(7) == 73);
-    model->SetChannelLPF(7, 1000);
+    assert(model->GetChannelLPF((SONG_CHANNEL_COUNT - 1)) == 0);
+    assert(model->GetChannelHPF((SONG_CHANNEL_COUNT - 1)) == 2);
+    assert(model->GetChannelVolume((SONG_CHANNEL_COUNT - 1)) == 73);
+    model->SetChannelLPF((SONG_CHANNEL_COUNT - 1), 1000);
     mixer.ProcessButtonMask(EPBM_UP, true); // HPF
     mixer.ProcessButtonMask(EPBM_B | EPBM_A, true);
-    assert(model->GetChannelHPF(7) == 0);
-    assert(model->GetChannelLPF(7) == 1000);
-    assert(model->GetChannelVolume(7) == 73);
+    assert(model->GetChannelHPF((SONG_CHANNEL_COUNT - 1)) == 0);
+    assert(model->GetChannelLPF((SONG_CHANNEL_COUNT - 1)) == 1000);
+    assert(model->GetChannelVolume((SONG_CHANNEL_COUNT - 1)) == 73);
     mixer.ProcessButtonMask(EPBM_UP, true); // Volume
     mixer.ProcessButtonMask(EPBM_B | EPBM_A, true);
-    assert(model->GetChannelVolume(7) == 255);
+    assert(model->GetChannelVolume((SONG_CHANNEL_COUNT - 1)) == 255);
     Navigation navigation;
     mixer.AddObserver(navigation);
     mixer.ProcessButtonMask(EPBM_R | EPBM_DOWN, true);
     assert(navigation.destination == VT_FX);
-    assert(data.songX_ == 7);
+    assert(data.songX_ == (SONG_CHANNEL_COUNT - 1));
     // Like mute, solo is temporary if A is released while R stays held.
     // Releasing R first latches the change.
     UIController *controller = UIController::GetInstance();
@@ -364,30 +387,30 @@ static void TestViews() {
         song.ProcessButtonMask(EPBM_R | EPBM_A, true);
         song.ProcessButtonMask(EPBM_A, false);
         song.ProcessButtonMask(0, false);
-        for (int ch = 0; ch < 8; ++ch)
+        for (int ch = 0; ch < SONG_CHANNEL_COUNT; ++ch)
             assert(player->IsChannelMuted(ch) ==
                    (attempt == 0 ? ch != 2 : ch == 3));
     }
     // Temporary solo restores the pre-gesture state.
     song.ProcessButtonMask(EPBM_R | EPBM_A, true);
     song.ProcessButtonMask(EPBM_R, false);
-    for (int ch = 0; ch < 8; ++ch)
+    for (int ch = 0; ch < SONG_CHANNEL_COUNT; ++ch)
         assert(player->IsChannelMuted(ch) == (ch == 3));
     song.ProcessButtonMask(0, false);
     song.ProcessButtonMask(EPBM_R | EPBM_A, true);
     song.ProcessButtonMask(EPBM_A, false);
     data.mixerCol_ = 4;
     mixer.ProcessButtonMask(EPBM_R | EPBM_A, true);
-    for (int ch = 0; ch < 8; ++ch)
+    for (int ch = 0; ch < SONG_CHANNEL_COUNT; ++ch)
         assert(player->IsChannelMuted(ch) == (ch != 4));
     mixer.ProcessButtonMask(EPBM_A, false);
     mixer.ProcessButtonMask(EPBM_R | EPBM_A, true);
-    for (int ch = 0; ch < 8; ++ch)
+    for (int ch = 0; ch < SONG_CHANNEL_COUNT; ++ch)
         assert(player->IsChannelMuted(ch) == (ch == 3));
     mixer.ProcessButtonMask(EPBM_A, false);
     mixer.ProcessButtonMask(EPBM_R | EPBM_A, true);
     mixer.ProcessButtonMask(EPBM_R, false);
-    for (int ch = 0; ch < 8; ++ch)
+    for (int ch = 0; ch < SONG_CHANNEL_COUNT; ++ch)
         assert(player->IsChannelMuted(ch) == (ch == 3));
     mixer.ProcessButtonMask(0, false);
     controller->SwitchSoloMode(1, 2);
@@ -411,19 +434,19 @@ static void TestViews() {
             unsigned short button = actions[action];
             // Releasing B/A first restores the original mute mask.
             handlers[v](gestureViews[v], EPBM_R | button, true);
-            for (int ch = 0; ch < 8; ++ch)
+            for (int ch = 0; ch < SONG_CHANNEL_COUNT; ++ch)
                 assert(player->IsChannelMuted(ch) ==
                        (action == 0 ? ch == 2 : ch != 2));
             handlers[v](gestureViews[v], EPBM_R, false);
             handlers[v](gestureViews[v], 0, false);
-            for (int ch = 0; ch < 8; ++ch)
+            for (int ch = 0; ch < SONG_CHANNEL_COUNT; ++ch)
                 assert(!player->IsChannelMuted(ch));
             // Releasing X first latches; repeating the gesture undoes it.
             for (int attempt = 0; attempt < 2; ++attempt) {
                 handlers[v](gestureViews[v], EPBM_R | button, true);
                 handlers[v](gestureViews[v], button, false);
                 handlers[v](gestureViews[v], 0, false);
-                for (int ch = 0; ch < 8; ++ch)
+                for (int ch = 0; ch < SONG_CHANNEL_COUNT; ++ch)
                     assert(player->IsChannelMuted(ch) ==
                            (attempt == 0 && (action == 0 ? ch == 2 : ch != 2)));
             }
@@ -431,6 +454,35 @@ static void TestViews() {
     }
     std::puts("Mute/Solo temporary and latched gestures passed in Song, Chain, "
               "and Mixer");
+    // Disable audition in this headless editing test.
+    player->SetSequencerMode(SM_LIVE);
+    data.currentPhrase_ = 0;
+    TestPhraseView phrase(window, &data);
+    phrase.updateCursor(1, 0);
+    unsigned char &velocity = data.song_->phrase_->velocity_[0];
+    velocity = 0x40;
+    phrase.ProcessButtonMask(EPBM_A | EPBM_UP, true);
+    assert(velocity == 0x50);
+    phrase.ProcessButtonMask(EPBM_A | EPBM_RIGHT, true);
+    assert(velocity == 0x51);
+    phrase.ProcessButtonMask(EPBM_A | EPBM_DOWN, true);
+    assert(velocity == 0x41);
+    phrase.ProcessButtonMask(EPBM_A | EPBM_LEFT, true);
+    assert(velocity == 0x40);
+    velocity = 127;
+    phrase.ProcessButtonMask(EPBM_A | EPBM_UP, true);
+    assert(velocity == 127);
+    velocity = 0;
+    phrase.ProcessButtonMask(EPBM_A | EPBM_LEFT, true);
+    assert(velocity == 0);
+    velocity = 0x32;
+    phrase.cutPosition();
+    assert(velocity == 127);
+    phrase.updateCursor(0, 1);
+    phrase.pasteClipboard();
+    assert(data.song_->phrase_->velocity_[1] == 0x32);
+    player->SetSequencerMode(SM_SONG);
+    std::puts("Phrase velocity: both hex steps, bounds and cut/paste passed");
     FxView fx(window, &data);
     for (int i = 0; i < Mixer::FX_COUNT; ++i) {
         int before = Mixer::GetInstance()->GetReverbParameter(i).GetInt();

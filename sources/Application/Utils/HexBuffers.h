@@ -8,4 +8,7 @@ void saveHexBuffer(TiXmlNode *parent,const char *nodeName,unsigned short *src,un
 void saveHexBuffer(TiXmlNode *parent,const char *nodeName,unsigned int *src,unsigned len) ;
 void restoreHexBuffer(TiXmlNode *node,unsigned char *dst) ;
 
+// Returns the decoded byte count, or -1 for invalid/oversized data.
+int restoreHexBuffer(TiXmlNode *node, unsigned char *dst, unsigned capacity);
+
 #endif

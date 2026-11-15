@@ -15,7 +15,8 @@ public:
 	void ClearAllocation() ;
 
 	uchar *note_ ;
-	uchar *instr_ ;
+    uchar *velocity_;
+    uchar *instr_ ;
 	FourCC *cmd1_ ;
 	ushort *param1_ ;
 	FourCC *cmd2_ ;

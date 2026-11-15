@@ -20,6 +20,9 @@ public:
 	bool IsMuted() ;
 	void SetMixBus(int i) ;
     void SetVolume(fixed volume);
+    void SetNoteVelocity(int velocity) {
+        noteVelocity_ = velocity < 0 ? 0 : (velocity > 127 ? 127 : velocity);
+    }
     void SetReverbSend(ReverbBus *bus, int send) {
         reverb_ = bus;
         send_ = send;
@@ -36,6 +39,7 @@ public:
 	I_Instrument *instr_ ;
 	bool muted_ ;
     fixed volume_;
+    int noteVelocity_;
     SampleTransition sampleTransition_;
     int busIndex_ ;
 	MixBus *mixBus_ ;

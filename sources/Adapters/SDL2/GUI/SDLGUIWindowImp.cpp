@@ -1,5 +1,6 @@
 #include "SDLGUIWindowImp.h"
 #include "Application/Model/Config.h"
+#include "Application/Model/Song.h"
 #include "Application/Utils/char.h"
 #include "System/Console/Trace.h"
 #include "System/Console/n_assert.h"
@@ -66,7 +67,9 @@ SDLGUIWindowImp::SDLGUIWindowImp(GUICreateWindowParams &p) {
                screenWidth, screenHeight, bitDepth_);
 
     const char *widescreenValue = Config::GetInstance()->GetValue("WIDESCREEN");
-    const bool widescreen = widescreenValue && !strcmp(widescreenValue, "YES");
+    const bool widescreen =
+        SONG_CHANNEL_COUNT > 8 ||
+        (widescreenValue && !strcmp(widescreenValue, "YES"));
     appWidth = widescreen ? 480 : 320;
     appHeight = widescreen ? 270 : 240;
 
@@ -517,8 +520,12 @@ void SDLGUIWindowImp::Flush() {
                 SDL_Rect destination;
                 destination.h = windowSurface->h;
                 destination.w = surface_->w * destination.h / surface_->h;
+                if (destination.w > windowSurface->w) {
+                    destination.w = windowSurface->w;
+                    destination.h = surface_->h * destination.w / surface_->w;
+                }
                 destination.x = (windowSurface->w - destination.w) / 2;
-                destination.y = 0;
+                destination.y = (windowSurface->h - destination.h) / 2;
                 Uint8 r, g, b;
                 SDL_GetRGB(backgroundColor_, surface_->format, &r, &g, &b);
                 SDL_FillRect(windowSurface, NULL,

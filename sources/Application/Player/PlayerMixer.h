@@ -11,11 +11,14 @@
 #include "Foundation/Observable.h"
 #include "Services/Audio/AudioOut.h"
 
-#define STREAM_MIX_BUS 8
+#define STREAM_MIX_BUS SONG_CHANNEL_COUNT
 
 class PlayerMixer: public T_Singleton<PlayerMixer>,public Observable,public I_Observer {
 public:
-	PlayerMixer() ;
+  void SetNoteVelocity(int channel, int velocity) {
+      channel_[channel]->SetNoteVelocity(velocity);
+  }
+    PlayerMixer() ;
 	virtual ~PlayerMixer() {} ;
 
 	bool Start() ;

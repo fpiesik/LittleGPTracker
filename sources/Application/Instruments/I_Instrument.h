@@ -12,25 +12,26 @@ enum InstrumentType { IT_SAMPLE = 0, IT_MIDI, IT_PLAITS, IT_LAST };
 class I_Instrument:public VariableContainer, public Observable {
       
 public:
-	I_Instrument() {} ;
-	virtual ~I_Instrument() {} ;
+  virtual void SetNoteVelocity(int channel, int velocity) {}
+  I_Instrument(){};
+  virtual ~I_Instrument(){};
 
-	  // Initialisation routine
+  // Initialisation routine
 
-	  virtual bool Init()=0 ;
+  virtual bool Init() = 0;
 
-      // Start & stop the instument
-      // flags & 1 indicates retriggers (default)
-      // flags & 2 indicates muting (i.e. no trigger)
-      virtual bool Start(int channel,unsigned char note,int flags=1)=0 ;
-      virtual void Stop(int channel)=0 ;
+  // Start & stop the instument
+  // flags & 1 indicates retriggers (default)
+  // flags & 2 indicates muting (i.e. no trigger)
+  virtual bool Start(int channel, unsigned char note, int flags = 1) = 0;
+  virtual void Stop(int channel) = 0;
 
-	  // Engine playback  start callback
+  // Engine playback  start callback
 
-	  virtual void OnStart()=0 ;
+  virtual void OnStart() = 0;
 
-      // size refers to the number of samples
-      // should always fill interleaved stereo / 16bit
+  // size refers to the number of samples
+  // should always fill interleaved stereo / 16bit
 
   // flags & 1 indicates 'updateTick'.
   // flags & 2 indicated muting (i.e. stop notes)

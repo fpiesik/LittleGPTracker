@@ -64,11 +64,13 @@ class SongView : public View {
 
     unsigned char lastChain_; // .Last chain clipboard
 
-    int lastPlayedPosition_[8]; // .Last position played for song
-                                //  used for drawing purpose
+    int lastPlayedPosition_[SONG_CHANNEL_COUNT]; // .Last position played for
+                                                 // song
+                                                 //  used for drawing purpose
 
-    int lastQueuedPosition_[8]; // .Last live queued position for song
-                                //  used for drawing purpose
+    int lastQueuedPosition_[SONG_CHANNEL_COUNT]; // .Last live queued position
+                                                 // for song
+                                                 //  used for drawing purpose
 
     struct {                  // .Clipboard structure
         bool active_;         // .If currently making a selection

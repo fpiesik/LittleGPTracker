@@ -144,6 +144,9 @@ void ChainView::clonePosition() {
         *dst++ = *src++;
     };
 
+    memcpy(viewData_->song_->phrase_->velocity_ + 16 * next,
+           viewData_->song_->phrase_->velocity_ + 16 * current, 16);
+
     uint *isrc = viewData_->song_->phrase_->cmd1_ + 16 * current;
     uint *idst = viewData_->song_->phrase_->cmd1_ + 16 * next;
     for (int i = 0; i < 16; i++) {
@@ -809,8 +812,8 @@ void ChainView::OnPlayerUpdate(PlayerEventType eventType, unsigned int tick) {
                 if (player->GetQueueingMode(i) != QM_NONE) {
                     // find the chain queued in channel
                     unsigned char songPos = player->GetQueuePosition(i);
-                    unsigned char *chain =
-                        viewData_->song_->data_ + i + 8 * songPos;
+                    unsigned char *chain = viewData_->song_->data_ + i +
+                                           SONG_CHANNEL_COUNT * songPos;
                     if (*chain == viewData_->currentChain_) {
                         unsigned char chainPos =
                             player->GetQueueChainPosition(i);

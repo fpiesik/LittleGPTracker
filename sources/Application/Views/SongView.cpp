@@ -31,7 +31,7 @@ SongView::SongView(GUIWindow &w, ViewData *viewData, const char *song)
     lastChain_ = 0;
     songname_ = song;
 
-    for (int i = 0; i < 8; i++) {
+    for (int i = 0; i < SONG_CHANNEL_COUNT; i++) {
         this->lastPlayedPosition_[i] = 0;
         this->lastQueuedPosition_[i] = 0;
     }
@@ -265,12 +265,12 @@ void SongView::deepClonePosition() {
 
 void SongView::extendSelection() {
     GUIRect rect = getSelectionRect();
-    if (rect.Left() > 0 || rect.Right() < 7) {
+    if (rect.Left() > 0 || rect.Right() < SONG_CHANNEL_COUNT - 1) {
         if (viewData_->songX_ < clipboard_.x_) {
             viewData_->songX_ = 0;
-            clipboard_.x_ = 7;
+            clipboard_.x_ = SONG_CHANNEL_COUNT - 1;
         } else {
-            viewData_->songX_ = 7;
+            viewData_->songX_ = SONG_CHANNEL_COUNT - 1;
             clipboard_.x_ = 0;
         }
         isDirty_ = true;
@@ -517,7 +517,7 @@ void SongView::onStart() {
 void SongView::startCurrentRow() {
     Player *player = Player::GetInstance();
     player->SetSequencerMode(SM_LIVE);
-    player->OnSongStartButton(0, 7, false, false);
+    player->OnSongStartButton(0, SONG_CHANNEL_COUNT - 1, false, false);
 }
 
 void SongView::startImmediate() {
@@ -820,8 +820,9 @@ void SongView::processNormalButtonMask(unsigned int mask) {
     }
 
     if ((!(mask & EPBM_A)) && updatingChain_) {
-        unsigned char *c = viewData_->song_->data_ + updateX_ +
-                           8 * (viewData_->songOffset_ + updateY_);
+        unsigned char *c =
+            viewData_->song_->data_ + updateX_ +
+            SONG_CHANNEL_COUNT * (viewData_->songOffset_ + updateY_);
         viewData_->song_->chain_->SetUsed(*c);
         updatingChain_ = false;
     }
@@ -930,7 +931,7 @@ void SongView::DrawVuBars() {
 
     GUIPoint anchor = GetAnchor();
     GUIPoint vuPos = anchor;
-    vuPos._x += 25;
+    vuPos._x += SONG_CHANNEL_COUNT * 3 + 1;
     vuPos._y += View::songRowCount_ - 1;
     
     GUITextProperties vuProps;
@@ -1081,7 +1082,7 @@ void SongView::DrawView() {
 
         pos._x = anchor._x;
 
-        for (int i = 0; i < 8; i++) {
+        for (int i = 0; i < SONG_CHANNEL_COUNT; i++) {
 
             bool invert = false;
 
@@ -1245,7 +1246,7 @@ void SongView::OnPlayerUpdate(PlayerEventType eventType, unsigned int tick) {
         pos._x = 25;
     } else {
         pos = anchor;
-        pos._x += 25;
+        pos._x += SONG_CHANNEL_COUNT * 3 + 1;
     }
 
     if (player->Clipped()) {

@@ -144,10 +144,10 @@ AppWindow::AppWindow(I_GUIWindowImp &imp) : GUIWindow(imp) {
         _currentView->DoModal(spd, ProjectSelectCallback);
     }
 
-    memset(_charScreen, ' ', 1200);
-    memset(_preScreen, ' ', 1200);
-    memset(_charScreenProp, 0, 1200);
-    memset(_preScreenProp, 0, 1200);
+    memset(_charScreen, ' ', SCREEN_CELLS);
+    memset(_preScreen, ' ', SCREEN_CELLS);
+    memset(_charScreenProp, 0, SCREEN_CELLS);
+    memset(_preScreenProp, 0, SCREEN_CELLS);
 
     Redraw();
 };
@@ -157,31 +157,27 @@ AppWindow::~AppWindow() { MidiService::GetInstance()->Close(); }
 void AppWindow::DrawString(const char *string, GUIPoint &pos,
                            GUITextProperties &props, bool force) {
 
-    // we know we don't have mode than 40 chars
-
-    char buffer[41];
+    if (pos._y < 0 || pos._y >= SCREEN_ROWS || pos._x >= SCREEN_COLUMNS)
+        return;
+    int offset = pos._x < 0 ? -pos._x : 0;
     int len = strlen(string);
-    int offset = (pos._x < 0) ? -pos._x / 8 : 0;
-    len -= offset;
-    int available = 40 - ((pos._x < 0) ? 0 : pos._x);
-    len = MIN(len, available);
-    memcpy(buffer, string + offset, len);
-    buffer[len] = 0;
-
-    NAssert((pos._x < 40) && (pos._y < 30));
-    int index = pos._x + 40 * pos._y;
-    memcpy(_charScreen + index, buffer, len);
+    if (offset >= len)
+        return;
+    int x = pos._x < 0 ? 0 : pos._x;
+    len = MIN(len - offset, SCREEN_COLUMNS - x);
+    int index = x + SCREEN_COLUMNS * pos._y;
+    memcpy(_charScreen + index, string + offset, len);
     unsigned char prop = colorIndex_ + (props.invert_ ? PROP_INVERT : 0);
     memset(_charScreenProp + index, prop, len);
 };
 
 void AppWindow::Clear(bool all) {
     pixelRects_.clear();
-    memset(_charScreen, ' ', 1200);
-    memset(_charScreenProp, 0, 1200);
+    memset(_charScreen, ' ', SCREEN_CELLS);
+    memset(_charScreenProp, 0, SCREEN_CELLS);
     if (all) {
-        memset(_preScreen, ' ', 1200);
-        memset(_preScreenProp, 0, 1200);
+        memset(_preScreen, ' ', SCREEN_CELLS);
+        memset(_preScreenProp, 0, SCREEN_CELLS);
     };
 };
 
@@ -212,15 +208,15 @@ void AppWindow::ClearRect(GUIRect &r) {
     int w = r.Width();
     int h = r.Height();
 
-    unsigned char *st = _charScreen + x + (40 * y);
-    unsigned char *pr = _charScreenProp + x + (40 * y);
+    unsigned char *st = _charScreen + x + (SCREEN_COLUMNS * y);
+    unsigned char *pr = _charScreenProp + x + (SCREEN_COLUMNS * y);
     for (int i = 0; i < h; i++) {
         for (int j = 0; j < w; j++) {
             *st++ = ' ';
             *pr++ = 0;
         }
-        st += (40 - w);
-        pr += (40 - w);
+        st += (SCREEN_COLUMNS - w);
+        pr += (SCREEN_COLUMNS - w);
     }
 };
 
@@ -263,7 +259,7 @@ void AppWindow::Flush() {
     unsigned char *currentProp = _charScreenProp;
     unsigned char *previousProp = _preScreenProp;
     for (int y = 0; y < 30; y++) {
-        for (int x = 0; x < 40; x++) {
+        for (int x = 0; x < SCREEN_COLUMNS; x++) {
 #ifndef _LGPT_NO_SCREEN_CACHE_
             if ((*current != *previous) || (*currentProp != *previousProp)) {
 #endif
@@ -342,11 +338,23 @@ void AppWindow::Flush() {
         GUIWindow::SetColor(color);
         GetImpWindow()->DrawRect(pixelRects_[i].rect);
     }
+    if (SupportsPixelRects() && (count || !pixelRects_.empty())) {
+        // Draw last so the canvas boundary remains visible after text updates.
+        GUIRect canvas = GetRect();
+        GUIRect edges[] = {
+            GUIRect(0, 0, canvas.Width(), 1),
+            GUIRect(0, canvas.Height() - 1, canvas.Width(), canvas.Height()),
+            GUIRect(0, 0, 1, canvas.Height()),
+            GUIRect(canvas.Width() - 1, 0, canvas.Width(), canvas.Height())};
+        GUIWindow::SetColor(borderColor_);
+        for (int i = 0; i < 4; ++i)
+            GetImpWindow()->DrawRect(edges[i]);
+    }
     long flushEnd = System::GetInstance()->GetClock();
     GUIWindow::Flush();
     Unlock();
-    memcpy(_preScreen, _charScreen, 1200);
-    memcpy(_preScreenProp, _charScreenProp, 1200);
+    memcpy(_preScreen, _charScreen, SCREEN_CELLS);
+    memcpy(_preScreenProp, _charScreenProp, SCREEN_CELLS);
     // Redraw cells under graphics even when their text is unchanged. This
     // erases old waveform pixels after edits, modal dialogs, and leaving the
     // editor.
@@ -356,8 +364,8 @@ void AppWindow::Flush() {
              ++y)
             for (int x = r.Left() / charWidth_;
                  x <= (r.Right() - 1) / charWidth_; ++x)
-                if (x >= 0 && x < 40 && y >= 0 && y < 30)
-                    _preScreenProp[y * 40 + x] = 0xff;
+                if (x >= 0 && x < SCREEN_COLUMNS && y >= 0 && y < 30)
+                    _preScreenProp[y * SCREEN_COLUMNS + x] = 0xff;
     }
 };
 
@@ -707,7 +715,7 @@ void AppWindow::Print(char *line) {
     Clear();
     strcpy(_statusLine, line);
     // unwrapped for gcc
-    int position = 40;
+    int position = SCREEN_COLUMNS;
     position -= strlen(_statusLine);
     position /= 2;
     GUIPoint pos(position, 12);
@@ -719,7 +727,7 @@ void AppWindow::Print(char *line) {
     sprintf(buildString, "Piggy build %s.%s.%s", PROJECT_NUMBER,
             PROJECT_RELEASE, BUILD_COUNT);
     pos._y = 28;
-    pos._x = (40 - strlen(buildString)) / 2;
+    pos._x = (SCREEN_COLUMNS - strlen(buildString)) / 2;
     DrawString(buildString, pos, props);
     Flush();
 };

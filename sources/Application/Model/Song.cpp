@@ -28,11 +28,19 @@ void Song::SaveContent(TiXmlNode *node) {
 	{
 		phrase_->param1_[i] = Swap16(phrase_->param1_[i]);
 		phrase_->param2_[i] = Swap16(phrase_->param2_[i]);
-	}	
-	saveHexBuffer(node,"SONG",data_,SONG_ROW_COUNT*SONG_CHANNEL_COUNT) ;
-	saveHexBuffer(node,"CHAINS",chain_->data_,CHAIN_COUNT*16) ;
-	saveHexBuffer(node,"TRANSPOSES",chain_->transpose_,CHAIN_COUNT*16) ;
-	saveHexBuffer(node,"NOTES",phrase_->note_,PHRASE_COUNT*16) ;
+    }
+    // Keep a valid eight-track projection for older versions.
+    unsigned char legacy[SONG_ROW_COUNT * 8];
+    for (int row = 0; row < SONG_ROW_COUNT; ++row)
+        memcpy(legacy + row * 8, data_ + row * SONG_CHANNEL_COUNT, 8);
+    saveHexBuffer(node, "SONG", legacy, sizeof(legacy));
+    if (SONG_CHANNEL_COUNT == 12)
+        saveHexBuffer(node, "SONG12", data_,
+                      SONG_ROW_COUNT * SONG_CHANNEL_COUNT);
+    saveHexBuffer(node, "CHAINS", chain_->data_, CHAIN_COUNT * 16);
+    saveHexBuffer(node,"TRANSPOSES",chain_->transpose_,CHAIN_COUNT*16) ;
+    saveHexBuffer(node, "VELOCITY", phrase_->velocity_, PHRASE_COUNT * 16);
+    saveHexBuffer(node,"NOTES",phrase_->note_,PHRASE_COUNT*16) ;
 	saveHexBuffer(node,"INSTRUMENTS",phrase_->instr_,PHRASE_COUNT*16) ;
 	saveHexBuffer(node,"COMMAND1",phrase_->cmd1_,PHRASE_COUNT*16) ;
 	saveHexBuffer(node,"PARAM1",phrase_->param1_,PHRASE_COUNT*16) ;
@@ -42,14 +50,35 @@ void Song::SaveContent(TiXmlNode *node) {
 } ;
 
 void Song::RestoreContent(TiXmlElement *element) {
+    memset(phrase_->velocity_, 127, PHRASE_COUNT * 16);
+    TiXmlElement *vel = element->FirstChildElement("VELOCITY");
+    if (vel) {
+        restoreHexBuffer(vel, phrase_->velocity_, PHRASE_COUNT * 16);
+        for (int i = 0; i < PHRASE_COUNT * 16; ++i)
+            if (phrase_->velocity_[i] > 127)
+                phrase_->velocity_[i] = 127;
+    }
 
-	TiXmlElement *current=element->FirstChildElement() ;
-	while(current) {
+    TiXmlElement *current = element->FirstChildElement();
+    while(current) {
 		const char *value=current->Value() ;
 		if (!strcmp("SONG",value)) {
-			restoreHexBuffer(current,data_) ;
-		} ;
-		if (!strcmp("CHAINS",value)) {
+            unsigned char legacy[SONG_ROW_COUNT * 8];
+            memset(data_, 0xff, SONG_ROW_COUNT * SONG_CHANNEL_COUNT);
+            if (restoreHexBuffer(current, legacy, sizeof(legacy)) ==
+                sizeof(legacy))
+                for (int row = 0; row < SONG_ROW_COUNT; ++row)
+                    memcpy(data_ + row * SONG_CHANNEL_COUNT, legacy + row * 8,
+                           8);
+            TiXmlElement *extended = element->FirstChildElement("SONG12");
+            if (SONG_CHANNEL_COUNT == 12 && extended) {
+                unsigned char full[SONG_ROW_COUNT * SONG_CHANNEL_COUNT];
+                if (restoreHexBuffer(extended, full, sizeof(full)) ==
+                    sizeof(full))
+                    memcpy(data_, full, sizeof(full));
+            }
+        };
+        if (!strcmp("CHAINS",value)) {
 			restoreHexBuffer(current,chain_->data_) ;
 		} ;
 		if (!strcmp("TRANSPOSES",value)) {

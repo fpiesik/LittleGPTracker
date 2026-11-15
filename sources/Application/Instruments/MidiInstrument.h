@@ -20,7 +20,10 @@
 class MidiInstrument:public I_Instrument {
 
 public:
-	MidiInstrument();
+  void SetNoteVelocity(int channel, int velocity) {
+      noteVelocity_[channel] = velocity;
+  }
+    MidiInstrument();
 	virtual ~MidiInstrument() ;
 
 	  virtual bool Init() ;
@@ -71,7 +74,8 @@ public:
        bool playing_;
        bool retrig_;
        int retrigLoop_;
-       char velocity_;
+       unsigned char velocity_[SONG_CHANNEL_COUNT];
+       int noteVelocity_[SONG_CHANNEL_COUNT];
        TableSaveState tableState_;
        bool first_[SONG_CHANNEL_COUNT];
        bool muted_[SONG_CHANNEL_COUNT];

@@ -25,7 +25,8 @@ bool writeAll(int fd, const unsigned char *data, size_t size) {
 }
 
 void startRecordedSong() {
-    Player::GetInstance()->OnSongStartButton(0, 7, false, false);
+    Player::GetInstance()->OnSongStartButton(0, SONG_CHANNEL_COUNT - 1, false,
+                                             false);
 }
 
 const Uint32 sampleRate = 44100;
@@ -98,7 +99,7 @@ void RecordDialog::beginTake() {
     discardTake();
     state_ = ERROR;
     int chain, phrase, instrument;
-    if (viewData_->song_->data_[row_ * 8 + column_] != 0xff) {
+    if (viewData_->song_->data_[row_ * SONG_CHANNEL_COUNT + column_] != 0xff) {
         fail("Choose an empty song slot");
         return;
     }
@@ -272,7 +273,7 @@ bool RecordDialog::saveTake() {
     song->chain_->data_[chain * 16] = phrase;
     song->chain_->SetUsed(chain);
     song->phrase_->SetUsed(phrase);
-    song->data_[row_ * 8 + column_] = chain;
+    song->data_[row_ * SONG_CHANNEL_COUNT + column_] = chain;
     discardTake();
     return true;
 }

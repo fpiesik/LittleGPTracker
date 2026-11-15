@@ -10,6 +10,7 @@
 PlayerChannel::PlayerChannel(int index) {
     reverb_ = 0;
     send_ = 0;
+    noteVelocity_ = 127;
     index_=index ;
     instr_=0 ;
     muted_=false ;
@@ -34,6 +35,7 @@ void PlayerChannel::StartInstrument(I_Instrument *instr,unsigned char note,bool 
    }
    /* The note will not trigger if it is out the keymap or, in the case of a
       MIDI instrument, if the channel is muted. */
+   instr->SetNoteVelocity(index_, noteVelocity_);
    if (instr->Start(index_,note, trigger | (muted_ << 1))) {
 	   instr_=instr ;
    } else {
@@ -104,10 +106,11 @@ bool PlayerChannel::Render(fixed *buffer,int samplecount) {
                 }
             }
 
-            // Apply per-channel volume
-            if (volume_ != i2fp(1)) {
+            // Apply note velocity independently of mixer volume.
+            fixed gain = fp_mul(volume_, (i2fp(1) * noteVelocity_) / 127);
+            if (gain != i2fp(1)) {
                 for (int i = 0; i < samplecount * 2; i++) {
-                    buffer[i] = fp_mul(buffer[i], volume_);
+                    buffer[i] = fp_mul(buffer[i], gain);
                 }
             }
             if (reverb_)
@@ -193,6 +196,7 @@ void PlayerChannel::SetMixBus(int i) {
 void PlayerChannel::Reset() {
     reverb_ = 0;
     send_ = 0;
+    noteVelocity_ = 127;
     sampleTransition_.Reset();
     if (mixBus_) {
         mixBus_->Remove(*this) ;

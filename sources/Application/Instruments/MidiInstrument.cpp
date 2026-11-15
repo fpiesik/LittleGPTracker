@@ -16,6 +16,8 @@ MidiInstrument::MidiInstrument() {
 
     for (int i = 0; i < SONG_CHANNEL_COUNT; i++)
         lastNote_[i] = new T_SimpleList<unsigned char>(true);
+    for (int i = 0; i < SONG_CHANNEL_COUNT; ++i)
+        noteVelocity_[i] = 127;
 
     Variable *v = new Variable("channel", MIP_CHANNEL, 0);
     Insert(v) ;
@@ -27,7 +29,8 @@ MidiInstrument::MidiInstrument() {
 	Insert(v) ;
 	v=new Variable("table automation",MIP_TABLEAUTO,false) ;
 	Insert(v) ;
-	velocity_  = 127;
+    for (int i = 0; i < SONG_CHANNEL_COUNT; ++i)
+        velocity_[i] = 127;
 }
 
 MidiInstrument::~MidiInstrument() {
@@ -78,7 +81,7 @@ bool MidiInstrument::Start(int c, unsigned char note, int flags) {
     SetVolume(channel, volume);
 
     // store initial velocity
-    velocity_ = volume;
+    velocity_[c] = volume;
     playing_=true ;
 	retrig_=false ;
 
@@ -128,7 +131,8 @@ bool MidiInstrument::Render(int channel, fixed *buffer, int size, int flags) {
         IteratorPtr<unsigned char> it(lastNote_[channel]->GetIterator());
         for (it->Begin(); !it->IsDone(); it->Next()) {
             unsigned char note = it->CurrentItem();
-            QueueNote(true, mchannel, note, velocity_);
+            QueueNote(true, mchannel, note,
+                      velocity_[channel] * noteVelocity_[channel] / 127);
         }
 
         first_[channel] = false;
@@ -146,7 +150,9 @@ bool MidiInstrument::Render(int channel, fixed *buffer, int size, int flags) {
                 for (it->Begin(); !it->IsDone(); it->Next()) {
                     unsigned char note = it->CurrentItem();
                     QueueNote(false, mchannel, note, 0);
-                    QueueNote(true, mchannel, note, velocity_);
+                    QueueNote(true, mchannel, note,
+                              velocity_[channel] * noteVelocity_[channel] /
+                                  127);
                 }
             };
         };
@@ -181,8 +187,8 @@ void MidiInstrument::ProcessCommand(int channel, FourCC cc, ushort value) {
             }
 			break ;
 		case I_CMD_MVEL: {
-			velocity_ = floor(static_cast<float>(value / 2));
-		}; break;
+            velocity_[channel] = floor(static_cast<float>(value / 2));
+        }; break;
 
 		case I_CMD_VOLM:
 			{
@@ -207,7 +213,9 @@ void MidiInstrument::ProcessCommand(int channel, FourCC cc, ushort value) {
                     tone_sounded |= *chord_tone == it->CurrentItem();
 
                 if (!tone_sounded) {
-                    QueueNote(true, mchannel, *chord_tone, velocity_);
+                    QueueNote(true, mchannel, *chord_tone,
+                              velocity_[channel] * noteVelocity_[channel] /
+                                  127);
                     lastNote_[channel]->Insert(chord_tone);
                 }
             }

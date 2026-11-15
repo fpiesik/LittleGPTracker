@@ -45,7 +45,11 @@ private:
                                 // navigation back
     void DrawVuBars();          // Draw VU bars - called from both DrawView and
                                 // AnimationUpdate
-    int vuBarHeightsL_[9];  // Left channel smoothed bar heights with slew rate decay (8 channels + 1 master)
-    int vuBarHeightsR_[9];  // Right channel smoothed bar heights with slew rate decay (8 channels + 1 master)
+    int vuBarHeightsL_[SONG_CHANNEL_COUNT +
+                       1]; // Left channel smoothed bar heights with slew rate
+                           // decay (tracks + master)
+    int vuBarHeightsR_[SONG_CHANNEL_COUNT +
+                       1]; // Right channel smoothed bar heights with slew rate
+                           // decay (tracks + master)
 };
 #endif

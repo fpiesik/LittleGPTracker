@@ -22,9 +22,22 @@ fixed SampleInstrument::feedback_[SONG_CHANNEL_COUNT][FB_BUFFER_LENGTH*2] ;
 
 bool SampleInstrument::useDirtyDownsampling_ = false;
 
-int SampleInstrument::lastMidiNote_[SONG_CHANNEL_COUNT]= {
-	-1,-1,-1,-1,-1,-1,-1,-1
-} ;
+int SampleInstrument::lastMidiNote_[SONG_CHANNEL_COUNT] = {-1,
+                                                           -1,
+                                                           -1,
+                                                           -1,
+                                                           -1,
+                                                           -1,
+                                                           -1,
+                                                           -1
+#if SONG_CHANNEL_COUNT == 12
+                                                           ,
+                                                           -1,
+                                                           -1,
+                                                           -1,
+                                                           -1
+#endif
+};
 
 #define KRATE_SAMPLE_COUNT 100
 

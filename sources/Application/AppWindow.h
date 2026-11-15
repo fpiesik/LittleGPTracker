@@ -99,10 +99,15 @@ class AppWindow : public GUIWindow, I_Observer, Status {
     unsigned long _lastB;
     char _statusLine[80];
     std::string _newProjectToLoad;
-    unsigned char _charScreen[1200];
-    unsigned char _charScreenProp[1200];
-    unsigned char _preScreen[1200];
-    unsigned char _preScreenProp[1200];
+    enum {
+        SCREEN_COLUMNS = SONG_CHANNEL_COUNT > 8 ? 60 : 40,
+        SCREEN_ROWS = 30,
+        SCREEN_CELLS = SCREEN_COLUMNS * SCREEN_ROWS
+    };
+    unsigned char _charScreen[SCREEN_CELLS];
+    unsigned char _charScreenProp[SCREEN_CELLS];
+    unsigned char _preScreen[SCREEN_CELLS];
+    unsigned char _preScreenProp[SCREEN_CELLS];
 
     static GUIColor backgroundColor_;
     static GUIColor normalColor_;

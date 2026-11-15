@@ -1,6 +1,8 @@
 
 #include "HexBuffers.h"
 #include "Application/Utils/char.h"
+#include <cctype>
+#include <vector>
 
 #define XML_CUT_LENGTH 64
 
@@ -99,3 +101,38 @@ void restoreHexBuffer(TiXmlNode *node,unsigned char *destination) {
 
 	} ;
 } ;
+
+int restoreHexBuffer(TiXmlNode *node, unsigned char *dst, unsigned capacity) {
+    // Validate into temporary storage so invalid input cannot partially
+    // restore.
+    std::vector<unsigned char> decoded;
+    for (TiXmlElement *part = node->FirstChildElement(); part;
+         part = part->NextSiblingElement()) {
+        if (part->Attribute("VALUE")) {
+            int value, length;
+            if (part->QueryIntAttribute("VALUE", &value) != TIXML_SUCCESS ||
+                part->QueryIntAttribute("LENGTH", &length) != TIXML_SUCCESS ||
+                value < 0 || value > 255 || length < 0 ||
+                static_cast<unsigned>(length) > capacity - decoded.size())
+                return -1;
+            decoded.insert(decoded.end(), length, value);
+        } else {
+            TiXmlNode *text = part->FirstChild();
+            if (!text || text->Type() != TiXmlNode::TEXT)
+                return -1;
+            const char *hex = text->Value();
+            size_t length = strlen(hex);
+            if (length % 2 || length / 2 > capacity - decoded.size())
+                return -1;
+            for (size_t i = 0; i < length; i += 2) {
+                if (!isxdigit(static_cast<unsigned char>(hex[i])) ||
+                    !isxdigit(static_cast<unsigned char>(hex[i + 1])))
+                    return -1;
+                decoded.push_back((c2h__(hex[i]) << 4) | c2h__(hex[i + 1]));
+            }
+        }
+    }
+    if (!decoded.empty())
+        memcpy(dst, &decoded[0], decoded.size());
+    return decoded.size();
+}

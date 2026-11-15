@@ -38,9 +38,10 @@ View::View(GUIWindow &w,ViewData *viewData):
 	locked_=false ;
 	viewData_=viewData;
 	NOTIFICATION_TIMEOUT = 1000;
-	displayNotification_ = "";
+    notificationTime_ = SDL_GetTicks() - NOTIFICATION_TIMEOUT - 1;
+    displayNotification_ = "";
     // Initialize VU meter inertia tracking
-    for (int i = 0; i < 8; i++) {
+    for (int i = 0; i < SONG_CHANNEL_COUNT; i++) {
         prevLeftVU_[i] = 0;
         prevRightVU_[i] = 0;
     }
@@ -49,7 +50,9 @@ View::View(GUIWindow &w,ViewData *viewData):
 GUIPoint View::GetAnchor() {
 	int width=40 ;
 	int height=30 ;
-	return GUIPoint((width-SONG_CHANNEL_COUNT*3)/2+2,(height-View::songRowCount_)/2) ;
+    // Reclaim the former navigation column while retaining mixer label space.
+    return GUIPoint(miniLayout_ ? (width - SONG_CHANNEL_COUNT * 3) / 2 + 2 : 5,
+                    (height - View::songRowCount_) / 2);
 }
 
 GUIPoint View::GetTitlePosition() {
@@ -77,12 +80,12 @@ void View::Unlock() {
 void View::drawMap() {
     if (!miniLayout_) {
         GUIPoint anchor=GetAnchor() ;
-		GUIPoint pos(View::margin_,anchor._y);
-    	GUITextProperties props ;
+        GUIPoint pos(anchor._x + SONG_CHANNEL_COUNT * 3 + 1, 26);
+        GUITextProperties props;
 
-		//draw entire map
-		SetColor(CD_HILITE1) ;
-    	char buffer[5] ;
+        // draw entire map
+        SetColor(CD_HILITE1);
+        char buffer[5] ;
 		props.invert_=true ;
 		//row1
 		sprintf(buffer,"P G ");
@@ -100,12 +103,11 @@ void View::drawMap() {
 
         // draw current screen on map
         SetColor(CD_HILITE2) ;
-		pos._y = anchor._y;
-		switch(viewType_)
-		{
-		case VT_CHAIN:
-			pos._x+=1;
-			pos._y+=1;
+        pos._y = 26;
+        switch (viewType_) {
+        case VT_CHAIN:
+            pos._x += 1;
+            pos._y+=1;
 	        DrawString(pos._x,pos._y,"C",props) ;
 			break;
 		case VT_PHRASE:
@@ -149,9 +151,9 @@ void View::drawMap() {
 			pos._y+=1;
 	        DrawString(pos._x,pos._y,"S",props) ;
 			int foo=0;
-		}
+        }
 
-	}//!minilayout
+    } //! minilayout
 }
 
 void View::drawNotes() {
@@ -159,10 +161,10 @@ void View::drawNotes() {
     if (!miniLayout_) {
 
 		GUIPoint anchor=GetAnchor() ;
-		int initialX = View::margin_+10 ;
-		int initialY = anchor._y+23 ;
-		GUIPoint pos(initialX,initialY) ;
-		GUITextProperties props ;
+        int initialX = anchor._x;
+        int initialY = anchor._y + 23;
+        GUIPoint pos(initialX, initialY);
+        GUITextProperties props;
 
         Player *player=Player::GetInstance() ;
 		

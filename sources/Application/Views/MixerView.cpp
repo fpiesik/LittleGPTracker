@@ -15,7 +15,7 @@ MixerView::MixerView(GUIWindow &w,ViewData *viewData):View(w,viewData) {
     invertBatt_ = false;
     mixerRow_ = 1; // start on volume row
     previousViewType_ = VT_SONG; // Default to SongView
-    for (int i = 0; i < 9; i++) {
+    for (int i = 0; i < SONG_CHANNEL_COUNT + 1; i++) {
         vuBarHeightsL_[i] = 0;
         vuBarHeightsR_[i] = 0;
     }
@@ -56,14 +56,14 @@ void MixerView::updateCursor(int dx,int dy) {
 		isDirty_ = true;
     }
     if (dx != 0) {
-        // LEFT/RIGHT switches between channels (0-7 only, Master is
-        // display-only)
+        // LEFT/RIGHT selects a track; Master is display-only.
         int x = viewData_->mixerCol_;
 		x += dx;
 		if (x < 0) x = 0;
-		if (x > 7) x = 7;
-		viewData_->mixerCol_ = x;
-		isDirty_ = true;
+        if (x >= SONG_CHANNEL_COUNT)
+            x = SONG_CHANNEL_COUNT - 1;
+        viewData_->mixerCol_ = x;
+        isDirty_ = true;
 	}
 }
 
@@ -405,7 +405,7 @@ void MixerView::DrawView() {
     }
     DrawString(pos._x - 3, pos._y, " ", rowLabelProps);
 
-    for (int i = 0; i < 8; i++) {
+    for (int i = 0; i < SONG_CHANNEL_COUNT; i++) {
         props.invert_ = (i == viewData_->mixerCol_ && mixerRow_ == 0);
         SetColor((i == viewData_->mixerCol_ && mixerRow_ == 0) ? CD_HILITE2
                                                                : CD_COL_TITLE);
@@ -433,7 +433,7 @@ void MixerView::DrawView() {
     DrawString(pos._x - 5, pos._y, "VOL", rowLabelProps);
 
     pos._x = anchor._x;
-    for (int i = 0; i < 8; i++) {
+    for (int i = 0; i < SONG_CHANNEL_COUNT; i++) {
         props.invert_ = (i == viewData_->mixerCol_ && mixerRow_ == 1);
         SetColor((i == viewData_->mixerCol_ && mixerRow_ == 1) ? CD_HILITE2
                                                                : CD_NORMAL);
@@ -457,7 +457,7 @@ void MixerView::DrawView() {
     DrawString(pos._x - 5, pos._y, "HPF", rowLabelProps);
 
     pos._x = anchor._x;
-    for (int i = 0; i < 8; i++) {
+    for (int i = 0; i < SONG_CHANNEL_COUNT; i++) {
         props.invert_ = (i == viewData_->mixerCol_ && mixerRow_ == 2);
         SetColor((i == viewData_->mixerCol_ && mixerRow_ == 2) ? CD_HILITE2 : CD_NORMAL);
 
@@ -490,7 +490,7 @@ void MixerView::DrawView() {
     DrawString(pos._x - 5, pos._y, "LPF", rowLabelProps);
 
     pos._x = anchor._x;
-    for (int i = 0; i < 8; i++) {
+    for (int i = 0; i < SONG_CHANNEL_COUNT; i++) {
         props.invert_ = (i == viewData_->mixerCol_ && mixerRow_ == 3);
         SetColor((i == viewData_->mixerCol_ && mixerRow_ == 3) ? CD_HILITE2 : CD_NORMAL);
 
@@ -564,7 +564,7 @@ void MixerView::OnPlayerUpdate(PlayerEventType, unsigned int tick) {
       pos._x=25 ;
     } else {
       pos=anchor ;
-      pos._x+=25 ;
+      pos._x += SONG_CHANNEL_COUNT * 3 + 1;
     }
 
     if (player->Clipped()) {
@@ -624,19 +624,19 @@ void MixerView::DrawVuBars() {
     short dx = 3;             // 3 chars per channel (L and R + 1 space)
     short masterSpacing = 1;  // Extra spacing before Master column (matches grid)
 
-    // Read peak levels for all 9 channels
-    float peakLevelsL[9];
-    float peakLevelsR[9];
+    // Read peak levels for all tracks and master
+    float peakLevelsL[SONG_CHANNEL_COUNT + 1];
+    float peakLevelsR[SONG_CHANNEL_COUNT + 1];
 
     if (!player->IsRunning()) {
-        for (int i = 0; i < 9; i++) {
+        for (int i = 0; i < SONG_CHANNEL_COUNT + 1; i++) {
             peakLevelsL[i] = peakLevelsR[i] = 0.0f;
         }
     } else {
         MixerService *ms = MixerService::GetInstance();
-        
-        // Channels 0-7: Read pre-volume peaks
-        for (int i = 0; i < 8; i++) {
+
+        // Channels 0 through SONG_CHANNEL_COUNT - 1: Read pre-volume peaks
+        for (int i = 0; i < SONG_CHANNEL_COUNT; i++) {
             MixBus *bus = ms->GetMixBus(i);
             if (bus) {
                 uint32_t level = bus->GetPreMasterVolumePeakLevel();
@@ -646,25 +646,30 @@ void MixerView::DrawVuBars() {
                 peakLevelsL[i] = peakLevelsR[i] = 0.0f;
             }
         }
-        
-        // Channel 8 (Master): Read post-volume peaks
+
+        // Master: Read post-volume peaks
         uint32_t masterLevel = ms->GetMasterPeakLevel();
-        peakLevelsL[8] = (float)((masterLevel >> 16) & 0xFFFF) / 32767.0f;
-        peakLevelsR[8] = (float)(masterLevel & 0xFFFF) / 32767.0f;
+        peakLevelsL[SONG_CHANNEL_COUNT] =
+            (float)((masterLevel >> 16) & 0xFFFF) / 32767.0f;
+        peakLevelsR[SONG_CHANNEL_COUNT] =
+            (float)(masterLevel & 0xFFFF) / 32767.0f;
     }
 
-    // Update bar heights with slew rate decay for all 9 channels using utility
-    int displayHeightsL[9];
-    int displayHeightsR[9];
-    UpdateVuBarHeights(vuBarHeightsL_, displayHeightsL, peakLevelsL, 9);
-    UpdateVuBarHeights(vuBarHeightsR_, displayHeightsR, peakLevelsR, 9);
+    // Update bar heights with slew rate decay for all tracks and master using
+    // utility
+    int displayHeightsL[SONG_CHANNEL_COUNT + 1];
+    int displayHeightsR[SONG_CHANNEL_COUNT + 1];
+    UpdateVuBarHeights(vuBarHeightsL_, displayHeightsL, peakLevelsL,
+                       SONG_CHANNEL_COUNT + 1);
+    UpdateVuBarHeights(vuBarHeightsR_, displayHeightsR, peakLevelsR,
+                       SONG_CHANNEL_COUNT + 1);
 
-    // Draw vertical VU bars for all 9 channels (L and R for each)
+    // Draw vertical VU bars for all tracks and master (L and R for each)
     for (int row = 0; row < VU_METER_HEIGHT; row++) {
         SetColor(GetVuBarColor(row));
 
-        // Draw channels 0-7
-        for (int i = 0; i < 8; i++) {
+        // Draw channels 0 through SONG_CHANNEL_COUNT - 1
+        for (int i = 0; i < SONG_CHANNEL_COUNT; i++) {
             GUIPoint pos = vuPos;
             pos._x += i * dx;
             pos._y -= row;
@@ -680,15 +685,17 @@ void MixerView::DrawVuBars() {
 
         // Draw Master channel with spacing
         GUIPoint masterPos = vuPos;
-        masterPos._x += 8 * dx + masterSpacing;
+        masterPos._x += SONG_CHANNEL_COUNT * dx + masterSpacing;
         masterPos._y -= row;
 
         // Master left channel
-        DrawVuBarRow(this, masterPos, row, displayHeightsL[8], vuProps, GetVuBarColor(row));
+        DrawVuBarRow(this, masterPos, row, displayHeightsL[SONG_CHANNEL_COUNT],
+                     vuProps, GetVuBarColor(row));
 
         // Master right channel at x+1
         masterPos._x += 1;
-        DrawVuBarRow(this, masterPos, row, displayHeightsR[8], vuProps, GetVuBarColor(row));
+        DrawVuBarRow(this, masterPos, row, displayHeightsR[SONG_CHANNEL_COUNT],
+                     vuProps, GetVuBarColor(row));
     }
 
     SetColor(CD_NORMAL);

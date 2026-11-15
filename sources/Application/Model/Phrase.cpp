@@ -6,7 +6,9 @@
 Phrase::Phrase() {
 
 	int size=PHRASE_COUNT*16 ; // PHRASE_COUNT phrases of 0x10 steps
-	note_=(unsigned char *)SYS_MALLOC(size) ;
+    velocity_ = (uchar *)SYS_MALLOC(size);
+    memset(velocity_, 127, size);
+    note_=(unsigned char *)SYS_MALLOC(size) ;
 	memset(note_,0xFF,size) ;
 	instr_=(unsigned char *)SYS_MALLOC(size) ;
 	memset(instr_,0xFF,size) ;
@@ -28,7 +30,8 @@ Phrase::Phrase() {
 
 Phrase::~Phrase() {
 	if (note_) SYS_FREE(note_) ;
-	if (instr_) SYS_FREE(instr_) ;
+    SYS_FREE(velocity_);
+    if (instr_) SYS_FREE(instr_) ;
     /* CMDS_HERE
 	if (cmd_) SYS_FREE(cmd_) ;
 	if (cmdData_) SYS_FREE(cmdData_) ;

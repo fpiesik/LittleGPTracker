@@ -95,19 +95,22 @@ To have the screen bigger than the original GP2X resolution, use **SCREEMULT** t
 
 Be careful as large values take a lot of juice and interfere with sound playback.
 
-For SDL2 builds, enable a 480 x 270 (16:9) canvas with:
+SDL2 builds use a 480 x 270 (16:9) canvas and twelve tracks (00 through 11).
+The text display spans 60 columns. `WIDESCREEN` is no longer required for these
+builds: the wider canvas is mandatory so all twelve tracks remain visible.
+Other display backends retain eight tracks.
 
-```xml
-<WIDESCREEN value="YES" />
-```
+Fullscreen uses the native desktop resolution and scales the canvas
+proportionally to fit, centered with equal margins on opposite sides.
+`SCREENMULT` applies to windowed mode. A thin rectangle in the configured
+`BORDER` colour marks the complete canvas on SDL/SDL2 displays.
+The navigation map sits beside the playing-note indicators at the bottom.
 
-The existing tracker occupies its original 320 x 240 area at the top left
-of the canvas. The extra space to the right and below is reserved for future
-views; existing tracker columns are not expanded. Fullscreen uses the native
-desktop resolution and scales the canvas proportionally to the full display
-height, including fractional scale factors. `SCREENMULT` applies to windowed
-mode. On displays narrower than the canvas aspect ratio, the sides are clipped.
-Without `WIDESCREEN`, the canvas remains 320 x 240.
+Existing eight-track projects load with four empty additional tracks and default
+mixer settings. Saved projects contain the full twelve-track song and mixer data
+plus an eight-track projection for older versions. Older versions only play the
+first eight tracks; saving there discards tracks 08–11 and their mixer settings.
+Use separate copies when exchanging projects with older versions.
 
 ### Auto-Load Last Project
 
@@ -680,3 +683,15 @@ Use Left/Right or A to change the mode and B to return. The selection lasts for
 the application session. During count-in and recording, the song level meter
 shows the input peaks; afterward it returns to the output level. Mono input is
 shown on both meter bars. Stereo recordings retain both input channels.
+
+### Phrase velocity
+
+The `Vl` column immediately after the note sets its velocity from `00` to `7F`
+(0–127 decimal). Hold A and press Up/Down for ±`10` hex, or Left/Right for
+±`01`. Values stop at the bounds. `7F` preserves the original level; `00`
+silences the note. Mixer volume remains independent. MIDI note velocity is
+scaled by the MIDI instrument volume.
+
+Old projects default to `7F`. Velocity is saved per phrase row and included in
+selection copy/paste, cutting, interpolation and phrase cloning. Older versions
+ignore velocity data and discard it when saving.

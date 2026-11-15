@@ -38,19 +38,19 @@ inline void UpdateVuBarHeights(int *vuBarHeights, int *displayHeights,
 
 /**
  * ReadMixBusPeakLevels:
- *   Read stereo L/R peak levels from all 8 mix buses.
+ *   Read stereo L/R peak levels from all track mix buses.
  *   Returns 0.0 for all channels when isPlaying is false.
  */
 inline void ReadMixBusPeakLevels(bool isPlaying, float *peakLevelsL,
                                   float *peakLevelsR) {
     if (!isPlaying) {
-        for (int i = 0; i < 8; i++) {
+        for (int i = 0; i < SONG_CHANNEL_COUNT; i++) {
             peakLevelsL[i] = peakLevelsR[i] = 0.0f;
         }
         return;
     }
     MixerService *ms = MixerService::GetInstance();
-    for (int i = 0; i < 8; i++) {
+    for (int i = 0; i < SONG_CHANNEL_COUNT; i++) {
         MixBus *bus = ms->GetMixBus(i);
         if (bus) {
             uint32_t level = bus->GetPeakLevel();
@@ -69,8 +69,10 @@ inline void ReadMixBusPeakLevels(bool isPlaying, float *peakLevelsL,
 inline void GetVuPeakLevelsStereo(int *vuBarHeightsL, int *vuBarHeightsR,
                                    int *displayHeightsL, int *displayHeightsR,
                                    float *peakLevelsL, float *peakLevelsR) {
-    UpdateVuBarHeights(vuBarHeightsL, displayHeightsL, peakLevelsL, 8);
-    UpdateVuBarHeights(vuBarHeightsR, displayHeightsR, peakLevelsR, 8);
+    UpdateVuBarHeights(vuBarHeightsL, displayHeightsL, peakLevelsL,
+                       SONG_CHANNEL_COUNT);
+    UpdateVuBarHeights(vuBarHeightsR, displayHeightsR, peakLevelsR,
+                       SONG_CHANNEL_COUNT);
 }
 
 /**
