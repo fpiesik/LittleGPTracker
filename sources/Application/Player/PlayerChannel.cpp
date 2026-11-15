@@ -7,7 +7,9 @@
 #include "Services/Audio/Audio.h"
 #include <math.h>
 
-PlayerChannel::PlayerChannel(int index) {             
+PlayerChannel::PlayerChannel(int index) {
+    reverb_ = 0;
+    send_ = 0;
     index_=index ;
     instr_=0 ;
     muted_=false ;
@@ -108,6 +110,8 @@ bool PlayerChannel::Render(fixed *buffer,int samplecount) {
                     buffer[i] = fp_mul(buffer[i], volume_);
                 }
             }
+            if (reverb_)
+                reverb_->Add(index_, buffer, samplecount, send_);
         }
         if (!status || muted_)
             sampleTransition_.Reset();
@@ -187,6 +191,8 @@ void PlayerChannel::SetMixBus(int i) {
 } ;
 
 void PlayerChannel::Reset() {
+    reverb_ = 0;
+    send_ = 0;
     sampleTransition_.Reset();
     if (mixBus_) {
         mixBus_->Remove(*this) ;

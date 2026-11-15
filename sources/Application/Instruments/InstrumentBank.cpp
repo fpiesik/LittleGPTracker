@@ -1,19 +1,19 @@
 
 #include "InstrumentBank.h"
+#include "Application/Instruments/MidiInstrument.h"
 #include "Application/Instruments/SampleInstrument.h"
 #include "Application/Instruments/SamplePool.h"
-#include "Application/Instruments/MidiInstrument.h"
-#include "System/io/Status.h"
-#include "Application/Utils/char.h"
 #include "Application/Model/Config.h"
 #include "Application/Persistency/PersistencyService.h"
+#include "Application/Player/Player.h"
+#include "Application/Utils/char.h"
 #include "Filters.h"
+#include "System/io/Status.h"
+#ifdef LGPT_PLAITS
+#include "PlaitsInstrument.h"
+#endif
 
-char *InstrumentTypeData[IT_LAST]= {
-	"Sample",
-	"Midi"
-} ;
-
+const char *InstrumentTypeData[IT_LAST] = {"Sample", "Midi", "PLTS"};
 
 // Contain all instrument definition
 
@@ -39,7 +39,9 @@ void InstrumentBank::AssignDefaults() {
 
 	SamplePool *pool=SamplePool::GetInstance() ;
    	for (int i=0;i<MAX_SAMPLEINSTRUMENT_COUNT;i++) {
-		SampleInstrument *s=(SampleInstrument*)instrument_[i] ;
+        if (instrument_[i]->GetType() != IT_SAMPLE)
+            continue;
+        SampleInstrument *s=(SampleInstrument*)instrument_[i] ;
 		if (i<pool->GetNameListSize()) {
 	        s->AssignSample(i) ;
 		} else {
@@ -57,6 +59,34 @@ InstrumentBank::~InstrumentBank() {
 I_Instrument *InstrumentBank::GetInstrument(int i) {
 	return instrument_[i] ;
 } ;
+
+bool InstrumentBank::SetType(int i, InstrumentType type) {
+    if (i < 0 || i >= MAX_SAMPLEINSTRUMENT_COUNT ||
+        (instrument_[i]->GetType() != IT_SAMPLE &&
+         instrument_[i]->GetType() != IT_PLAITS))
+        return false;
+    if (type != IT_SAMPLE && type != IT_PLAITS)
+        return false;
+#ifndef LGPT_PLAITS
+    if (type == IT_PLAITS)
+        return false;
+#endif
+    if (instrument_[i]->GetType() == type)
+        return true;
+    I_Instrument *replacement = 0;
+#ifdef LGPT_PLAITS
+    if (type == IT_PLAITS)
+        replacement = new PlaitsInstrument();
+    else
+#endif
+        replacement = new SampleInstrument();
+    replacement->Init();
+    I_Instrument *old = instrument_[i];
+    Player::GetInstance()->ReplaceInstrument(old, replacement);
+    instrument_[i] = replacement;
+    delete old;
+    return true;
+}
 
 void InstrumentBank::SaveContent(TiXmlNode *node) {
 	char hex[3] ;
@@ -121,7 +151,18 @@ void InstrumentBank::RestoreContent(TiXmlElement *element) {
 			} else {
 				it=(id<MAX_SAMPLEINSTRUMENT_COUNT)?IT_SAMPLE:IT_MIDI ;
 			} ;
-			if (id<MAX_INSTRUMENT_COUNT) {
+            // Unknown/disabled types must never leave a dangling instrument.
+            bool supported = it == IT_SAMPLE || it == IT_MIDI;
+#ifdef LGPT_PLAITS
+            supported = supported || it == IT_PLAITS;
+#endif
+            if (!supported) {
+                Trace::Error("Unsupported instrument type: %s",
+                             instype ? instype : "unknown");
+                current = current->NextSiblingElement();
+                continue;
+            }
+            if (id<MAX_INSTRUMENT_COUNT) {
         I_Instrument *instr=instrument_[id] ;
 				if (instr->GetType()!=it) {
 					delete instr ;
@@ -129,10 +170,17 @@ void InstrumentBank::RestoreContent(TiXmlElement *element) {
 						case IT_SAMPLE:
 							instr=new SampleInstrument() ;
 							break ;
-						case IT_MIDI:
+#ifdef LGPT_PLAITS
+                        case IT_PLAITS:
+                            instr = new PlaitsInstrument();
+                            break;
+#endif
+                        case IT_MIDI:
 							instr=new MidiInstrument() ;
 							break ;
-					}
+                        default:
+                            break;
+                    }
 					instrument_[id]=instr ;
 				} ;
 
@@ -191,7 +239,9 @@ void InstrumentBank::Init() {
 
 unsigned short InstrumentBank::GetNext() {
 	for (int i=0;i<MAX_SAMPLEINSTRUMENT_COUNT;i++) {
-		SampleInstrument *si=(SampleInstrument *)instrument_[i] ;
+        if (instrument_[i]->GetType() != IT_SAMPLE)
+            continue;
+        SampleInstrument *si=(SampleInstrument *)instrument_[i] ;
 		Variable *sample=si->FindVariable(SIP_SAMPLE) ;
 		if (sample) {
 			if (sample->GetInt()==-1) {
@@ -223,7 +273,11 @@ unsigned short InstrumentBank::Clone(unsigned short i) {
   
 	if (src->GetType()==IT_SAMPLE) {
 		dst=new SampleInstrument() ;
-	} else {
+#ifdef LGPT_PLAITS
+    } else if (src->GetType() == IT_PLAITS) {
+        dst = new PlaitsInstrument();
+#endif
+    } else {
 		dst=new MidiInstrument() ;
 	}
 	instrument_[next]=dst ;

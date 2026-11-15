@@ -13,7 +13,9 @@ public:
 	~InstrumentBank() ;
 	void AssignDefaults() ;
 	I_Instrument *GetInstrument(int i) ;
-	virtual void SaveContent(TiXmlNode *node);
+    // UI thread, with MixerService locked. Replaces the patch with defaults.
+    bool SetType(int i, InstrumentType type);
+    virtual void SaveContent(TiXmlNode *node);
 	virtual void RestoreContent(TiXmlElement *element);
 	void Init() ;
 	void OnStart() ;

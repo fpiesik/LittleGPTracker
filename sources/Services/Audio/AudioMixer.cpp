@@ -1,9 +1,10 @@
 #include "AudioMixer.h"
 #include "System/System/System.h"
+#include <climits>
 #include <math.h>
 
 #define MAX_POSITIVE_FIXED i2fp(32767)
-#define MAX_NEGATIVE_FIXED i2fp(-32768)
+#define MAX_NEGATIVE_FIXED (-32768 * FIXED_SCALE)
 
 AudioMixer::AudioMixer(const char *name):
 	T_SimpleList<AudioModule>(false),
@@ -11,7 +12,8 @@ AudioMixer::AudioMixer(const char *name):
 	writer_(0),
 	name_(name)
 {
-	volume_=(i2fp(1)) ;
+    sendEffect_ = 0;
+    volume_=(i2fp(1)) ;
     softclip_ = -1;
     softclipGain_ = 0 ;
 	masterVolume_ = 100 ;
@@ -68,6 +70,8 @@ void AudioMixer::EnableRendering(bool enable) {
 
 bool AudioMixer::Render(fixed *buffer,int samplecount) {
     clipped_ = false;
+    if (sendEffect_)
+        sendEffect_->BeginRender(samplecount);
 
     fixed *mixBuffer = 0;
     bool gotData = false;
@@ -85,13 +89,21 @@ bool AudioMixer::Render(fixed *buffer,int samplecount) {
                fixed *src=mixBuffer ;
                int count=samplecount*2 ;
                while (count--) {
-                 *dst+=*src ;
-                 dst++ ;
-                 src++ ;
+                   // Keep loud channel sums from wrapping before final
+                   // clipping.
+                   long long sum = static_cast<long long>(*dst) + *src;
+                   *dst = sum > INT_MAX    ? INT_MAX
+                          : sum < -INT_MAX ? -INT_MAX
+                                           : static_cast<fixed>(sum);
+                   dst++;
+                   src++;
                }
             }
          }
      }
+
+     if (sendEffect_)
+         gotData = sendEffect_->MixReturn(buffer, samplecount, gotData);
 
      //  Apply volume
 

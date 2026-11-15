@@ -12,8 +12,7 @@
 MixerView::MixerView(GUIWindow &w,ViewData *viewData):View(w,viewData) {
 	clipboard_.active_=false ;
 	clipboard_.data_=0 ;
-	invertBatt_=false;
-    soloChannel_ = -1;
+    invertBatt_ = false;
     mixerRow_ = 1; // start on volume row
     previousViewType_ = VT_SONG; // Default to SongView
     for (int i = 0; i < 9; i++) {
@@ -48,11 +47,11 @@ void MixerView::OnFocus() { viewData_->mixerCol_ = viewData_->songX_; }
 
 void MixerView::updateCursor(int dx,int dy) {
     if (dy != 0) {
-        // UP/DOWN cycles between rows 1, 2, 3
+        // UP/DOWN cycles between volume, HPF, LPF and SEND.
         if (dy < 0) {
-            mixerRow_ = (mixerRow_ == 1) ? 3 : mixerRow_ - 1;
+            mixerRow_ = (mixerRow_ == 1) ? 4 : mixerRow_ - 1;
         } else {
-            mixerRow_ = (mixerRow_ == 3) ? 1 : mixerRow_ + 1;
+            mixerRow_ = (mixerRow_ == 4) ? 1 : mixerRow_ + 1;
         }
 		isDirty_ = true;
     }
@@ -71,14 +70,14 @@ void MixerView::updateCursor(int dx,int dy) {
 void MixerView::toggleMute() {
     int col = viewData_->mixerCol_;
     UIController::GetInstance()->ToggleMute(col, col);
+    viewMode_ = (viewMode_ == VM_MUTEON) ? VM_NORMAL : VM_MUTEON;
     isDirty_ = true;
 };
 
 void MixerView::toggleSolo() {
-	int col=viewData_->mixerCol_ ;
-	bool entering=(soloChannel_!=col) ;
-	UIController::GetInstance()->SwitchSoloMode(col,col,entering) ;
-    soloChannel_ = entering ? col : -1;
+    int col = viewData_->mixerCol_;
+    UIController::GetInstance()->SwitchSoloMode(col, col);
+    viewMode_ = (viewMode_ == VM_SOLOON) ? VM_NORMAL : VM_SOLOON;
     isDirty_ = true;
 }
 
@@ -89,6 +88,15 @@ void MixerView::unMuteAll() {
 }
 
 void MixerView::ProcessButtonMask(unsigned short mask, bool pressed) {
+    if (!pressed) {
+        if (mask & EPBM_R) {
+            if (viewMode_ == VM_MUTEON)
+                toggleMute();
+            else if (viewMode_ == VM_SOLOON)
+                toggleSolo();
+        }
+        return;
+    }
 
     if (clipboard_.active_) {
 		viewMode_=VM_SELECTION ;
@@ -138,6 +146,12 @@ void MixerView::processNormalButtonMask(unsigned int mask) {
             viewData_->songX_ = viewData_->mixerCol_;
             SetChanged();
             NotifyObservers(&ve);
+        } else if (mask & EPBM_DOWN) {
+            viewData_->songX_ = viewData_->mixerCol_;
+            ViewType type = VT_FX;
+            ViewEvent event(VET_SWITCH_VIEW, &type);
+            SetChanged();
+            NotifyObservers(&event);
         } else if (mask & EPBM_RIGHT) {
             ViewType vt = VT_TABLE;
             ViewEvent ve(VET_SWITCH_VIEW, &vt);
@@ -158,12 +172,35 @@ void MixerView::processNormalButtonMask(unsigned int mask) {
         }
     } else if (mask & EPBM_B) {
         if (mask & EPBM_A) {
-            // B + A = cut: reset volume to full
-            Mixer::GetInstance()->SetChannelVolume(viewData_->mixerCol_, 0xFF);
+            // B + A = cut: disable the selected filter/send or restore volume.
+            if (mixerRow_ == 4)
+                Mixer::GetInstance()->SetChannelSend(viewData_->mixerCol_, 0);
+            else if (mixerRow_ == 3) {
+                Mixer::GetInstance()->SetChannelLPF(viewData_->mixerCol_, 0);
+                SetNotification("       Low Pass Filter: OFF");
+            } else if (mixerRow_ == 2) {
+                Mixer::GetInstance()->SetChannelHPF(viewData_->mixerCol_, 0);
+                SetNotification("      High Pass Filter: OFF");
+            } else
+                Mixer::GetInstance()->SetChannelVolume(viewData_->mixerCol_,
+                                                       0xFF);
             isDirty_ = true;
         }
     } else if (mask & EPBM_A) {
-        if (mixerRow_ == 3) {
+        if (mixerRow_ == 4) {
+            Mixer *mixer = Mixer::GetInstance();
+            int value = mixer->GetChannelSend(viewData_->mixerCol_);
+            if (mask & EPBM_UP)
+                value += 16;
+            if (mask & EPBM_DOWN)
+                value -= 16;
+            if (mask & EPBM_RIGHT)
+                value += 1;
+            if (mask & EPBM_LEFT)
+                value -= 1;
+            mixer->SetChannelSend(viewData_->mixerCol_, value);
+            isDirty_ = true;
+        } else if (mixerRow_ == 3) {
             // On LPF row: A+Up/Down = coarse ×2/÷2, A+Left/Right = fine
             // ±10Hz A alone (no direction) = toggle off/1000Hz
             Mixer *m = Mixer::GetInstance();
@@ -480,6 +517,20 @@ void MixerView::DrawView() {
             lpfCode[3] = ' '; lpfCode[4] = '\0';
         }
         DrawString(pos._x, pos._y, lpfCode, props);
+        pos._x += dx;
+    }
+
+    // Row 4: post-channel-fader reverb send, directly below LPF.
+    pos = anchor;
+    pos._y += 5;
+    rowLabelProps.invert_ = mixerRow_ == 4;
+    SetColor(mixerRow_ == 4 ? CD_HILITE2 : CD_NORMAL);
+    DrawString(pos._x - 5, pos._y, "SEND", rowLabelProps);
+    for (int i = 0; i < SONG_CHANNEL_COUNT; ++i) {
+        props.invert_ = i == viewData_->mixerCol_ && mixerRow_ == 4;
+        SetColor(props.invert_ ? CD_HILITE2 : CD_NORMAL);
+        hex2char(mixer->GetChannelSend(i), hex);
+        DrawString(pos._x, pos._y, hex, props);
         pos._x += dx;
     }
 

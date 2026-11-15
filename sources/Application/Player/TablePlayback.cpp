@@ -86,6 +86,13 @@ void TablePlayback::Stop() {
 	hopped_[2]=false ;
 } ;
 
+void TablePlayback::StopInstrument(I_Instrument *instrument) {
+    if (instrument_ == instrument) {
+        Stop();
+        instrument_ = 0;
+    }
+}
+
 int TablePlayback::GetPlaybackPosition(int i) {
 	return previous_[i] ;
 }

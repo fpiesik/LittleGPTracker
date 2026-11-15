@@ -39,7 +39,9 @@ bool MixerService::Init() {
 	if (out_) {
 		result = out_->Init();
 		if (result) {
-			out_->Insert(master_);
+            reverb_.Init(Audio::GetInstance()->GetSampleRate());
+            master_.SetSendEffect(&reverb_);
+            out_->Insert(master_);
 		}
 
         initRendering(mode_);

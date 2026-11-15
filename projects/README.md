@@ -1,6 +1,17 @@
 Recommendation: Install pre-commit
 From repo root: cp pre-commit ./git/hooks
 
+The normal Linux X64 build (`make PLATFORM=X64`) includes Sampler, Plaits and
+Clouds in `lgpt.x64`. See [the integration guide](../docs/plaits.md) for engine
+selection, patches, tests and current limitations.
+
+##### Shared Clouds reverb
+
+Clouds reverb, Mixer SEND and the E page are in the common build, including
+the normal `PLATFORM=X64` build. No new library is required;
+the original MIT DSP headers and shared stmlib subset are vendored.
+See [routing, controls and verification limits](../docs/clouds.md).
+
 ##### Windows: Use Visual Studio to build
 	Requires installing SDL2 headers under sources/Externals/SDL2
 

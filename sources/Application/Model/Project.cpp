@@ -5,6 +5,7 @@
 #include "Application/Player/SyncMaster.h"
 #include "Foundation/Variables/WatchedVariable.h"
 #include "Groove.h"
+#include "Mixer.h"
 #include "Scale.h"
 #include "Services/Midi/MidiService.h"
 #include "System/Console/Trace.h"
@@ -20,6 +21,8 @@ Project::Project()
 ,midiDeviceList_(0),
 tempoNudge_(0)
 {
+    // Register/reset mixer persistence before PersistencyService loads a song.
+    Mixer::GetInstance()->Clear();
     WatchedVariable *tempo = new WatchedVariable("tempo", VAR_TEMPO, 138);
     this->Insert(tempo);
     Variable *masterVolume = new Variable("master", VAR_MASTERVOL, 100, 100);

@@ -1,7 +1,11 @@
 #include "InstrumentView.h"
+#ifdef LGPT_PLAITS
+#include "Application/Instruments/PlaitsInstrument.h"
+#endif
 #include "ModalDialogs/SampleEditorDialog.h"
 
 #define SIP_EDIT MAKE_FOURCC('E', 'D', 'I', 'T')
+#define SIP_ENGINE MAKE_FOURCC('E', 'N', 'G', 'N')
 #include "Application/Instruments/MidiInstrument.h"
 #include "Application/Instruments/SampleInstrument.h"
 #include "Application/Instruments/SamplePool.h"
@@ -15,20 +19,32 @@
 #include "ModalDialogs/MessageBox.h"
 #include "System/System/System.h"
 
+#ifdef LGPT_PLAITS
+static const char *engineNames[] = {"Sampler", "Plaits"};
+#endif
+
 void ImportSampleDialogCallback(View &v, ModalView &dialog) {
     ((InstrumentView &)v).OnFocus();
 }
 
 InstrumentView::InstrumentView(GUIWindow &w, ViewData *data)
-    : FieldView(w, data), editSample_("edit", SIP_EDIT, 0) {
+    : FieldView(w, data),
+#ifdef LGPT_PLAITS
+      engine_("engine", SIP_ENGINE, engineNames, 2, 0),
+#endif
+      editSample_("edit", SIP_EDIT, 0) {
 
     project_ = data->project_;
     lastFocusID_=0 ;
 	current_=0 ;
-	onInstrumentChange() ;
+    currentIndex_ = -1;
+    onInstrumentChange() ;
 }
 
 InstrumentView::~InstrumentView() {
+    if (current_ &&
+        project_->GetInstrumentBank()->GetInstrument(currentIndex_) == current_)
+        current_->RemoveObserver(*this);
 }
 
 InstrumentType InstrumentView::getInstrumentType() {
@@ -42,27 +58,57 @@ void InstrumentView::onInstrumentChange() {
 
 	ClearFocus() ;
 
-	I_Instrument *old=current_ ;
+    int i = viewData_->currentInstrument_;
+    InstrumentBank *bank=viewData_->project_->GetInstrumentBank() ;
+    I_Instrument *next = bank->GetInstrument(i);
+    bool changed = current_ != next;
+    // Another view may have replaced the old slot while this view was hidden.
+    // Never dereference a cached pointer unless the bank still owns it.
+    if (changed && current_ && bank->GetInstrument(currentIndex_) == current_)
+        current_->RemoveObserver(*this);
+    current_ = next;
+    currentIndex_ = i;
+    T_SimpleList<UIField>::Empty();
 
-	int i=viewData_->currentInstrument_ ;
-	InstrumentBank *bank=viewData_->project_->GetInstrumentBank() ;
-	current_=bank->GetInstrument(i) ;
+    InstrumentType it = getInstrumentType();
 
-	if (current_!=old) {
-		current_->RemoveObserver(*this) ;
-	} ;
-	T_SimpleList<UIField>::Empty() ;
-
-	InstrumentType it=getInstrumentType() ;
+#ifdef LGPT_PLAITS
+    if (it == IT_SAMPLE || it == IT_PLAITS) {
+        engine_.SetInt(it == IT_PLAITS ? 1 : 0);
+        GUIPoint position = GetAnchor();
+        T_SimpleList<UIField>::Insert(
+            new UIIntVarField(position, engine_, "engine: %s", 0, 1, 1, 1));
+    }
+#endif
 
     switch (it) {
-		case IT_MIDI:
-			fillMidiParameters() ;
-			break ;
-		case IT_SAMPLE:
-			fillSampleParameters() ;
-			break ;
-	} ;
+#ifdef LGPT_PLAITS
+    case IT_PLAITS: {
+        PlaitsInstrument *instrument =
+            static_cast<PlaitsInstrument *>(current_);
+        GUIPoint position = GetAnchor();
+        ++position._y;
+        const char *labels[] = {"MODEL: %d", "HARMONICS: %2.2X",
+                                "TIMBRE: %2.2X", "MORPH: %2.2X",
+                                "DECAY: %2.2X"};
+        for (int p = 0; p < PlaitsInstrument::PARAMETER_COUNT; ++p) {
+            T_SimpleList<UIField>::Insert(new UIIntVarField(
+                position, instrument->Parameter(p), labels[p], 0,
+                p == PlaitsInstrument::MODEL ? 23 : 255, 1, 16));
+            ++position._y;
+        }
+        break;
+    }
+#endif
+    case IT_MIDI:
+        fillMidiParameters();
+        break;
+    case IT_SAMPLE:
+        fillSampleParameters();
+        break;
+    default:
+        break;
+    } ;
 
 	SetFocus(T_SimpleList<UIField>::GetFirst()) ;
 	IteratorPtr<UIField> it2(T_SimpleList<UIField>::GetIterator()) ;
@@ -73,9 +119,9 @@ void InstrumentView::onInstrumentChange() {
             break ;
         }
     } ;
-	if (current_!=old) {
-		current_->AddObserver(*this) ;
-	}
+    // A parameter notification may already be iterating this observer list.
+    if (changed)
+        current_->AddObserver(*this);
 } ;
 
 void InstrumentView::fillSampleParameters() {
@@ -86,12 +132,14 @@ void InstrumentView::fillSampleParameters() {
 	SampleInstrument *instrument=(SampleInstrument *)instr  ;
 	GUIPoint position=GetAnchor() ;
 
-//	position._y+=View::fieldSpaceHeight_;
-	Variable *v=instrument->FindVariable(SIP_SAMPLE) ;
-	SamplePool *sp=SamplePool::GetInstance() ;
+#ifdef LGPT_PLAITS
+    ++position._y;
+#endif
+    //	position._y+=View::fieldSpaceHeight_;
+    Variable *v = instrument->FindVariable(SIP_SAMPLE);
+    SamplePool *sp=SamplePool::GetInstance() ;
 	UIIntVarField *f1=new UIIntVarField(position,*v,"sample: %s",0,sp->GetNameListSize()-1,1,0x10) ;
-	T_SimpleList<UIField>::Insert(f1) ;
-	f1->SetFocus() ;
+    T_SimpleList<UIField>::Insert(f1);
 
     position._y += 1;
     f1 = new UIIntVarField(position, editSample_, "Edit", 0, 0, 0, 0);
@@ -133,7 +181,12 @@ void InstrumentView::fillSampleParameters() {
 	f1=new UIIntVarField(position,*v,"detune: %2.2X",0,255,1,0x10) ;
 	T_SimpleList<UIField>::Insert(f1) ;
 
+#ifdef LGPT_PLAITS
+    // Use one existing spacer row for the engine selector.
+    position._y += 1;
+#else
     position._y += 2;
+#endif
     v=instrument->FindVariable(SIP_CRUSH);
 	f1=new UIIntVarField(position,*v,"crush: %d",1,0x10,1,4) ;
 	T_SimpleList<UIField>::Insert(f1) ;
@@ -292,6 +345,34 @@ void InstrumentView::ProcessButtonMask(unsigned short mask,bool pressed) {
 	if (!pressed) return ;
 
 	isDirty_=false ;
+#ifdef LGPT_PLAITS
+    // Handle engine edits before the generic field processing. Rebuild only
+    // after ProcessArrow returns, so no field deletes itself during a callback.
+    if (GetFocus() &&
+        static_cast<UIIntVarField *>(GetFocus())->GetVariableID() ==
+            SIP_ENGINE &&
+        (mask & EPBM_A)) {
+        if (mask & (EPBM_B | EPBM_L | EPBM_R | EPBM_SELECT | EPBM_START))
+            return;
+        viewMode_ = VM_NORMAL;
+        FieldView::ProcessButtonMask(mask);
+        InstrumentType type = engine_.GetInt() ? IT_PLAITS : IT_SAMPLE;
+        if (type != getInstrumentType()) {
+            // AppWindow::onEvent already holds MixerService's lock here.
+            ClearFocus();
+            T_SimpleList<UIField>::Empty();
+            current_->RemoveObserver(*this);
+            current_ = 0;
+            project_->GetInstrumentBank()->SetType(
+                viewData_->currentInstrument_, type);
+            lastFocusID_ = SIP_ENGINE;
+            viewMode_ = VM_NORMAL;
+            onInstrumentChange();
+            isDirty_ = true;
+        }
+        return;
+    }
+#endif
     if (mask == EPBM_A && GetFocus() &&
         ((UIIntVarField *)GetFocus())->GetVariableID() == SIP_EDIT) {
         viewMode_ = VM_NORMAL;
@@ -342,7 +423,10 @@ void InstrumentView::ProcessButtonMask(unsigned short mask,bool pressed) {
 		}
 	}
 
-	if (viewMode_==VM_CLONE) {
+    if (viewMode_ == VM_CLONE && getInstrumentType() != IT_PLAITS &&
+        GetFocus() &&
+        static_cast<UIIntVarField *>(GetFocus())->GetVariableID() ==
+            SIP_TABLE) {
         if ((mask&EPBM_A)&&(mask&EPBM_L)) {
 			UIIntVarField *field=(UIIntVarField *)GetFocus() ;
 			mask&=(0xFFFF-EPBM_A) ;
@@ -357,14 +441,14 @@ void InstrumentView::ProcessButtonMask(unsigned short mask,bool pressed) {
 			}
 		}
 		mask&=(0xFFFF-(EPBM_A|EPBM_L)) ;
-	} ;
+    };
 
-	if (viewMode_==VM_SELECTION) {
-	} else {
-		viewMode_=VM_NORMAL ;
-	}
+    if (viewMode_ == VM_SELECTION) {
+    } else {
+        viewMode_=VM_NORMAL ;
+    }
 
-	FieldView::ProcessButtonMask(mask) ;
+    FieldView::ProcessButtonMask(mask);
 
     Player *player=Player::GetInstance() ;
 	// B Modifier
@@ -376,15 +460,18 @@ void InstrumentView::ProcessButtonMask(unsigned short mask,bool pressed) {
 		if (mask&EPBM_UP) warpToNext(+16);
 		if (mask&EPBM_A) { // Allow cut instrument
 		   if (getInstrumentType()==IT_SAMPLE) {
-                if (GetFocus()==T_SimpleList<UIField>::GetFirst()) {
-	               int i=viewData_->currentInstrument_ ;
-	               InstrumentBank *bank=viewData_->project_->GetInstrumentBank() ;
-	               I_Instrument *instr=bank->GetInstrument(i) ;
+               if (GetFocus() &&
+                   static_cast<UIIntVarField *>(GetFocus())->GetVariableID() ==
+                       SIP_SAMPLE) {
+                   int i = viewData_->currentInstrument_;
+                   InstrumentBank *bank =
+                       viewData_->project_->GetInstrumentBank();
+                   I_Instrument *instr=bank->GetInstrument(i) ;
 					instr->Purge() ;
 //                   Variable *v=instr->FindVariable(SIP_SAMPLE) ;
 //                   v->SetInt(-1) ;
                    isDirty_=true ;
-                }
+               }
            }
 
 		   // Check if on table
@@ -393,7 +480,8 @@ void InstrumentView::ProcessButtonMask(unsigned short mask,bool pressed) {
 	            InstrumentBank *bank=viewData_->project_->GetInstrumentBank() ;
 	            I_Instrument *instr=bank->GetInstrument(i) ;
                 Variable *v=instr->FindVariable(SIP_TABLE) ;
-                v->SetInt(-1) ;
+                if (v)
+                    v->SetInt(-1);
                 isDirty_=true ;
 		   } ;
         }

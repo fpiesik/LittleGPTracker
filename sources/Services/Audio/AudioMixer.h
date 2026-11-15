@@ -3,6 +3,7 @@
 
 #include "Application/Instruments/WavFileWriter.h"
 #include "AudioModule.h"
+#include "AudioSendEffect.h"
 #include "Foundation/T_SimpleList.h"
 #include <string>
 
@@ -18,7 +19,8 @@ public:
 	AudioMixer(const char *name) ;
 	virtual ~AudioMixer() ;
 	virtual bool Render(fixed *buffer,int samplecount) ;
-	void SetFileRenderer(const char *path) ;
+    void SetSendEffect(AudioSendEffect *effect) { sendEffect_ = effect; }
+    void SetFileRenderer(const char *path) ;
 	void EnableRendering(bool enable) ;
 	void SetVolume(fixed volume) ;
     unsigned int GetPeakLevel() const { return peakMixerLevel_; }
@@ -30,6 +32,7 @@ public:
 	virtual bool Clipped() ;
 	
 private:
+  AudioSendEffect *sendEffect_;
   fixed hardClip(fixed sample);
   fixed softClip(fixed sample);
   bool enableRendering_;

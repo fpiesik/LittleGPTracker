@@ -167,6 +167,8 @@
 		8D0C4E8D0486CD37000505A6 /* InfoPlist.strings in Resources */ = {isa = PBXBuildFile; fileRef = 0867D6AAFE840B52C02AAC07 /* InfoPlist.strings */; };
 		8D0C4E8E0486CD37000505A6 /* main.nib in Resources */ = {isa = PBXBuildFile; fileRef = 02345980000FD03B11CA0E72 /* main.nib */; };
 		8D0C4E920486CD37000505A6 /* Carbon.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 20286C33FDCF999611CA2CEA /* Carbon.framework */; };
+		C10D51000000000000000000 /* ReverbBus.cpp in Sources */ = {isa = PBXBuildFile; fileRef = C10D50000000000000000000 /* ReverbBus.cpp */; };
+		C10D51000000000000000001 /* FxView.cpp in Sources */ = {isa = PBXBuildFile; fileRef = C10D50000000000000000001 /* FxView.cpp */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -512,6 +514,11 @@
 		87CA0EA80F7E1160001D6BD0 /* Mixer.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = Mixer.cpp; sourceTree = "<group>"; };
 		87CA0EA90F7E1160001D6BD0 /* Mixer.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = Mixer.h; sourceTree = "<group>"; };
 		8D0C4E960486CD37000505A6 /* Info.plist */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
+		C10D50000000000000000000 /* ReverbBus.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = ../sources/Application/Mixer/ReverbBus.cpp; sourceTree = SOURCE_ROOT; };
+		C10D50000000000000000001 /* FxView.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = ../sources/Application/Views/FxView.cpp; sourceTree = SOURCE_ROOT; };
+		C10D50000000000000000002 /* ReverbBus.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = ../sources/Application/Mixer/ReverbBus.h; sourceTree = SOURCE_ROOT; };
+		C10D50000000000000000003 /* FxView.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = ../sources/Application/Views/FxView.h; sourceTree = SOURCE_ROOT; };
+		C10D50000000000000000004 /* AudioSendEffect.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = ../sources/Services/Audio/AudioSendEffect.h; sourceTree = SOURCE_ROOT; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -534,6 +541,11 @@
 		195DF8CFFE9D517E11CA2CBB /* Products */ = {
 			isa = PBXGroup;
 			children = (
+				C10D50000000000000000004 /* AudioSendEffect.h */,
+				C10D50000000000000000003 /* FxView.h */,
+				C10D50000000000000000002 /* ReverbBus.h */,
+				C10D50000000000000000001 /* FxView.cpp */,
+				C10D50000000000000000000 /* ReverbBus.cpp */,
 				508344B209E5C41E0093A071 /* LittleGPTracker_d.app */,
 			);
 			name = Products;
@@ -1453,6 +1465,8 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				C10D51000000000000000001 /* FxView.cpp in Sources */,
+				C10D51000000000000000000 /* ReverbBus.cpp in Sources */,
 				737D125B0BCE66F000099CB3 /* Application.cpp in Sources */,
 				737D125C0BCE66F000099CB3 /* AppWindow.cpp in Sources */,
 				737D125E0BCE66F000099CB3 /* CommandList.cpp in Sources */,
@@ -1631,6 +1645,7 @@
 			isa = XCBuildConfiguration;
 			baseConfigurationReference = 5048396D09E3307300765E4B /* lgptProj.xcconfig */;
 			buildSettings = {
+				SYSTEM_HEADER_SEARCH_PATHS = "$(SRCROOT)/../sources/Externals/Mutable";
 				CONFIGURATION_BUILD_DIR = "$(BUILD_DIR)";
 				CONFIGURATION_TEMP_DIR = "";
 				COPY_PHASE_STRIP = NO;
@@ -1655,6 +1670,7 @@
 			isa = XCBuildConfiguration;
 			baseConfigurationReference = 5048396E09E3307300765E4B /* lgptTarget.xcconfig */;
 			buildSettings = {
+				SYSTEM_HEADER_SEARCH_PATHS = "$(SRCROOT)/../sources/Externals/Mutable";
 				CONFIGURATION_BUILD_DIR = ../bin;
 				DEAD_CODE_STRIPPING = YES;
 				FRAMEWORK_SEARCH_PATHS = /Library/Frameworks/;
@@ -1684,6 +1700,7 @@
 			isa = XCBuildConfiguration;
 			baseConfigurationReference = 5048396D09E3307300765E4B /* lgptProj.xcconfig */;
 			buildSettings = {
+				SYSTEM_HEADER_SEARCH_PATHS = "$(SRCROOT)/../sources/Externals/Mutable";
 				ARCHS = "$(ARCHS_STANDARD_32_BIT)";
 				CONFIGURATION_BUILD_DIR = "";
 				DEBUG_INFORMATION_FORMAT = dwarf;
@@ -1704,6 +1721,7 @@
 			isa = XCBuildConfiguration;
 			baseConfigurationReference = 5048396D09E3307300765E4B /* lgptProj.xcconfig */;
 			buildSettings = {
+				SYSTEM_HEADER_SEARCH_PATHS = "$(SRCROOT)/../sources/Externals/Mutable";
 				ARCHS = "$(ARCHS_STANDARD_32_BIT)";
 				CONFIGURATION_BUILD_DIR = ../bin;
 				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";

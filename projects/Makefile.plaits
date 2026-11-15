@@ -1,0 +1,24 @@
+# Plaits is part of the normal X64 executable and object directory.
+# Other platform toolchains still need synth validation/enablement.
+MUTABLE := $(PWD)/../sources/Externals/Mutable
+PLAITS_SOURCES := $(wildcard $(MUTABLE)/plaits/dsp/*.cc \
+    $(MUTABLE)/plaits/dsp/*/*.cc) $(MUTABLE)/plaits/resources.cc \
+    $(MUTABLE)/stmlib/dsp/units.cc $(MUTABLE)/stmlib/utils/random.cc
+PLAITS_OBJECTS := $(notdir $(PLAITS_SOURCES:.cc=.o))
+COMMONFILES += PlaitsEngine.o PlaitsInstrument.o $(PLAITS_OBJECTS)
+SOURCES += $(patsubst $(PWD)/%,%,$(sort $(dir $(PLAITS_SOURCES))))
+ifeq ($(notdir $(CURDIR)),$(BUILD))
+.DEFAULT_GOAL := all
+# Recompile former sampler-only objects when adopting/updating these flags.
+$(OFILES): $(PWD)/Makefile.plaits
+else
+.DEFAULT_GOAL := $(BUILD)
+endif
+CXXFLAGS += -DLGPT_PLAITS -isystem $(MUTABLE)
+
+# TEST is upstream's portable DSP mode: no ARM assembly or flash access.
+# Keep it local to translation units which include upstream DSP headers.
+PlaitsEngine.o PlaitsInstrument.o: CXXFLAGS += -DTEST
+
+%.o: %.cc
+	$(CXX) $(CXXFLAGS) -DTEST -include cstdio -O2 -MMD -MF $(DEPSDIR)/$*.d -c $< -o $@

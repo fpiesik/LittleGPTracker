@@ -12,6 +12,6 @@ objects=()
 for object in projects/buildX64/*.o; do
     case "$object" in */LINUXMain.o) ;; *) objects+=("$object");; esac
 done
-g++ -std=gnu++03 -g -Wall -DPLATFORM_X64 -D_64BIT -DSDL2 -D_FEAT_MIDI_LOCK -Isources \
+g++ -std=gnu++03 -g -Wall -DPLATFORM_X64 -D_64BIT -DSDL2 -DLGPT_PLAITS -D_FEAT_MIDI_LOCK -Isources \
     tests/sample_jump_test.cpp "${objects[@]}" -lSDL2 -lasound -ljack -o "$test_dir/jump"
 "$test_dir/jump"

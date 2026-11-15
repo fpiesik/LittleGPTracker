@@ -20,7 +20,8 @@ public:
 	bool ProcessLocalCommand(int row,FourCC *commandList,ushort *paramList,TablePlayerChange &tpc) ;
 	void Start(I_Instrument *,Table&,bool automated) ;
 	void Stop() ;
-	int GetPlaybackPosition(int channel) ;
+    void StopInstrument(I_Instrument *instrument);
+    int GetPlaybackPosition(int channel) ;
 	Table *GetTable() ;
 	bool GetAutomation() ;
 

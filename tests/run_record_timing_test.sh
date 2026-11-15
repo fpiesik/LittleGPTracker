@@ -17,7 +17,7 @@ flags=()
 if [[ ${SANITIZE:-0} == 1 ]]; then
     flags+=(-fsanitize=address,undefined)
 fi
-g++ -std=gnu++03 -g -Wall -DPLATFORM_X64 -D_64BIT -DSDL2 \
+g++ -std=gnu++03 -g -Wall -DPLATFORM_X64 -D_64BIT -DSDL2 -DLGPT_PLAITS \
     -D_FEAT_MIDI_LOCK -Isources "${flags[@]}" tests/record_timing_test.cpp \
     "${objects[@]}" -lSDL2 -lasound -ljack \
     -Wl,--wrap=SDL_GetPerformanceCounter,--wrap=SDL_GetPerformanceFrequency,--wrap=SDL_PauseAudio,--wrap=SDL_PauseAudioDevice \

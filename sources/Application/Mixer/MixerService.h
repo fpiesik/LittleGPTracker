@@ -9,9 +9,10 @@
 #include "Application/Commands/CommandDispatcher.h" // Would be better done externally and call an API here
 #include "Foundation/Observable.h"
 #include "Foundation/T_Singleton.h"
+#include "MixBus.h"
+#include "ReverbBus.h"
 #include "Services/Audio/AudioMixer.h"
 #include "Services/Audio/AudioOut.h"
-#include "MixBus.h"
 
 enum MixerServiceRenderMode {
     MSRM_PLAYBACK,
@@ -39,6 +40,7 @@ public:
 	void Stop() ;
 
     MixBus *GetMixBus(int i);
+    ReverbBus &GetReverbBus() { return reverb_; }
     unsigned int GetMasterPeakLevel() const;
 
     virtual void Update(Observable &o, I_ObservableData *d);
@@ -68,6 +70,7 @@ private:
   AudioOut *out_;
   MixBus master_;
   MixBus bus_[MAX_BUS_COUNT];
+  ReverbBus reverb_;
   MixerServiceRenderMode mode_;
   SDL_mutex *sync_;
   bool isRendering_;

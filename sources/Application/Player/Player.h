@@ -71,6 +71,8 @@ public:
     bool Clipped() ;
 
     void ProcessCommands();
+    // Called by instrument editing while the caller holds the mixer lock.
+    void ReplaceInstrument(I_Instrument *old, I_Instrument *replacement);
     bool ProcessChannelCommand(int channel,FourCC cmd,ushort param) ;
 
 	void StartStreaming(const Path &path) ;

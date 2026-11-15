@@ -6,6 +6,7 @@
 #include "Application/Mixer/MixBus.h"
 #include "Application/Utils/SampleTransition.h"
 #include "Services/Audio/AudioModule.h"
+class ReverbBus;
 
 class PlayerChannel: public AudioModule {
 public:
@@ -19,13 +20,19 @@ public:
 	bool IsMuted() ;
 	void SetMixBus(int i) ;
     void SetVolume(fixed volume);
+    void SetReverbSend(ReverbBus *bus, int send) {
+        reverb_ = bus;
+        send_ = send;
+    }
     void SetHPFMode(unsigned char mode);
     void ApplyHPF(fixed *buffer, int samplecount);
     void SetLPFFreq(unsigned short freq);
     void Reset();
 
   private:
-	int index_ ;
+    ReverbBus *reverb_;
+    int send_;
+    int index_ ;
 	I_Instrument *instr_ ;
 	bool muted_ ;
     fixed volume_;

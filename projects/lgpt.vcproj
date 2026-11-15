@@ -42,7 +42,7 @@
 				Name="VCCLCompilerTool"
 				AdditionalOptions="/MP"
 				Optimization="0"
-				AdditionalIncludeDirectories="../sources/Externals;../sources/"
+				AdditionalIncludeDirectories="../sources/Externals/Mutable;../sources/Externals;../sources/"
 				PreprocessorDefinitions="WIN32;_DEBUG;__WINDOWS_DS__;__WINDOWS_ASIO__;_CRT_SECURE_NO_WARNINGS;__WINDOWS_MM__;CPP_MEMORY;_LGPT_NO_SCREEN_CACHE_"
 				MinimalRebuild="false"
 				BasicRuntimeChecks="3"
@@ -125,7 +125,7 @@
 			<Tool
 				Name="VCCLCompilerTool"
 				Optimization="3"
-				AdditionalIncludeDirectories="../sources/Externals;../sources/"
+				AdditionalIncludeDirectories="../sources/Externals/Mutable;../sources/Externals;../sources/"
 				PreprocessorDefinitions="WIN32;NDEBUG;_WINDOWS;__WINDOWS_DS__;__WINDOWS_ASIO__;__WINDOWS_MM__;_CRT_SECURE_NO_WARNINGS;CPP_MEMORY;_LGPT_NO_SCREEN_CACHE_"
 				RuntimeLibrary="0"
 				UsePrecompiledHeader="0"
@@ -206,7 +206,7 @@
 			/>
 			<Tool
 				Name="VCCLCompilerTool"
-				AdditionalIncludeDirectories="../sources"
+				AdditionalIncludeDirectories="../sources;../sources/Externals/Mutable"
 				PreprocessorDefinitions="WIN32;NDEBUG;_WINDOWS;_FILE_RENDERER_"
 				RuntimeLibrary="2"
 				UsePrecompiledHeader="0"
@@ -285,7 +285,7 @@
 			/>
 			<Tool
 				Name="VCCLCompilerTool"
-				AdditionalIncludeDirectories="../sources/Externals;../sources/"
+				AdditionalIncludeDirectories="../sources/Externals/Mutable;../sources/Externals;../sources/"
 				PreprocessorDefinitions="WIN32;NDEBUG;_WINDOWS;_SHOW_GP2X_;__WINDOWS_DS__"
 				RuntimeLibrary="2"
 				UsePrecompiledHeader="0"
@@ -365,7 +365,7 @@
 			<Tool
 				Name="VCCLCompilerTool"
 				Optimization="3"
-				AdditionalIncludeDirectories="../sources/Externals;../sources/"
+				AdditionalIncludeDirectories="../sources/Externals/Mutable;../sources/Externals;../sources/"
 				PreprocessorDefinitions="WIN32;NDEBUG;_WINDOWS;__WINDOWS_DS__;__WINDOWS_ASIO__;__WINDOWS_MM__;_CRT_SECURE_NO_WARNINGS;_SHOW_GP2X_"
 				RuntimeLibrary="0"
 				UsePrecompiledHeader="0"
@@ -425,6 +425,11 @@
 	<References>
 	</References>
 	<Files>
+		<File RelativePath="..\sources\Application\Mixer\ReverbBus.cpp" />
+		<File RelativePath="..\sources\Application\Views\FxView.cpp" />
+		<File RelativePath="..\sources\Application\Mixer\ReverbBus.h" />
+		<File RelativePath="..\sources\Application\Views\FxView.h" />
+		<File RelativePath="..\sources\Services\Audio\AudioSendEffect.h" />
 		<Filter
 			Name="Source Files"
 			Filter="cpp;c;cxx;def;odl;idl;hpj;bat;asm;asmx"

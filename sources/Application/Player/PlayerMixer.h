@@ -28,14 +28,15 @@ public:
 
 	void StartInstrument(int channel,I_Instrument *instrument,unsigned char note,bool newInstrument) ;
 	void StopInstrument(int channel) ;
+    void ReplaceInstrument(I_Instrument *old, I_Instrument *replacement);
 
-	int GetChannelNote(int Channel) ;
+    int GetChannelNote(int Channel);
 
-	I_Instrument *GetInstrument(int channel) ;
+    I_Instrument *GetInstrument(int channel);
 
-	I_Instrument *GetLastInstrument(int channel) ;
-	
-	void StartChannel(int channel) ;
+    I_Instrument *GetLastInstrument(int channel);
+
+    void StartChannel(int channel) ;
 	void StopChannel(int channel) ;
 
 	bool IsChannelPlaying(int channel) ;

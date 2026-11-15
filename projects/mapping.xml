@@ -12,4 +12,23 @@
     <MAP src="but:0:2" dst="/event/rshoulder" />
     <MAP src="but:0:5" dst="/event/start" />
     <MAP src="but:0:4" dst="/event/select" />
+
+    <!-- Logitech F710 in XInput mode (switch X), joystick 1 after the uConsole.
+         Connect before starting LGPT. Device numbers depend on startup order. -->
+    <MAP src="hat:1:0:0" dst="/event/up" />
+    <MAP src="hat:1:0:2" dst="/event/down" />
+    <MAP src="hat:1:0:3" dst="/event/left" />
+    <MAP src="hat:1:0:1" dst="/event/right" />
+    <MAP src="joy:1:1-" dst="/event/up" />
+    <MAP src="joy:1:1+" dst="/event/down" />
+    <MAP src="joy:1:0-" dst="/event/left" />
+    <MAP src="joy:1:0+" dst="/event/right" />
+
+    <MAP src="but:1:1" dst="/event/a" />
+    <MAP src="but:1:0" dst="/event/b" />
+    <!-- LB / RB, Start / Back. -->
+    <MAP src="but:1:2" dst="/event/lshoulder" />
+    <MAP src="but:1:3" dst="/event/rshoulder" />
+    <MAP src="but:1:5" dst="/event/start" />
+    <MAP src="but:1:4" dst="/event/select" />
 </MAPPINGS>

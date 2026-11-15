@@ -69,6 +69,10 @@ void Player::Close() {
     mixer_->Close();
 }
 
+void Player::ReplaceInstrument(I_Instrument *old, I_Instrument *replacement) {
+    mixer_->ReplaceInstrument(old, replacement);
+}
+
 void Player::SetChannelMute(int channel,bool mute) {
     mixer_->SetChannelMute(channel, mute);
 }

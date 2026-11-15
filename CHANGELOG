@@ -1,4 +1,17 @@
 Unreleased
+    Fix Mixer B+A to disable the selected HPF/LPF instead of resetting volume.
+    Match Solo to Mute key-release behavior: release A first for temporary
+    solo, or X first to latch; apply the same gestures in the Mixer view.
+    Make Solo toggle off on the same channel/selection and restore prior mutes,
+    retaining the original mute state when switching solo channels or views.
+    Add one shared Clouds stereo reverb for samples and Plaits, per-channel
+    SEND below LPF, and an E effects page below Mixer with saved global controls.
+    Default older projects to zero sends; retain reverb tails after note-off.
+    Prevent loud channel sums from wrapping before the mixer's output clipping.
+    Include Plaits and Clouds in the normal Linux X64 build (lgpt.x64).
+    Add Sampler/Plaits engine selection at the top of the instrument view,
+    with safe playback replacement and default patch parameters.
+    Add PLTS project patches, per-channel voices and five synthesis parameters.
     Smooth sample starts, slice changes, PLOF and RTRG jumps with a 2 ms blend.
     Fix 8-bit stereo WAV loading and sample-rate conversion in browser preview.
     Validate WAV chunks and PCM parameters; reject truncated or empty samples.

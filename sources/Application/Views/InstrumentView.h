@@ -25,9 +25,13 @@ protected:
 	void Update(Observable &o,I_ObservableData *d) ;
 
 private:
+#ifdef LGPT_PLAITS
+  Variable engine_;
+#endif
   Variable editSample_;
   Project *project_;
   FourCC lastFocusID_;
   I_Instrument *current_;
+  int currentIndex_;
 } ;
 #endif

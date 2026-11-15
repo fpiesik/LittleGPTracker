@@ -4,6 +4,7 @@
 
 #include "Application/Views/ChainView.h"
 #include "Application/Views/ConsoleView.h"
+#include "Application/Views/FxView.h"
 #include "Application/Views/GrooveView.h"
 #include "Application/Views/InstrumentView.h"
 #include "Application/Views/MixerView.h"
@@ -84,6 +85,7 @@ class AppWindow : public GUIWindow, I_Observer, Status {
     GrooveView *_grooveView;
     NullView *_nullView;
     MixerView *_mixerView;
+    FxView *_fxView;
 
     Path _root;
 

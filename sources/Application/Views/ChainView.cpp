@@ -368,9 +368,8 @@ void ChainView::toggleMute() {
 void ChainView::switchSoloMode() {
 
     UIController *controller = UIController::GetInstance();
-    controller->SwitchSoloMode(viewData_->songX_, viewData_->songX_,
-                               (viewMode_ == VM_NORMAL));
-    viewMode_ = (viewMode_ != VM_SOLOON) ? VM_SOLOON : VM_NORMAL;
+    controller->SwitchSoloMode(viewData_->songX_, viewData_->songX_);
+    viewMode_ = (viewMode_ == VM_SOLOON) ? VM_NORMAL : VM_SOLOON;
     isDirty_ = true;
 };
 
@@ -382,11 +381,9 @@ void ChainView::ProcessButtonMask(unsigned short mask, bool pressed) {
                 toggleMute();
             }
         };
-        if (viewMode_ == VM_SOLOON) {
-            if (mask & EPBM_R) {
-                switchSoloMode();
-            }
-        };
+        if (viewMode_ == VM_SOLOON && (mask & EPBM_R)) {
+            switchSoloMode();
+        }
         return;
     };
 

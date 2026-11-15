@@ -1,4 +1,8 @@
 #include "PlayerMixer.h"
+#ifdef LGPT_PLAITS
+#include "Application/Instruments/PlaitsInstrument.h"
+#include "Services/Audio/Audio.h"
+#endif
 #include "Application/Mixer/MixerService.h"
 #include "Application/Model/Mixer.h"
 #include "Application/Utils/char.h"
@@ -26,12 +30,18 @@ bool PlayerMixer::Init(Project *project) {
 			return false ;
 	}
 
-	AudioMixer *mixer=ms->GetMixBus(STREAM_MIX_BUS) ;
-	mixer->Insert(fileStreamer_) ;
+#ifdef LGPT_PLAITS
+    // The output driver negotiates its sample rate in MixerService::Init.
+    // Allocate/initialize DSP state here, before the audio thread starts.
+    PlaitsInstrument::InitVoices(Audio::GetInstance()->GetSampleRate());
+#endif
 
-	project_=project ;
+    AudioMixer *mixer = ms->GetMixBus(STREAM_MIX_BUS);
+    mixer->Insert(fileStreamer_);
 
-	// Init states
+    project_ = project;
+
+    // Init states
 
 	for (int i=0;i<SONG_CHANNEL_COUNT;i++) {
         lastInstrument_[i]=0 ;
@@ -102,14 +112,21 @@ void PlayerMixer::Update(Observable &o,I_ObservableData *d) {
 
   // Transfer the mixer data
   Mixer *mixer = Mixer::GetInstance();
+  MixerService *ms = MixerService::GetInstance();
 
   for (int i=0;i<SONG_CHANNEL_COUNT;i++) {
       channel_[i]->SetMixBus(mixer->GetBus(i));
       channel_[i]->SetVolume(fl2fp(mixer->GetChannelVolume(i) / 255.0f));
       channel_[i]->SetHPFMode((unsigned char)mixer->GetChannelHPF(i));
       channel_[i]->SetLPFFreq(mixer->GetChannelLPF(i));
+      channel_[i]->SetReverbSend(&ms->GetReverbBus(), mixer->GetChannelSend(i));
   }
-  MixerService *ms=MixerService::GetInstance();
+  ms->GetReverbBus().SetParameters(
+      mixer->GetReverbParameter(Mixer::FX_DECAY).GetInt(),
+      mixer->GetReverbParameter(Mixer::FX_DAMP).GetInt(),
+      mixer->GetReverbParameter(Mixer::FX_DIFF).GetInt(),
+      mixer->GetReverbParameter(Mixer::FX_MOD).GetInt(),
+      mixer->GetReverbParameter(Mixer::FX_LEVEL).GetInt());
   ms->SetPregain(project_->GetPregain());
   ms->SetSoftclip(project_->GetSoftclip(), project_->GetSoftclipGain());
   ms->SetMasterVolume(project_->GetMasterVolume());
@@ -127,6 +144,17 @@ void PlayerMixer::StartInstrument(int channel,I_Instrument *instrument,unsigned 
 void PlayerMixer::StopInstrument(int channel) {
     channel_[channel]->StopInstrument() ;
     notes_[channel]=0xFF ;
+}
+
+void PlayerMixer::ReplaceInstrument(I_Instrument *old,
+                                    I_Instrument *replacement) {
+    for (int i = 0; i < SONG_CHANNEL_COUNT; ++i) {
+        if (channel_[i]->GetInstrument() == old)
+            StopInstrument(i);
+        if (lastInstrument_[i] == old)
+            lastInstrument_[i] = replacement;
+        TablePlayback::GetTablePlayback(i).StopInstrument(old);
+    }
 }
 
 I_Instrument *PlayerMixer::GetInstrument(int channel) {

@@ -57,7 +57,7 @@
     <ClCompile>
       <AdditionalOptions>/MP %(AdditionalOptions)</AdditionalOptions>
       <Optimization>Disabled</Optimization>
-      <AdditionalIncludeDirectories>../sources/Externals;../sources/;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>../sources/Externals/Mutable;../sources/Externals;../sources/;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <PreprocessorDefinitions>WIN32;_DEBUG;_WINDOWS;_CRT_SECURE_NO_WARNINGS;__WINDOWS_MM__;__WINDOWS_DS__;SDL2;RTAUDIO;RTMIDI;CPP_MEMORY;_LGPT_NO_SCREEN_CACHE_;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <MinimalRebuild>false</MinimalRebuild>
       <BasicRuntimeChecks>EnableFastChecks</BasicRuntimeChecks>
@@ -89,7 +89,7 @@
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
     <ClCompile>
       <Optimization>Full</Optimization>
-      <AdditionalIncludeDirectories>../sources/Externals;../sources/;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>../sources/Externals/Mutable;../sources/Externals;../sources/;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <PreprocessorDefinitions>WIN32;NDEBUG;_WINDOWS;_CRT_SECURE_NO_WARNINGS;__WINDOWS_MM__;__WINDOWS_DS__;SDL2;RTAUDIO;RTMIDI;CPP_MEMORY;_LGPT_NO_SCREEN_CACHE_;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <RuntimeLibrary>MultiThreadedDLL</RuntimeLibrary>
       <PrecompiledHeader />
@@ -117,6 +117,8 @@
     </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClCompile Include="..\sources\Application\Mixer\ReverbBus.cpp" />
+    <ClCompile Include="..\sources\Application\Views\FxView.cpp" />
     <ClCompile Include="..\sources\Adapters\RTMidi\RTMidiInDevice.cpp" />
     <ClCompile Include="..\sources\Adapters\RTMidi\RTMidiOutDevice.cpp" />
     <ClCompile Include="..\sources\Adapters\RTMidi\RTMidiService.cpp" />
@@ -272,6 +274,9 @@
     <ClCompile Include="..\sources\UIFramework\SimpleBaseClasses\GUIWindow.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="..\sources\Application\Mixer\ReverbBus.h" />
+    <ClInclude Include="..\sources\Application\Views\FxView.h" />
+    <ClInclude Include="..\sources\Services\Audio\AudioSendEffect.h" />
     <ClInclude Include="..\sources\Adapters\RTMidi\RTMidiInDevice.h" />
     <ClInclude Include="..\sources\Adapters\RTMidi\RTMidiOutDevice.h" />
     <ClInclude Include="..\sources\Adapters\RTMidi\RTMidiService.h" />

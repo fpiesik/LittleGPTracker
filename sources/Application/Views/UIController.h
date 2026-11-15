@@ -4,24 +4,26 @@
 #include "Foundation/T_Singleton.h"
 #include "ViewData.h"
 
-class UIController: public T_Singleton<UIController>  {
-private: // Singleton
-	UIController() ;
-public:
-	static UIController *GetInstance() ;
-	void Init(Project*,ViewData *) ;
-	void Reset() ;
+class UIController : public T_Singleton<UIController> {
+  private: // Singleton
+    UIController();
 
-	// Muting functions
+  public:
+    static UIController *GetInstance();
+    void Init(Project *, ViewData *);
+    void Reset();
 
-	void UnMuteAll() ;
-	void ToggleMute(int from,int to) ;
-	void SwitchSoloMode(int from,int to,bool clear) ;
+    // Muting functions
 
-private:
-	Project *project_ ;
-	ViewData *viewData_ ;
+    void UnMuteAll();
+    void ToggleMute(int from, int to);
+    void SwitchSoloMode(int from, int to);
 
-	bool soloMask_[SONG_CHANNEL_COUNT] ;
-} ;
+  private:
+    Project *project_;
+    ViewData *viewData_;
+
+    int soloFrom_, soloTo_;
+    bool soloMask_[SONG_CHANNEL_COUNT];
+};
 #endif

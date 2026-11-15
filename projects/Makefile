@@ -248,7 +248,7 @@ COMMONFILES := \
 	Application.o AppWindow.o SelectProjectDialog.o \
 	NewProjectDialog.o \
 	ImportSampleDialog.o SampleEditorDialog.o \
-	MixerView.o NullView.o \
+	MixerView.o FxView.o NullView.o \
 	SongView.o ChainView.o PhraseView.o ViewData.o ConsoleView.o ProjectView.o InstrumentView.o UIController.o \
 	View.o ModalView.o FieldView.o UIField.o UIIntField.o \
 	UIIntVarOffField.o UIIntVarField.o ViewEvent.o I_Action.o\
@@ -267,7 +267,7 @@ COMMONFILES := \
 	AudioOut.o \
 	DummyAudioOut.o PlayerChannel.o AudioFileStreamer.o \
 	MixBus.o \
-	MixerService.o PlayerMixer.o \
+	MixerService.o ReverbBus.o PlayerMixer.o \
 	Service.o ServiceRegistry.o SubService.o \
 	Variable.o VariableContainer.o WatchedVariable.o \
 	SoundFontPreset.o SoundFontManager.o SoundFontSample.o \
@@ -468,6 +468,12 @@ W32FILES := \
 TARGET		:=	$(TITLE)
 BUILD		:=	build$(PLATFORM)
 SOURCES		:=	$($(PLATFORM)DIRS) $(COMMONDIRS)
+CXXFLAGS += -isystem $(PWD)/../sources/Externals/Mutable
+
+# The desktop main build includes both sampler and Plaits instruments.
+ifeq ($(PLATFORM),X64)
+include $(PWD)/Makefile.plaits
+endif
 INCLUDES	:=
 
 #---------------------------------------------------------------------------------
@@ -573,3 +579,6 @@ deploy:
 #	make PLATFORM=RS97
 #	make PLATFORM=RG35XX
 	./resources/packaging/lgpt_package.sh
+
+# Clouds is a real-time DSP even in the desktop debug configuration.
+ReverbBus.o: CXXFLAGS += -O2
