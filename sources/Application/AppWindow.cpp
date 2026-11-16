@@ -338,18 +338,6 @@ void AppWindow::Flush() {
         GUIWindow::SetColor(color);
         GetImpWindow()->DrawRect(pixelRects_[i].rect);
     }
-    if (SupportsPixelRects() && (count || !pixelRects_.empty())) {
-        // Draw last so the canvas boundary remains visible after text updates.
-        GUIRect canvas = GetRect();
-        GUIRect edges[] = {
-            GUIRect(0, 0, canvas.Width(), 1),
-            GUIRect(0, canvas.Height() - 1, canvas.Width(), canvas.Height()),
-            GUIRect(0, 0, 1, canvas.Height()),
-            GUIRect(canvas.Width() - 1, 0, canvas.Width(), canvas.Height())};
-        GUIWindow::SetColor(borderColor_);
-        for (int i = 0; i < 4; ++i)
-            GetImpWindow()->DrawRect(edges[i]);
-    }
     long flushEnd = System::GetInstance()->GetClock();
     GUIWindow::Flush();
     Unlock();

@@ -1,9 +1,10 @@
 Unreleased
+    Hide velocity on empty notes and remember the last note velocity, initially 64 hex.
     Add per-note phrase velocity (00-7F), independent of mixer volume, including MIDI.
     Expand SDL2 builds to twelve tracks on a 480 x 270 canvas, with a 60-column UI.
     Preserve an eight-track projection in saved songs for legacy readers.
     Move the navigation map beside the bottom note indicators and shift views left.
-    Outline the SDL/SDL2 canvas and fit SDL2 fullscreen without clipping, centered.
+    Fit SDL2 fullscreen without clipping, centered, without an outer canvas border.
     Fix Mixer B+A to disable the selected HPF/LPF instead of resetting volume.
     Match Solo to Mute key-release behavior: release A first for temporary
     solo, or X first to latch; apply the same gestures in the Mixer view.

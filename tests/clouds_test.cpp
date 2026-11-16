@@ -322,6 +322,7 @@ class TestPhraseView : public PhraseView {
     TestPhraseView(GUIWindow &w, ViewData *d) : PhraseView(w, d) {}
     using PhraseView::cutPosition;
     using PhraseView::pasteClipboard;
+    using PhraseView::pasteLast;
     using PhraseView::updateCursor;
 };
 
@@ -458,6 +459,8 @@ static void TestViews() {
     player->SetSequencerMode(SM_LIVE);
     data.currentPhrase_ = 0;
     TestPhraseView phrase(window, &data);
+    phrase.pasteLast();
+    assert(data.song_->phrase_->velocity_[0] == 100);
     phrase.updateCursor(1, 0);
     unsigned char &velocity = data.song_->phrase_->velocity_[0];
     velocity = 0x40;
@@ -469,6 +472,10 @@ static void TestViews() {
     assert(velocity == 0x41);
     phrase.ProcessButtonMask(EPBM_A | EPBM_LEFT, true);
     assert(velocity == 0x40);
+    phrase.updateCursor(-1, 1);
+    phrase.pasteLast();
+    assert(data.song_->phrase_->velocity_[1] == 0x40);
+    phrase.updateCursor(1, -1);
     velocity = 127;
     phrase.ProcessButtonMask(EPBM_A | EPBM_UP, true);
     assert(velocity == 127);

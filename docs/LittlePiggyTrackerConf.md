@@ -102,8 +102,7 @@ Other display backends retain eight tracks.
 
 Fullscreen uses the native desktop resolution and scales the canvas
 proportionally to fit, centered with equal margins on opposite sides.
-`SCREENMULT` applies to windowed mode. A thin rectangle in the configured
-`BORDER` colour marks the complete canvas on SDL/SDL2 displays.
+`SCREENMULT` applies to windowed mode.
 The navigation map sits beside the playing-note indicators at the bottom.
 
 Existing eight-track projects load with four empty additional tracks and default
@@ -692,6 +691,9 @@ The `Vl` column immediately after the note sets its velocity from `00` to `7F`
 silences the note. Mixer volume remains independent. MIDI note velocity is
 scaled by the MIDI instrument volume.
 
-Old projects default to `7F`. Velocity is saved per phrase row and included in
+Empty note slots show `--` in the velocity column and cannot edit
+velocity. New notes start at `64` (100 decimal), then inherit the velocity of
+the last note entered or edited in the Phrase view.
+Old projects without velocity data retain `7F` for playback compatibility. Velocity is saved per phrase row and included in
 selection copy/paste, cutting, interpolation and phrase cloning. Older versions
 ignore velocity data and discard it when saving.

@@ -55,6 +55,7 @@ class PhraseView : public View {
     int row_;
     int col_;
     int lastNote_;
+    int lastVelocity_;
     int lastInstr_;
     int lastCmd_;
     int lastParam_;

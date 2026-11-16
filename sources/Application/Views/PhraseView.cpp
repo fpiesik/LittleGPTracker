@@ -33,6 +33,7 @@ PhraseView::PhraseView(GUIWindow &w, ViewData *viewData)
     viewData->phraseCurPos_ = 0;
     col_ = 0;
     lastNote_ = 60;
+    lastVelocity_ = 100;
     lastInstr_ = 0;
     lastCmd_ = I_CMD_NONE;
     lastParam_ = 0;
@@ -170,6 +171,9 @@ void PhraseView::updateCursorValue(ViewUpdateDirection direction, int xOffset,
 
     switch (col_ + xOffset) {
     case 1:
+        if (phrase_->note_[16 * viewData_->currentPhrase_ + row_ + yOffset] ==
+            0xFF)
+            return;
         c = phrase_->velocity_ + 16 * viewData_->currentPhrase_ + row_ +
             yOffset;
         limit = 127;
@@ -270,6 +274,9 @@ void PhraseView::updateCursorValue(ViewUpdateDirection direction, int xOffset,
             }
         }
         updateData(c, offset, limit, wrap);
+        int index = 16 * viewData_->currentPhrase_ + row_ + yOffset;
+        if (col_ + xOffset <= 2 && phrase_->note_[index] != 0xFF)
+            lastVelocity_ = phrase_->velocity_[index];
         switch (col_ + xOffset) {
         case 0:
             lastNote_ = *c;
@@ -310,11 +317,15 @@ void PhraseView::pasteLast() {
         c = phrase_->note_ + (16 * viewData_->currentPhrase_ + row_);
         if ((*c == 0xFF)) {
             *c = lastNote_;
+            phrase_->velocity_[16 * viewData_->currentPhrase_ + row_] =
+                lastVelocity_;
             c = phrase_->instr_ + (16 * viewData_->currentPhrase_ + row_);
             *c = lastInstr_;
             isDirty_ = true;
         } else {
             lastNote_ = *c;
+            lastVelocity_ =
+                phrase_->velocity_[16 * viewData_->currentPhrase_ + row_];
             c = phrase_->instr_ + (16 * viewData_->currentPhrase_ + row_);
             lastInstr_ = *c;
         }
@@ -1338,9 +1349,13 @@ void PhraseView::DrawView() {
     for (int j = 0; j < 16; ++j) {
         setTextProps(props, 1, j, false);
         SetColor(CD_NORMAL);
-        hex2char(phrase_->velocity_[16 * viewData_->currentPhrase_ + j],
-                 buffer);
-        DrawString(pos._x, pos._y++, buffer, props);
+        int index = 16 * viewData_->currentPhrase_ + j;
+        if (phrase_->note_[index] == 0xFF) {
+            DrawString(pos._x, pos._y++, "--", props);
+        } else {
+            hex2char(phrase_->velocity_[index], buffer);
+            DrawString(pos._x, pos._y++, buffer, props);
+        }
         setTextProps(props, 1, j, true);
     }
 

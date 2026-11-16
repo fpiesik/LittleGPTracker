@@ -7,7 +7,7 @@ Phrase::Phrase() {
 
 	int size=PHRASE_COUNT*16 ; // PHRASE_COUNT phrases of 0x10 steps
     velocity_ = (uchar *)SYS_MALLOC(size);
-    memset(velocity_, 127, size);
+    memset(velocity_, 100, size);
     note_=(unsigned char *)SYS_MALLOC(size) ;
 	memset(note_,0xFF,size) ;
 	instr_=(unsigned char *)SYS_MALLOC(size) ;
