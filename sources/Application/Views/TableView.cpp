@@ -1,4 +1,5 @@
 #include "TableView.h"
+#include "Application/Controllers/Shortcuts.h"
 #include "Application/Instruments/CommandList.h"
 #include "Application/Player/TablePlayback.h"
 #include "Application/Utils/HelpLegend.h"
@@ -617,170 +618,136 @@ void TableView::ProcessButtonMask(unsigned short mask, bool pressed) {
 }
 
 void TableView::processNormalButtonMask(unsigned short mask) {
-
+    const Shortcuts &shortcuts = Shortcuts::Get();
     Player *player = Player::GetInstance();
-
-    if (mask & EPBM_B) {
-        if (mask & EPBM_LEFT)
-            warpToNeighbour(-1);
-        if (mask & EPBM_RIGHT)
-            warpToNeighbour(+1);
-        if (mask & EPBM_DOWN)
-            warpToNeighbour(-16);
-        if (mask & EPBM_UP)
-            warpToNeighbour(16);
-        if (mask & EPBM_A)
-            cutPosition();
-        if (mask & EPBM_L)
-            viewMode_ = VM_SELECTION;
-
-    } else {
-
-        // A modifier
-
-        if (mask & EPBM_A) {
-            if (mask & EPBM_DOWN) {
-                if (isCommandColumn())
-                    enterCommandSelector();
-                else
-                    updateCursorValue(-0x10);
-            }
-            if (mask & EPBM_UP) {
-                if (isCommandColumn())
-                    enterCommandSelector();
-                else
-                    updateCursorValue(0x10);
-            }
-            if (mask & EPBM_LEFT)
-                updateCursorValue(-0x01);
-            if (mask & EPBM_RIGHT)
-                updateCursorValue(0x01);
-            if (mask == EPBM_A)
-                pasteLast();
-            if (mask & EPBM_L)
-                pasteClipboard();
-        } else {
-
-            // R Modifier
-
-            if (mask & EPBM_R) {
-                if (mask & EPBM_UP) {
-                    ViewType vt =
-                        (viewType_ == VT_TABLE ? VT_PHRASE : VT_INSTRUMENT);
-                    ViewEvent ve(VET_SWITCH_VIEW, &vt);
-                    SetChanged();
-                    NotifyObservers(&ve);
-                }
-                if (mask & EPBM_LEFT) {
-                    if (viewType_ == VT_TABLE2) {
-                        ViewType vt = VT_TABLE;
-                        ViewEvent ve(VET_SWITCH_VIEW, &vt);
-                        SetChanged();
-                        NotifyObservers(&ve);
-                    } else if (VT_TABLE) {
-                        ViewType vt = VT_MIXER;
-                        ViewEvent ve(VET_SWITCH_VIEW, &vt);
-                        SetChanged();
-                        NotifyObservers(&ve);
-                    }
-                }
-                if (mask & EPBM_RIGHT) {
-                    if (viewType_ == VT_TABLE) {
-                        ViewType vt = VT_TABLE2;
-                        ViewEvent ve(VET_SWITCH_VIEW, &vt);
-                        SetChanged();
-                        NotifyObservers(&ve);
-                    }
-                }
-                if (mask & EPBM_START) {
-                    player->OnStartButton(PM_PHRASE, viewData_->songX_, true,
-                                          viewData_->chainRow_);
-                }
-
-            } else {
-                // L MOdifier
-                if (mask & EPBM_R) {
-                } else {
-
-                    // No modifier
-
-                    if (mask & EPBM_DOWN)
-                        updateCursor(0, 1);
-                    if (mask & EPBM_UP)
-                        updateCursor(0, -1);
-                    if (mask & EPBM_LEFT)
-                        updateCursor(-1, 0);
-                    if (mask & EPBM_RIGHT)
-                        updateCursor(1, 0);
-                    if (mask & EPBM_START) {
-                        player->OnStartButton(PM_PHRASE, viewData_->songX_,
-                                              false, viewData_->chainRow_);
-                    }
-                }
-            }
+    if (shortcuts.Matches(Shortcuts::TablePrevious, mask, true)) {
+        warpToNeighbour(-1);
+    }
+    if (shortcuts.Matches(Shortcuts::TableNext, mask, true)) {
+        warpToNeighbour(1);
+    }
+    if (shortcuts.Matches(Shortcuts::TablePrevious16, mask, true)) {
+        warpToNeighbour(-16);
+    }
+    if (shortcuts.Matches(Shortcuts::TableNext16, mask, true)) {
+        warpToNeighbour(16);
+    }
+    if (shortcuts.Matches(Shortcuts::TableCut, mask, true)) {
+        cutPosition();
+    }
+    if (shortcuts.Matches(Shortcuts::TableSelect, mask, true)) {
+        viewMode_ = VM_SELECTION;
+    }
+    if (shortcuts.Matches(Shortcuts::TableDecreaseCoarse, mask, true)) {
+        if (isCommandColumn())
+            enterCommandSelector();
+        else
+            updateCursorValue(-16);
+    }
+    if (shortcuts.Matches(Shortcuts::TableIncreaseCoarse, mask, true)) {
+        if (isCommandColumn())
+            enterCommandSelector();
+        else
+            updateCursorValue(16);
+    }
+    if (shortcuts.Matches(Shortcuts::TableDecreaseFine, mask, true)) {
+        updateCursorValue(-1);
+    }
+    if (shortcuts.Matches(Shortcuts::TableIncreaseFine, mask, true)) {
+        updateCursorValue(1);
+    }
+    if (shortcuts.Matches(Shortcuts::TableInsert, mask, true)) {
+        pasteLast();
+    }
+    if (shortcuts.Matches(Shortcuts::TablePaste, mask, true)) {
+        pasteClipboard();
+    }
+    if (shortcuts.Matches(Shortcuts::TableParent, mask, true)) {
+        ViewType vt = (viewType_ == VT_TABLE ? VT_PHRASE : VT_INSTRUMENT);
+        ViewEvent ve(VET_SWITCH_VIEW, &vt);
+        SetChanged();
+        NotifyObservers(&ve);
+    }
+    if (shortcuts.Matches(Shortcuts::TableViewLeft, mask, true)) {
+        ViewType vt = (viewType_ == VT_TABLE2 ? VT_TABLE : VT_MIXER);
+        ViewEvent ve(VET_SWITCH_VIEW, &vt);
+        SetChanged();
+        NotifyObservers(&ve);
+    }
+    if (shortcuts.Matches(Shortcuts::TableViewRight, mask, true)) {
+        if (viewType_ == VT_TABLE) {
+            ViewType vt = VT_TABLE2;
+            ViewEvent ve(VET_SWITCH_VIEW, &vt);
+            SetChanged();
+            NotifyObservers(&ve);
         }
+    }
+    if (shortcuts.Matches(Shortcuts::TablePlayFromStart, mask, true)) {
+        player->OnStartButton(PM_PHRASE, viewData_->songX_, true,
+                              viewData_->chainRow_);
+    }
+    if (shortcuts.Matches(Shortcuts::TableDown, mask, true)) {
+        updateCursor(0, 1);
+    }
+    if (shortcuts.Matches(Shortcuts::TableUp, mask, true)) {
+        updateCursor(0, -1);
+    }
+    if (shortcuts.Matches(Shortcuts::TableLeft, mask, true)) {
+        updateCursor(-1, 0);
+    }
+    if (shortcuts.Matches(Shortcuts::TableRight, mask, true)) {
+        updateCursor(1, 0);
+    }
+    if (shortcuts.Matches(Shortcuts::TablePlay, mask, true)) {
+        player->OnStartButton(PM_PHRASE, viewData_->songX_, false,
+                              viewData_->chainRow_);
     }
 }
 
 void TableView::processSelectionButtonMask(unsigned short mask) {
-
+    const Shortcuts &shortcuts = Shortcuts::Get();
     Player *player = Player::GetInstance();
-
-    if (mask & EPBM_B) {
-        if (mask & EPBM_L) {
-            extendSelection();
-        } else if (mask & EPBM_R) {
-            interpolateSelection();
-        } else {
-            copySelection();
-        }
-    } else {
-
-        // A Modifer
-
-        if (mask & EPBM_A) {
-            if (mask & EPBM_L)
-                cutSelection();
-            //		if (mask&EPBM_R) switchSoloMode() ;
-        } else {
-
-            // R Modifier
-
-            if (mask & EPBM_R) {
-                if (mask & EPBM_UP) {
-                    ViewType vt = VT_PHRASE;
-                    ViewEvent ve(VET_SWITCH_VIEW, &vt);
-                    SetChanged();
-                    NotifyObservers(&ve);
-                }
-                if (mask & EPBM_START) {
-                    player->OnStartButton(PM_PHRASE, viewData_->songX_, true,
-                                          viewData_->chainRow_);
-                }
-                /*			if (mask&EPBM_L) unMuteAll() ;
-                 */
-            } else {
-                // L Modifier
-                if (mask & EPBM_L) {
-
-                } else {
-                    // No modifier
-
-                    if (mask & EPBM_DOWN)
-                        updateCursor(0, 1);
-                    if (mask & EPBM_UP)
-                        updateCursor(0, -1);
-                    if (mask & EPBM_LEFT)
-                        updateCursor(-1, 0);
-                    if (mask & EPBM_RIGHT)
-                        updateCursor(1, 0);
-                    if (mask & EPBM_START) {
-                        player->OnStartButton(PM_PHRASE, viewData_->songX_,
-                                              false, viewData_->chainRow_);
-                    }
-                }
-            }
-        }
+    if (shortcuts.Matches(Shortcuts::TableSelectionExtend, mask, true)) {
+        extendSelection();
+        return;
+    }
+    if (shortcuts.Matches(Shortcuts::TableSelectionInterpolate, mask, true)) {
+        interpolateSelection();
+        return;
+    }
+    if (shortcuts.Matches(Shortcuts::TableSelectionCopy, mask, true)) {
+        copySelection();
+        return;
+    }
+    if (shortcuts.Matches(Shortcuts::TableSelectionCut, mask, true)) {
+        cutSelection();
+        return;
+    }
+    if (shortcuts.Matches(Shortcuts::TableSelectionParent, mask, true)) {
+        ViewType vt = VT_PHRASE;
+        ViewEvent ve(VET_SWITCH_VIEW, &vt);
+        SetChanged();
+        NotifyObservers(&ve);
+    }
+    if (shortcuts.Matches(Shortcuts::TableSelectionPlayFromStart, mask, true)) {
+        player->OnStartButton(PM_PHRASE, viewData_->songX_, true,
+                              viewData_->chainRow_);
+    }
+    if (shortcuts.Matches(Shortcuts::TableSelectionDown, mask, true)) {
+        updateCursor(0, 1);
+    }
+    if (shortcuts.Matches(Shortcuts::TableSelectionUp, mask, true)) {
+        updateCursor(0, -1);
+    }
+    if (shortcuts.Matches(Shortcuts::TableSelectionLeft, mask, true)) {
+        updateCursor(-1, 0);
+    }
+    if (shortcuts.Matches(Shortcuts::TableSelectionRight, mask, true)) {
+        updateCursor(1, 0);
+    }
+    if (shortcuts.Matches(Shortcuts::TableSelectionPlay, mask, true)) {
+        player->OnStartButton(PM_PHRASE, viewData_->songX_, false,
+                              viewData_->chainRow_);
     }
 }
 

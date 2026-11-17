@@ -1,5 +1,6 @@
 
 #include "GrooveView.h"
+#include "Application/Controllers/Shortcuts.h"
 #include "Application/Model/Groove.h"
 #include "Application/Utils/char.h"
 
@@ -53,82 +54,69 @@ void GrooveView::clearCursorValue() {
 	unsigned char *grooveData=Groove::GetInstance()->GetGrooveData(viewData_->currentGroove_) ;
 	grooveData[position_]=NO_GROOVE_DATA ;
 	isDirty_=true ;
-}	
+}
 
-void GrooveView::ProcessButtonMask(unsigned short mask,bool pressed) {
-
-	if (!pressed) return ;
-	
-	Player *player=Player::GetInstance() ;
-
-	if (mask&EPBM_B) {         
-			if (mask&EPBM_LEFT) {
-				warpGroove(-1) ;
-			}
-			if (mask&EPBM_RIGHT) {
-				warpGroove(1) ;
-			}
-			if (mask&EPBM_DOWN) {
-				warpGroove(-0x10) ;
-			}
-			if (mask&EPBM_UP) {
-				warpGroove(0x10) ;
-			}
-			if (mask&EPBM_A) {
-				clearCursorValue() ;
-			} ;
-	} else {
-
-	  // A modifier
-	  if (mask&EPBM_A) {         
-			if (mask&EPBM_LEFT) {
-				updateCursorValue(-1) ;
-			}
-			if (mask&EPBM_RIGHT) {
-				updateCursorValue(1) ;
-			}
-			if (mask&EPBM_DOWN) {
-				updateCursorValue(-1,true) ;
-			}
-			if (mask&EPBM_UP) {
-				updateCursorValue(1,true) ;
-			}
-			if (mask==EPBM_A) {
-				initCursorValue() ;
-			} ;
-	  } else {
-		  // R Modifier
-
-          	if (mask&EPBM_R) {
-				if (mask&EPBM_DOWN) {
-					ViewType vt=VT_PHRASE;
-					ViewEvent ve(VET_SWITCH_VIEW,&vt) ;
-					SetChanged();
-					NotifyObservers(&ve) ;
-				}
-				if (mask&EPBM_START) {
-					player->OnStartButton(PM_PHRASE,viewData_->songX_,true,viewData_->chainRow_) ;
-    			}			
-
-	    	} else {
-                // No modifier
-    			if (mask&EPBM_DOWN) updateCursor(1) ;
-    			if (mask&EPBM_UP) updateCursor(-1) ;
-    			if (mask&EPBM_START) {
-					player->OnStartButton(PM_PHRASE,viewData_->songX_,false,viewData_->chainRow_) ;
-    			}
-		    }
-	  } 
-	    
-	}
-} ;
+void GrooveView::ProcessButtonMask(unsigned short mask, bool pressed) {
+    const Shortcuts &shortcuts = Shortcuts::Get();
+    Player *player = Player::GetInstance();
+    if (shortcuts.Matches(Shortcuts::GroovePrevious, mask, pressed)) {
+        warpGroove(-1);
+    }
+    if (shortcuts.Matches(Shortcuts::GrooveNext, mask, pressed)) {
+        warpGroove(1);
+    }
+    if (shortcuts.Matches(Shortcuts::GroovePrevious16, mask, pressed)) {
+        warpGroove(-0x10);
+    }
+    if (shortcuts.Matches(Shortcuts::GrooveNext16, mask, pressed)) {
+        warpGroove(0x10);
+    }
+    if (shortcuts.Matches(Shortcuts::GrooveClear, mask, pressed)) {
+        clearCursorValue();
+    }
+    if (shortcuts.Matches(Shortcuts::GrooveDecrease, mask, pressed)) {
+        updateCursorValue(-1);
+    }
+    if (shortcuts.Matches(Shortcuts::GrooveIncrease, mask, pressed)) {
+        updateCursorValue(1);
+    }
+    if (shortcuts.Matches(Shortcuts::GrooveDecreaseSync, mask, pressed)) {
+        updateCursorValue(-1, true);
+    }
+    if (shortcuts.Matches(Shortcuts::GrooveIncreaseSync, mask, pressed)) {
+        updateCursorValue(1, true);
+    }
+    if (shortcuts.Matches(Shortcuts::GrooveInsert, mask, pressed)) {
+        initCursorValue();
+    }
+    if (shortcuts.Matches(Shortcuts::GroovePhrase, mask, pressed)) {
+        ViewType vt = VT_PHRASE;
+        ViewEvent ve(VET_SWITCH_VIEW, &vt);
+        SetChanged();
+        NotifyObservers(&ve);
+    }
+    if (shortcuts.Matches(Shortcuts::GroovePlayFromStart, mask, pressed)) {
+        player->OnStartButton(PM_PHRASE, viewData_->songX_, true,
+                              viewData_->chainRow_);
+    }
+    if (shortcuts.Matches(Shortcuts::GrooveDown, mask, pressed)) {
+        updateCursor(1);
+    }
+    if (shortcuts.Matches(Shortcuts::GrooveUp, mask, pressed)) {
+        updateCursor(-1);
+    }
+    if (shortcuts.Matches(Shortcuts::GroovePlay, mask, pressed)) {
+        player->OnStartButton(PM_PHRASE, viewData_->songX_, false,
+                              viewData_->chainRow_);
+    }
+}
 
 void GrooveView::DrawView() {
 
-	Clear() ;
+    Clear();
 
-	GUITextProperties props ;
-	GUIPoint pos=GetTitlePosition() ;
+    GUITextProperties props;
+    GUIPoint pos=GetTitlePosition() ;
 
 // Draw title
 
@@ -184,7 +172,7 @@ void GrooveView::DrawView() {
 
 	drawMap() ;
 	drawNotes() ;
-} ;
+};
 
 void GrooveView::OnPlayerUpdate(PlayerEventType ,unsigned int tick) {
 

@@ -1,4 +1,23 @@
 Unreleased
+    Make Instrument slot changes, Phrase/Table navigation and playback shortcuts editable.
+    Make Project settings controls editable, including tap tempo, tempo nudges and playback.
+    Make sample editor controls configurable, including short-tap execution.
+    Make Linux X64 recording controls editable, from Song capture to take confirmation.
+    Refresh the sample browser immediately when entering or leaving a folder.
+    Make sample browser navigation, preview and import shortcuts editable.
+    Make confirmation dialog navigation and acceptance configurable on press and release.
+    Make the new project name dialog and its on-screen keyboard configurable in shortcuts.xml.
+    Make startup project picker controls editable and wrap page jumps in short lists.
+    Make command selector navigation, confirm and cancel editable in shortcuts.xml.
+    Extend shortcuts.xml to Chain editing, selection, next-unused/clone sequences,
+    and Mute/Solo release bindings; consume remapped sequence keys correctly.
+    Extend shortcuts.xml to both Table views, including selection expansion,
+    interpolation, copy/cut/paste, command selection and hexadecimal digit editing.
+    Extend shortcuts.xml to FX navigation, parameter adjustments/reset, and playback.
+    Extend shortcuts.xml to Mixer controls, including temporary/latching
+    Mute/Solo release bindings and independent value adjustment shortcuts.
+    Begin editable shortcuts.xml support with all Groove view actions.
+    Validate bindings before applying them and retain defaults for missing files.
     Hide velocity on empty notes and remember the last note velocity, initially 64 hex.
     Add per-note phrase velocity (00-7F), independent of mixer volume, including MIDI.
     Expand SDL2 builds to twelve tracks on a 480 x 270 canvas, with a 60-column UI.

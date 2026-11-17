@@ -1,0 +1,245 @@
+<?xml version="1.0"?>
+<!-- Editable controls for tracker views and dialogs. See docs/Shortcuts.md for coverage.
+     Logical buttons come from mapping.xml/config.xml.
+     keys must all be held; exclude must all be absent.
+     Matching actions follow each view's established priority; see documentation. -->
+<SHORTCUTS version="1">
+    <BIND action="groove.previous" keys="B+LEFT" exclude="" event="press" />
+    <BIND action="groove.next" keys="B+RIGHT" exclude="" event="press" />
+    <BIND action="groove.previous_16" keys="B+DOWN" exclude="" event="press" />
+    <BIND action="groove.next_16" keys="B+UP" exclude="" event="press" />
+    <BIND action="groove.clear" keys="B+A" exclude="" event="press" />
+    <BIND action="groove.decrease" keys="A+LEFT" exclude="B" event="press" />
+    <BIND action="groove.increase" keys="A+RIGHT" exclude="B" event="press" />
+    <BIND action="groove.decrease_sync" keys="A+DOWN" exclude="B" event="press" />
+    <BIND action="groove.increase_sync" keys="A+UP" exclude="B" event="press" />
+    <BIND action="groove.insert" keys="A" exclude="LEFT+DOWN+RIGHT+UP+L+B+R+START+SELECT" event="press" />
+    <BIND action="groove.phrase" keys="R+DOWN" exclude="A+B" event="press" />
+    <BIND action="groove.play_from_start" keys="R+START" exclude="A+B" event="press" />
+    <BIND action="groove.down" keys="DOWN" exclude="A+B+R" event="press" />
+    <BIND action="groove.up" keys="UP" exclude="A+B+R" event="press" />
+    <BIND action="groove.play" keys="START" exclude="A+B+R" event="press" />
+    <!-- Mixer press bindings and state-dependent release bindings. -->
+    <BIND action="mixer.mute" keys="R+B" exclude="" event="press" />
+    <BIND action="mixer.solo" keys="R+A" exclude="B" event="press" />
+    <BIND action="mixer.unmute_all" keys="R+L" exclude="B+A" event="press" />
+    <BIND action="mixer.previous_view" keys="R+UP" exclude="B+A+L" event="press" />
+    <BIND action="mixer.fx" keys="R+DOWN" exclude="B+A+L+UP" event="press" />
+    <BIND action="mixer.table" keys="R+RIGHT" exclude="B+A+L+UP+DOWN" event="press" />
+    <BIND action="mixer.play_from_start" keys="R+START" exclude="B+A+L+UP+DOWN+RIGHT" event="press" />
+    <BIND action="mixer.clear" keys="B+A" exclude="R" event="press" />
+    <BIND action="mixer.edit" keys="A" exclude="B+R" event="press" />
+    <BIND action="mixer.increase_coarse" keys="A+UP" exclude="B+R" event="press" />
+    <BIND action="mixer.decrease_coarse" keys="A+DOWN" exclude="B+R" event="press" />
+    <BIND action="mixer.increase_fine" keys="A+RIGHT" exclude="B+R" event="press" />
+    <BIND action="mixer.decrease_fine" keys="A+LEFT" exclude="B+R" event="press" />
+    <BIND action="mixer.up" keys="UP" exclude="A+B+R" event="press" />
+    <BIND action="mixer.down" keys="DOWN" exclude="A+B+R" event="press" />
+    <BIND action="mixer.left" keys="LEFT" exclude="A+B+R" event="press" />
+    <BIND action="mixer.right" keys="RIGHT" exclude="A+B+R" event="press" />
+    <BIND action="mixer.play" keys="START" exclude="A+B+R" event="press" />
+    <BIND action="mixer.selection_play_from_start" keys="R+START" exclude="A+B" event="press" />
+    <BIND action="mixer.selection_play" keys="START" exclude="A+B+R" event="press" />
+    <BIND action="mixer.mute_release" keys="R" exclude="" event="release" />
+    <BIND action="mixer.solo_release" keys="R" exclude="" event="release" />
+    <!-- FX view (Clouds reverb). -->
+    <BIND action="fx.mixer" keys="R+UP" exclude="" event="press" />
+    <BIND action="fx.play_from_start" keys="R+START" exclude="UP" event="press" />
+    <BIND action="fx.reset" keys="B+A" exclude="R" event="press" />
+    <BIND action="fx.play" keys="START" exclude="R+B" event="press" />
+    <BIND action="fx.decrease_coarse" keys="A+DOWN" exclude="R+B+START" event="press" />
+    <BIND action="fx.increase_coarse" keys="A+UP" exclude="R+B+START" event="press" />
+    <BIND action="fx.decrease_fine" keys="A+LEFT" exclude="R+B+START" event="press" />
+    <BIND action="fx.increase_fine" keys="A+RIGHT" exclude="R+B+START" event="press" />
+    <BIND action="fx.down" keys="DOWN" exclude="A+B+L+R+SELECT+START" event="press" />
+    <BIND action="fx.up" keys="UP" exclude="A+B+L+R+SELECT+START" event="press" />
+    <BIND action="fx.right" keys="RIGHT" exclude="A+B+L+R+SELECT+START" event="press" />
+    <BIND action="fx.left" keys="LEFT" exclude="A+B+L+R+SELECT+START" event="press" />
+    <!-- Both Table contexts; selection bindings apply only in selection mode. -->
+    <BIND action="table.previous" keys="B+LEFT" exclude="" event="press" />
+    <BIND action="table.next" keys="B+RIGHT" exclude="" event="press" />
+    <BIND action="table.previous16" keys="B+DOWN" exclude="" event="press" />
+    <BIND action="table.next16" keys="B+UP" exclude="" event="press" />
+    <BIND action="table.cut" keys="B+A" exclude="" event="press" />
+    <BIND action="table.select" keys="B+L" exclude="" event="press" />
+    <BIND action="table.decrease_coarse" keys="A+DOWN" exclude="B" event="press" />
+    <BIND action="table.increase_coarse" keys="A+UP" exclude="B" event="press" />
+    <BIND action="table.decrease_fine" keys="A+LEFT" exclude="B" event="press" />
+    <BIND action="table.increase_fine" keys="A+RIGHT" exclude="B" event="press" />
+    <BIND action="table.insert" keys="A" exclude="LEFT+DOWN+RIGHT+UP+L+B+R+START+SELECT" event="press" />
+    <BIND action="table.paste" keys="A+L" exclude="B" event="press" />
+    <BIND action="table.parent" keys="R+UP" exclude="A+B" event="press" />
+    <BIND action="table.view_left" keys="R+LEFT" exclude="A+B" event="press" />
+    <BIND action="table.view_right" keys="R+RIGHT" exclude="A+B" event="press" />
+    <BIND action="table.play_from_start" keys="R+START" exclude="A+B" event="press" />
+    <BIND action="table.down" keys="DOWN" exclude="A+B+R" event="press" />
+    <BIND action="table.up" keys="UP" exclude="A+B+R" event="press" />
+    <BIND action="table.left" keys="LEFT" exclude="A+B+R" event="press" />
+    <BIND action="table.right" keys="RIGHT" exclude="A+B+R" event="press" />
+    <BIND action="table.play" keys="START" exclude="A+B+R" event="press" />
+    <BIND action="table.selection_extend" keys="B+L" exclude="" event="press" />
+    <BIND action="table.selection_interpolate" keys="B+R" exclude="L" event="press" />
+    <BIND action="table.selection_copy" keys="B" exclude="L+R" event="press" />
+    <BIND action="table.selection_cut" keys="A+L" exclude="B" event="press" />
+    <BIND action="table.selection_parent" keys="R+UP" exclude="A+B" event="press" />
+    <BIND action="table.selection_play_from_start" keys="R+START" exclude="A+B" event="press" />
+    <BIND action="table.selection_down" keys="DOWN" exclude="A+B+R+L" event="press" />
+    <BIND action="table.selection_up" keys="UP" exclude="A+B+R+L" event="press" />
+    <BIND action="table.selection_left" keys="LEFT" exclude="A+B+R+L" event="press" />
+    <BIND action="table.selection_right" keys="RIGHT" exclude="A+B+R+L" event="press" />
+    <BIND action="table.selection_play" keys="START" exclude="A+B+R+L" event="press" />
+    <!-- Chain: normal, selection, and state-dependent sequence bindings. -->
+    <BIND action="chain.previous_channel" keys="B+LEFT" exclude="" event="press" />
+    <BIND action="chain.next_channel" keys="B+RIGHT" exclude="" event="press" />
+    <BIND action="chain.previous_chain" keys="B+UP" exclude="" event="press" />
+    <BIND action="chain.next_chain" keys="B+DOWN" exclude="" event="press" />
+    <BIND action="chain.cut" keys="B+A" exclude="" event="press" />
+    <BIND action="chain.begin_clone_selection" keys="B+L" exclude="" event="press" />
+    <BIND action="chain.mute" keys="B+R" exclude="" event="press" />
+    <BIND action="chain.decrease_coarse" keys="A+DOWN" exclude="B" event="press" />
+    <BIND action="chain.increase_coarse" keys="A+UP" exclude="B" event="press" />
+    <BIND action="chain.decrease_fine" keys="A+LEFT" exclude="B" event="press" />
+    <BIND action="chain.increase_fine" keys="A+RIGHT" exclude="B" event="press" />
+    <BIND action="chain.paste" keys="A+L" exclude="B" event="press" />
+    <BIND action="chain.insert" keys="A" exclude="LEFT+DOWN+RIGHT+UP+L+B+R+START+SELECT" event="press" />
+    <BIND action="chain.solo" keys="A+R" exclude="B" event="press" />
+    <BIND action="chain.song" keys="R+LEFT" exclude="A+B" event="press" />
+    <BIND action="chain.phrase" keys="R+RIGHT" exclude="A+B" event="press" />
+    <BIND action="chain.mixer" keys="R+DOWN" exclude="A+B" event="press" />
+    <BIND action="chain.play_from_start" keys="R+START" exclude="A+B" event="press" />
+    <BIND action="chain.unmute_all" keys="R+L" exclude="A+B" event="press" />
+    <BIND action="chain.down" keys="DOWN" exclude="A+B+R+L" event="press" />
+    <BIND action="chain.up" keys="UP" exclude="A+B+R+L" event="press" />
+    <BIND action="chain.left" keys="LEFT" exclude="A+B+R+L" event="press" />
+    <BIND action="chain.right" keys="RIGHT" exclude="A+B+R+L" event="press" />
+    <BIND action="chain.play" keys="START" exclude="A+B+R+L" event="press" />
+    <BIND action="chain.selection_copy" keys="B" exclude="LEFT+DOWN+RIGHT+UP+L+A+R+START+SELECT" event="press" />
+    <BIND action="chain.selection_mute" keys="B+R" exclude="" event="press" />
+    <BIND action="chain.selection_extend" keys="B+L" exclude="" event="press" />
+    <BIND action="chain.selection_decrease_coarse" keys="A+DOWN" exclude="B" event="press" />
+    <BIND action="chain.selection_increase_coarse" keys="A+UP" exclude="B" event="press" />
+    <BIND action="chain.selection_decrease_fine" keys="A+LEFT" exclude="B" event="press" />
+    <BIND action="chain.selection_increase_fine" keys="A+RIGHT" exclude="B" event="press" />
+    <BIND action="chain.selection_cut" keys="A+L" exclude="B" event="press" />
+    <BIND action="chain.selection_solo" keys="A+R" exclude="B" event="press" />
+    <BIND action="chain.selection_song" keys="R+LEFT" exclude="A+B" event="press" />
+    <BIND action="chain.selection_phrase" keys="R+RIGHT" exclude="A+B" event="press" />
+    <BIND action="chain.selection_mixer" keys="R+DOWN" exclude="A+B" event="press" />
+    <BIND action="chain.selection_play_from_start" keys="R+START" exclude="A+B" event="press" />
+    <BIND action="chain.selection_unmute_all" keys="R+L" exclude="A+B" event="press" />
+    <BIND action="chain.selection_down" keys="DOWN" exclude="A+B+R" event="press" />
+    <BIND action="chain.selection_up" keys="UP" exclude="A+B+R" event="press" />
+    <BIND action="chain.selection_left" keys="LEFT" exclude="A+B+R" event="press" />
+    <BIND action="chain.selection_right" keys="RIGHT" exclude="A+B+R" event="press" />
+    <BIND action="chain.selection_play" keys="START" exclude="A+B+R" event="press" />
+    <BIND action="chain.next_unused" keys="A" exclude="LEFT+DOWN+RIGHT+UP+L+B+R+START+SELECT" event="press" />
+    <BIND action="chain.clone" keys="A+L" exclude="" event="press" />
+    <BIND action="chain.edit_hold" keys="A" exclude="" event="press" />
+    <BIND action="chain.mute_release" keys="R" exclude="" event="release" />
+    <BIND action="chain.solo_release" keys="R" exclude="" event="release" />
+    <!-- Command selector shared by Phrase and Table. First matching action wins. -->
+    <BIND action="command_selector.up" keys="UP" event="press" />
+    <BIND action="command_selector.down" keys="DOWN" event="press" />
+    <BIND action="command_selector.left" keys="LEFT" event="press" />
+    <BIND action="command_selector.right" keys="RIGHT" event="press" />
+    <BIND action="command_selector.confirm" keys="A" event="press" />
+    <BIND action="command_selector.cancel" keys="B" event="press" />
+    <!-- Startup project picker. Delete opens the confirmation dialog. -->
+    <BIND action="project_picker.delete_prompt" keys="B+A" exclude="" event="press" />
+    <BIND action="project_picker.page_up" keys="B+UP" exclude="A" event="press" />
+    <BIND action="project_picker.page_down" keys="B+DOWN" exclude="A" event="press" />
+    <BIND action="project_picker.activate" keys="A" exclude="B" event="press" />
+    <BIND action="project_picker.previous" keys="UP" exclude="LEFT+DOWN+RIGHT+L+B+A+R+START+SELECT" event="press" />
+    <BIND action="project_picker.next" keys="DOWN" exclude="LEFT+RIGHT+UP+L+B+A+R+START+SELECT" event="press" />
+    <BIND action="project_picker.left" keys="LEFT" exclude="DOWN+RIGHT+UP+L+B+A+R+START+SELECT" event="press" />
+    <BIND action="project_picker.right" keys="RIGHT" exclude="LEFT+DOWN+UP+L+B+A+R+START+SELECT" event="press" />
+    <!-- New project name dialog. keyboard_* applies inside the on-screen keyboard. -->
+    <BIND action="new_project.keyboard_input" keys="A" exclude="LEFT+DOWN+RIGHT+UP+L+B+R+START+SELECT" event="press" />
+    <BIND action="new_project.keyboard_erase" keys="B" exclude="LEFT+DOWN+RIGHT+UP+L+A+R+START+SELECT" event="press" />
+    <BIND action="new_project.keyboard_cursor_left" keys="L" exclude="LEFT+DOWN+RIGHT+UP+B+A+R+START+SELECT" event="press" />
+    <BIND action="new_project.keyboard_cursor_right" keys="R" exclude="LEFT+DOWN+RIGHT+UP+L+B+A+START+SELECT" event="press" />
+    <BIND action="new_project.keyboard_up" keys="UP" exclude="LEFT+DOWN+RIGHT+L+B+A+R+START+SELECT" event="press" />
+    <BIND action="new_project.keyboard_down" keys="DOWN" exclude="LEFT+RIGHT+UP+L+B+A+R+START+SELECT" event="press" />
+    <BIND action="new_project.keyboard_left" keys="LEFT" exclude="DOWN+RIGHT+UP+L+B+A+R+START+SELECT" event="press" />
+    <BIND action="new_project.keyboard_right" keys="RIGHT" exclude="LEFT+DOWN+UP+L+B+A+R+START+SELECT" event="press" />
+    <BIND action="new_project.keyboard_done" keys="START" exclude="LEFT+DOWN+RIGHT+UP+L+B+A+R+SELECT" event="press" />
+    <BIND action="new_project.activate" keys="A" exclude="LEFT+DOWN+RIGHT+UP+L+B+R+START+SELECT" event="press" />
+    <BIND action="new_project.increment" keys="A+UP" exclude="" event="press" />
+    <BIND action="new_project.decrement" keys="A+DOWN" exclude="" event="press" />
+    <BIND action="new_project.up" keys="UP" exclude="LEFT+DOWN+RIGHT+L+B+A+R+START+SELECT" event="press" />
+    <BIND action="new_project.down" keys="DOWN" exclude="LEFT+RIGHT+UP+L+B+A+R+START+SELECT" event="press" />
+    <BIND action="new_project.left" keys="LEFT" exclude="DOWN+RIGHT+UP+L+B+A+R+START+SELECT" event="press" />
+    <BIND action="new_project.right" keys="RIGHT" exclude="LEFT+DOWN+UP+L+B+A+R+START+SELECT" event="press" />
+    <!-- Confirmation dialogs also respond to keys still held after release. -->
+    <BIND action="message_box.confirm" keys="A" event="press" />
+    <BIND action="message_box.confirm_release" keys="A" event="release" />
+    <BIND action="message_box.left" keys="LEFT" event="press" />
+    <BIND action="message_box.right" keys="RIGHT" event="press" />
+    <BIND action="message_box.left_release" keys="LEFT" event="release" />
+    <BIND action="message_box.right_release" keys="RIGHT" event="release" />
+    <!-- Sample import browser -->
+    <BIND action="sample_browser.page_up" keys="B+UP" exclude="" event="press" />
+    <BIND action="sample_browser.page_down" keys="B+DOWN" exclude="" event="press" />
+    <BIND action="sample_browser.activate" keys="A" exclude="B" event="press" />
+    <BIND action="sample_browser.activate_previous" keys="A+UP" exclude="B" event="press" />
+    <BIND action="sample_browser.activate_next" keys="A+DOWN" exclude="B" event="press" />
+    <BIND action="sample_browser.preview" keys="START" exclude="A+B" event="press" />
+    <BIND action="sample_browser.preview_previous" keys="START+UP" exclude="A+B" event="press" />
+    <BIND action="sample_browser.preview_next" keys="START+DOWN" exclude="A+B" event="press" />
+    <BIND action="sample_browser.load" keys="START+RIGHT" exclude="A+B" event="press" />
+    <BIND action="sample_browser.parent" keys="START+LEFT" exclude="A+B" event="press" />
+    <BIND action="sample_browser.previous" keys="UP" exclude="LEFT+DOWN+RIGHT+L+B+A+R+START+SELECT" event="press" />
+    <BIND action="sample_browser.next" keys="DOWN" exclude="LEFT+RIGHT+UP+L+B+A+R+START+SELECT" event="press" />
+    <BIND action="sample_browser.left" keys="LEFT" exclude="DOWN+RIGHT+UP+L+B+A+R+START+SELECT" event="press" />
+    <BIND action="sample_browser.right" keys="RIGHT" exclude="LEFT+DOWN+UP+L+B+A+R+START+SELECT" event="press" />
+    <!-- Linux X64 recording controls -->
+    <BIND action="song.record" keys="SELECT+A" exclude="LEFT+DOWN+RIGHT+UP+L+B+R+START" event="press" />
+    <BIND action="record_options.left" keys="LEFT" exclude="DOWN+RIGHT+UP+L+B+A+R+START+SELECT" event="press" />
+    <BIND action="record_options.right" keys="RIGHT" exclude="LEFT+DOWN+UP+L+B+A+R+START+SELECT" event="press" />
+    <BIND action="record_options.toggle" keys="A" exclude="LEFT+DOWN+RIGHT+UP+L+B+R+START+SELECT" event="press" />
+    <BIND action="record_options.back" keys="B" exclude="LEFT+DOWN+RIGHT+UP+L+A+R+START+SELECT" event="press" />
+    <BIND action="record.cancel_count_in" keys="START" exclude="LEFT+DOWN+RIGHT+UP+L+B+A+R+SELECT" event="press" />
+    <BIND action="record.stop" keys="START" exclude="LEFT+DOWN+RIGHT+UP+L+B+A+R+SELECT" event="press" />
+    <BIND action="record.close" keys="A" exclude="LEFT+DOWN+RIGHT+UP+L+B+R+START+SELECT" event="press" />
+    <BIND action="record.back" keys="B" exclude="LEFT+DOWN+RIGHT+UP+L+A+R+START+SELECT" event="press" />
+    <BIND action="record.up" keys="UP" exclude="LEFT+DOWN+RIGHT+L+B+A+R+START+SELECT" event="press" />
+    <BIND action="record.down" keys="DOWN" exclude="LEFT+RIGHT+UP+L+B+A+R+START+SELECT" event="press" />
+    <BIND action="record.accept" keys="A" exclude="LEFT+DOWN+RIGHT+UP+L+B+R+START+SELECT" event="press" />
+    <!-- Sample editor: tap arms on press and executes on a short, clean release. -->
+    <BIND action="sample_editor.tap" keys="A" exclude="" event="press" />
+    <BIND action="sample_editor.exit" keys="B" exclude="LEFT+DOWN+RIGHT+UP+L+A+R+START+SELECT" event="press" />
+    <BIND action="sample_editor.preview" keys="START" exclude="LEFT+DOWN+RIGHT+UP+L+B+A+R+SELECT" event="press" />
+    <BIND action="sample_editor.zoom" keys="L" exclude="LEFT+DOWN+RIGHT+UP+B+A+R+START+SELECT" event="press" />
+    <BIND action="sample_editor.edit_up" keys="A+UP" exclude="" event="press" />
+    <BIND action="sample_editor.edit_down" keys="A+DOWN" exclude="" event="press" />
+    <BIND action="sample_editor.edit_left" keys="A+LEFT" exclude="" event="press" />
+    <BIND action="sample_editor.edit_right" keys="A+RIGHT" exclude="" event="press" />
+    <BIND action="sample_editor.down" keys="DOWN" exclude="LEFT+RIGHT+UP+L+B+A+R+START+SELECT" event="press" />
+    <BIND action="sample_editor.right" keys="RIGHT" exclude="LEFT+DOWN+UP+L+B+A+R+START+SELECT" event="press" />
+    <BIND action="sample_editor.up" keys="UP" exclude="LEFT+DOWN+RIGHT+L+B+A+R+START+SELECT" event="press" />
+    <BIND action="sample_editor.left" keys="LEFT" exclude="DOWN+RIGHT+UP+L+B+A+R+START+SELECT" event="press" />
+    <!-- Project settings. On Tempo, B taps and B+LEFT/RIGHT nudges. -->
+    <BIND action="project.activate" keys="A" exclude="LEFT+DOWN+RIGHT+UP+L+B+R+START+SELECT" event="press" />
+    <BIND action="project.tap_tempo" keys="B" exclude="LEFT+DOWN+RIGHT+UP+L+A+R+START+SELECT" event="press" />
+    <BIND action="project.down" keys="DOWN" exclude="A+B+L+R+SELECT+START" event="press" />
+    <BIND action="project.up" keys="UP" exclude="A+B+L+R+SELECT+START" event="press" />
+    <BIND action="project.left" keys="LEFT" exclude="A+B+L+R+SELECT+START" event="press" />
+    <BIND action="project.right" keys="RIGHT" exclude="A+B+L+R+SELECT+START" event="press" />
+    <BIND action="project.edit_down" keys="A+DOWN" exclude="" event="press" />
+    <BIND action="project.edit_up" keys="A+UP" exclude="" event="press" />
+    <BIND action="project.edit_left" keys="A+LEFT" exclude="" event="press" />
+    <BIND action="project.edit_right" keys="A+RIGHT" exclude="" event="press" />
+    <BIND action="project.nudge_down" keys="B+LEFT" exclude="A" event="press" />
+    <BIND action="project.nudge_up" keys="B+RIGHT" exclude="A" event="press" />
+    <BIND action="project.song" keys="R+DOWN" exclude="" event="press" />
+    <BIND action="project.play" keys="START" exclude="R" event="press" />
+    <!-- Instrument slot, view and playback controls -->
+    <BIND action="instrument.previous" keys="B+LEFT" exclude="" event="press" />
+    <BIND action="instrument.next" keys="B+RIGHT" exclude="" event="press" />
+    <BIND action="instrument.previous_16" keys="B+DOWN" exclude="" event="press" />
+    <BIND action="instrument.next_16" keys="B+UP" exclude="" event="press" />
+    <BIND action="instrument.phrase" keys="R+LEFT" exclude="B" event="press" />
+    <BIND action="instrument.table" keys="R+DOWN" exclude="B" event="press" />
+    <BIND action="instrument.play_from_start" keys="R+START" exclude="B" event="press" />
+    <BIND action="instrument.play" keys="START" exclude="B+R" event="press" />
+</SHORTCUTS>

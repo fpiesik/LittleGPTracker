@@ -1,4 +1,5 @@
 #include "FxView.h"
+#include "Application/Controllers/Shortcuts.h"
 #include "Application/Model/Mixer.h"
 #include "BaseClasses/UIIntVarField.h"
 
@@ -18,31 +19,58 @@ FxView::FxView(GUIWindow &window, ViewData *data) : FieldView(window, data) {
 void FxView::ProcessButtonMask(unsigned short mask, bool pressed) {
     if (!pressed)
         return;
-    if (mask & EPBM_R) {
-        if (mask & EPBM_UP) {
-            ViewType type = VT_MIXER;
-            ViewEvent event(VET_SWITCH_VIEW, &type);
-            SetChanged();
-            NotifyObservers(&event);
-        } else if (mask & EPBM_START) {
-            Player::GetInstance()->OnStartButton(PM_SONG, viewData_->songX_,
-                                                 true, viewData_->songX_);
-        }
+    const Shortcuts &shortcuts = Shortcuts::Get();
+    if (shortcuts.Matches(Shortcuts::FxMixer, mask, pressed)) {
+        ViewType type = VT_MIXER;
+        ViewEvent event(VET_SWITCH_VIEW, &type);
+        SetChanged();
+        NotifyObservers(&event);
         return;
     }
-    if (mask & EPBM_B) {
-        if ((mask & EPBM_A) && GetFocus()) {
+    if (shortcuts.Matches(Shortcuts::FxPlayFromStart, mask, pressed)) {
+        Player::GetInstance()->OnStartButton(PM_SONG, viewData_->songX_, true,
+                                             viewData_->songX_);
+        return;
+    }
+    if (shortcuts.Matches(Shortcuts::FxReset, mask, pressed)) {
+        if (GetFocus()) {
             static_cast<UIIntVarField *>(GetFocus())->GetVariable().Reset();
             isDirty_ = true;
         }
         return;
     }
-    if (mask & EPBM_START) {
+    if (shortcuts.Matches(Shortcuts::FxPlay, mask, pressed)) {
         Player::GetInstance()->OnStartButton(PM_SONG, viewData_->songX_, false,
                                              viewData_->songX_);
         return;
     }
-    FieldView::ProcessButtonMask(mask);
+
+    // Reuse field operations and their order/clamping; only resolve the
+    // configurable actions here, without changing other FieldView clients.
+    unsigned short adjustment = 0;
+    if (shortcuts.Matches(Shortcuts::FxDecreaseCoarse, mask, pressed))
+        adjustment |= EPBM_DOWN;
+    if (shortcuts.Matches(Shortcuts::FxIncreaseCoarse, mask, pressed))
+        adjustment |= EPBM_UP;
+    if (shortcuts.Matches(Shortcuts::FxDecreaseFine, mask, pressed))
+        adjustment |= EPBM_LEFT;
+    if (shortcuts.Matches(Shortcuts::FxIncreaseFine, mask, pressed))
+        adjustment |= EPBM_RIGHT;
+    if (adjustment) {
+        FieldView::ProcessButtonMask(EPBM_A | adjustment);
+        return;
+    }
+    unsigned short navigation = 0;
+    if (shortcuts.Matches(Shortcuts::FxDown, mask, pressed))
+        navigation |= EPBM_DOWN;
+    if (shortcuts.Matches(Shortcuts::FxUp, mask, pressed))
+        navigation |= EPBM_UP;
+    if (shortcuts.Matches(Shortcuts::FxRight, mask, pressed))
+        navigation |= EPBM_RIGHT;
+    if (shortcuts.Matches(Shortcuts::FxLeft, mask, pressed))
+        navigation |= EPBM_LEFT;
+    if (navigation)
+        FieldView::ProcessButtonMask(navigation);
 }
 
 void FxView::DrawView() {

@@ -1,4 +1,5 @@
 #include "CommandSelectorModal.h"
+#include "Application/Controllers/Shortcuts.h"
 #include "Application/Utils/HelpLegend.h"
 #include "Application/Utils/char.h"
 
@@ -107,30 +108,37 @@ void CommandSelectorModal::navigateGrid(int deltaRow, int deltaCol) {
     }
 }
 
-void CommandSelectorModal::ProcessButtonMask(unsigned short mask, bool pressed) {
+void CommandSelectorModal::ProcessButtonMask(unsigned short mask,
+                                             bool pressed) {
     if (!pressed) {
         return;
     }
 
-    if (mask & EPBM_UP) {
+    const Shortcuts &shortcuts = Shortcuts::Get();
+    if (shortcuts.Matches(Shortcuts::CommandSelectorUp, mask, pressed)) {
         navigateGrid(-1, 0);
         isDirty_ = true;
-    } else if (mask & EPBM_DOWN) {
+    } else if (shortcuts.Matches(Shortcuts::CommandSelectorDown, mask,
+                                 pressed)) {
         navigateGrid(1, 0);
         isDirty_ = true;
-    } else if (mask & EPBM_LEFT) {
+    } else if (shortcuts.Matches(Shortcuts::CommandSelectorLeft, mask,
+                                 pressed)) {
         navigateGrid(0, -1);
         isDirty_ = true;
-    } else if (mask & EPBM_RIGHT) {
+    } else if (shortcuts.Matches(Shortcuts::CommandSelectorRight, mask,
+                                 pressed)) {
         navigateGrid(0, 1);
         isDirty_ = true;
-    } else if (mask & EPBM_A) {
-        EndModal(1);  // Confirm selection
-    } else if (mask & EPBM_B) {
+    } else if (shortcuts.Matches(Shortcuts::CommandSelectorConfirm, mask,
+                                 pressed)) {
+        EndModal(1); // Confirm selection
+    } else if (shortcuts.Matches(Shortcuts::CommandSelectorCancel, mask,
+                                 pressed)) {
         if (liveTarget_) {
             *liveTarget_ = savedCmd_;
         }
-        EndModal(0);  // Cancel
+        EndModal(0); // Cancel
     }
 }
 

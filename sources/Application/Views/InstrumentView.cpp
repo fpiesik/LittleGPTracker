@@ -1,4 +1,5 @@
 #include "InstrumentView.h"
+#include "Application/Controllers/Shortcuts.h"
 #ifdef LGPT_PLAITS
 #include "Application/Instruments/PlaitsInstrument.h"
 #endif
@@ -450,23 +451,26 @@ void InstrumentView::ProcessButtonMask(unsigned short mask,bool pressed) {
 
     FieldView::ProcessButtonMask(mask);
 
-    Player *player=Player::GetInstance() ;
-	// B Modifier
+    const Shortcuts &keys = Shortcuts::Get();
+    if (keys.Matches(Shortcuts::InstrumentPrevious, mask, pressed))
+        warpToNext(-1);
+    if (keys.Matches(Shortcuts::InstrumentNext, mask, pressed))
+        warpToNext(1);
+    if (keys.Matches(Shortcuts::InstrumentPrevious16, mask, pressed))
+        warpToNext(-16);
+    if (keys.Matches(Shortcuts::InstrumentNext16, mask, pressed))
+        warpToNext(16);
 
     if (mask & EPBM_B) {
-        if (mask&EPBM_LEFT) warpToNext(-1) ;
-		if (mask&EPBM_RIGHT) warpToNext(+1);
-		if (mask&EPBM_DOWN) warpToNext(-16) ;
-		if (mask&EPBM_UP) warpToNext(+16);
-		if (mask&EPBM_A) { // Allow cut instrument
-		   if (getInstrumentType()==IT_SAMPLE) {
-               if (GetFocus() &&
-                   static_cast<UIIntVarField *>(GetFocus())->GetVariableID() ==
-                       SIP_SAMPLE) {
-                   int i = viewData_->currentInstrument_;
-                   InstrumentBank *bank =
-                       viewData_->project_->GetInstrumentBank();
-                   I_Instrument *instr=bank->GetInstrument(i) ;
+        if (mask & EPBM_A) { // Allow cut instrument
+            if (getInstrumentType() == IT_SAMPLE) {
+                if (GetFocus() &&
+                    static_cast<UIIntVarField *>(GetFocus())->GetVariableID() ==
+                        SIP_SAMPLE) {
+                    int i = viewData_->currentInstrument_;
+                    InstrumentBank *bank =
+                        viewData_->project_->GetInstrumentBank();
+                    I_Instrument *instr = bank->GetInstrument(i);
 					instr->Purge() ;
 //                   Variable *v=instr->FindVariable(SIP_SAMPLE) ;
 //                   v->SetInt(-1) ;
@@ -488,77 +492,42 @@ void InstrumentView::ProcessButtonMask(unsigned short mask,bool pressed) {
         if (mask&EPBM_L) {
             viewMode_=VM_CLONE ;
         } ;
-    } else {
-
-        // A modifier
-
-        if (mask == EPBM_A) {
-            FourCC varID = ((UIIntVarField *)GetFocus())->GetVariableID();
-            if ((varID == SIP_TABLE) || (varID == MIP_TABLE) ||
-                (varID == SIP_SAMPLE) || (varID == SIP_PRINTFX)) {
-                viewMode_ = VM_NEW;
-			}
-        } else {
-
-            // R Modifier
-
-            if (mask & EPBM_R) {
-                if (mask & EPBM_LEFT) {
-                    ViewType vt = VT_PHRASE;
-                    ViewEvent ve(VET_SWITCH_VIEW, &vt);
-                    SetChanged();
-                    NotifyObservers(&ve);
-                }
-
-                if (mask & EPBM_DOWN) {
-
-                    // Go to table view
-
-                    ViewType vt = VT_TABLE2;
-
-                    int i = viewData_->currentInstrument_;
-                    InstrumentBank *bank =
-                        viewData_->project_->GetInstrumentBank();
-                    I_Instrument *instr = bank->GetInstrument(i);
-                    int table = instr->GetTable();
-                    if (table != VAR_OFF) {
-                        viewData_->currentTable_ = table;
-                    }
-                    ViewEvent ve(VET_SWITCH_VIEW, &vt);
-                    SetChanged();
-                    NotifyObservers(&ve);
-                }
-
-                // if (mask&EPBM_RIGHT) {
-
-                //	// Go to import sample
-
-                //		ViewType vt=VT_IMPORT ;
-                //		ViewEvent ve(VET_SWITCH_VIEW,&vt) ;
-                //		SetChanged();
-                //		NotifyObservers(&ve) ;
-                //}
-
-                if (mask & EPBM_START) {
-                    player->OnStartButton(PM_PHRASE, viewData_->songX_, true,
-                                          viewData_->chainRow_);
-                }
-            } else {
-                // No modifier
-                if (mask & EPBM_START) {
-                    player->OnStartButton(PM_PHRASE, viewData_->songX_, false,
-                                          viewData_->chainRow_);
-                }
-            }
+    } else if (mask == EPBM_A) {
+        FourCC varID = ((UIIntVarField *)GetFocus())->GetVariableID();
+        if ((varID == SIP_TABLE) || (varID == MIP_TABLE) ||
+            (varID == SIP_SAMPLE) || (varID == SIP_PRINTFX)) {
+            viewMode_ = VM_NEW;
         }
     }
 
+    if (keys.Matches(Shortcuts::InstrumentPhrase, mask, pressed)) {
+        ViewType type = VT_PHRASE;
+        ViewEvent event(VET_SWITCH_VIEW, &type);
+        SetChanged();
+        NotifyObservers(&event);
+    }
+    if (keys.Matches(Shortcuts::InstrumentTable, mask, pressed)) {
+        InstrumentBank *bank = project_->GetInstrumentBank();
+        int table =
+            bank->GetInstrument(viewData_->currentInstrument_)->GetTable();
+        if (table != VAR_OFF)
+            viewData_->currentTable_ = table;
+        ViewType type = VT_TABLE2;
+        ViewEvent event(VET_SWITCH_VIEW, &type);
+        SetChanged();
+        NotifyObservers(&event);
+    }
+    bool fromStart =
+        keys.Matches(Shortcuts::InstrumentPlayFromStart, mask, pressed);
+    if (fromStart || keys.Matches(Shortcuts::InstrumentPlay, mask, pressed))
+        Player::GetInstance()->OnStartButton(PM_PHRASE, viewData_->songX_,
+                                             fromStart, viewData_->chainRow_);
+
     UIIntVarField *field = (UIIntVarField *)GetFocus();
     if (field) {
-	   lastFocusID_=field->GetVariableID() ;
+        lastFocusID_ = field->GetVariableID();
     }
-
-} ;
+};
 
 void InstrumentView::DrawView() {
 

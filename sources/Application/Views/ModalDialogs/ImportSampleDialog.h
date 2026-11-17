@@ -25,8 +25,8 @@ protected:
 private:
 	Path *getImportElement();
 	bool isSampleLibRoot();
-	void setCurrent(Path *element, unsigned short mask);
-	T_SimpleList<Path> sampleList_ ;
+    void enterFolder(Path &entry);
+    T_SimpleList<Path> sampleList_ ;
 	int currentSample_ ;
 	int topIndex_ ;
 	int toInstr_ ;

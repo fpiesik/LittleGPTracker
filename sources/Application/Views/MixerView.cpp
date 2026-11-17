@@ -1,4 +1,5 @@
 #include "MixerView.h"
+#include "Application/Controllers/Shortcuts.h"
 #include "Application/Mixer/MixerService.h"
 #include "Application/Model/Mixer.h"
 #include "Application/Player/Player.h"
@@ -88,37 +89,38 @@ void MixerView::unMuteAll() {
 }
 
 void MixerView::ProcessButtonMask(unsigned short mask, bool pressed) {
+    const Shortcuts &shortcuts = Shortcuts::Get();
     if (!pressed) {
-        if (mask & EPBM_R) {
-            if (viewMode_ == VM_MUTEON)
-                toggleMute();
-            else if (viewMode_ == VM_SOLOON)
-                toggleSolo();
-        }
+        if (viewMode_ == VM_MUTEON &&
+            shortcuts.Matches(Shortcuts::MixerMuteRelease, mask, pressed))
+            toggleMute();
+        else if (viewMode_ == VM_SOLOON &&
+                 shortcuts.Matches(Shortcuts::MixerSoloRelease, mask, pressed))
+            toggleSolo();
         return;
     }
 
     if (clipboard_.active_) {
-		viewMode_=VM_SELECTION ;
-	} ;
-	// Process selection related keys
+        viewMode_ = VM_SELECTION;
+    };
+    // Process selection related keys
 
     if (viewMode_ == VM_SELECTION) {
-        if (clipboard_.active_==false) {
-            clipboard_.active_=true ;
+        if (clipboard_.active_ == false) {
+            clipboard_.active_ = true;
             clipboard_.x_ = viewData_->songX_;
-            clipboard_.y_=viewData_->songY_ ;
-            clipboard_.offset_=viewData_->songOffset_ ;
-			saveX_=clipboard_.x_ ;
-			saveY_=clipboard_.y_ ;
-			saveOffset_=clipboard_.offset_ ;
+            clipboard_.y_ = viewData_->songY_;
+            clipboard_.offset_ = viewData_->songOffset_;
+            saveX_ = clipboard_.x_;
+            saveY_ = clipboard_.y_;
+            saveOffset_ = clipboard_.offset_;
         }
-        processSelectionButtonMask(mask) ;
+        processSelectionButtonMask(mask);
     } else {
 
         // Switch back to normal mode
 
-        viewMode_=VM_NORMAL ;
+        viewMode_ = VM_NORMAL;
         processNormalButtonMask(mask);
     }
 };
@@ -130,239 +132,233 @@ void MixerView::ProcessButtonMask(unsigned short mask, bool pressed) {
  ******************************************************/
 
 void MixerView::processNormalButtonMask(unsigned int mask) {
+    const Shortcuts &shortcuts = Shortcuts::Get();
+    if (shortcuts.Matches(Shortcuts::MixerMute, mask, true)) {
+        toggleMute();
+        return;
+    }
+    if (shortcuts.Matches(Shortcuts::MixerSolo, mask, true)) {
+        toggleSolo();
+        return;
+    }
+    if (shortcuts.Matches(Shortcuts::MixerUnmuteAll, mask, true)) {
+        unMuteAll();
+        return;
+    }
+    if (shortcuts.Matches(Shortcuts::MixerPreviousView, mask, true)) {
 
-    // R Modifier
-    if (mask & EPBM_R) {
-        if (mask & EPBM_B) {
-            toggleMute();
-        } else if (mask & EPBM_A) {
-            toggleSolo();
-        } else if (mask & EPBM_L) {
-            unMuteAll();
-        } else if (mask & EPBM_UP) {
-            // R + UP = go back to previous view
-            ViewEvent ve(VET_SWITCH_VIEW, &previousViewType_);
-            // Go back to the same column as in MixerView
-            viewData_->songX_ = viewData_->mixerCol_;
-            SetChanged();
-            NotifyObservers(&ve);
+        // Go back to the previous view.
+        ViewEvent ve(VET_SWITCH_VIEW, &previousViewType_);
+        // Go back to the same column as in MixerView
+        viewData_->songX_ = viewData_->mixerCol_;
+        SetChanged();
+        NotifyObservers(&ve);
+
+        return;
+    }
+    if (shortcuts.Matches(Shortcuts::MixerFx, mask, true)) {
+
+        viewData_->songX_ = viewData_->mixerCol_;
+        ViewType type = VT_FX;
+        ViewEvent event(VET_SWITCH_VIEW, &type);
+        SetChanged();
+        NotifyObservers(&event);
+
+        return;
+    }
+    if (shortcuts.Matches(Shortcuts::MixerTable, mask, true)) {
+
+        ViewType vt = VT_TABLE;
+        ViewEvent ve(VET_SWITCH_VIEW, &vt);
+        // Go back to the same column as in MixerView
+        viewData_->songX_ = viewData_->mixerCol_;
+        unsigned char *data = viewData_->GetCurrentSongPointer();
+        if (*data != 0xFF) { // Set chain
+            viewData_->currentChain_ = *data;
+        }
+        data = viewData_->GetCurrentChainPointer();
+        if (*data != 0xFF) { // Set phrase
+            viewData_->currentPhrase_ = *data;
+        }
+        SetChanged();
+        NotifyObservers(&ve);
+
+        return;
+    }
+    if (shortcuts.Matches(Shortcuts::MixerPlayFromStart, mask, true)) {
+        onStop();
+        return;
+    }
+    if (shortcuts.Matches(Shortcuts::MixerClear, mask, true)) {
+        // Clear the selected filter/send or restore volume.
+        if (mixerRow_ == 4)
+            Mixer::GetInstance()->SetChannelSend(viewData_->mixerCol_, 0);
+        else if (mixerRow_ == 3) {
+            Mixer::GetInstance()->SetChannelLPF(viewData_->mixerCol_, 0);
+            SetNotification("       Low Pass Filter: OFF");
+        } else if (mixerRow_ == 2) {
+            Mixer::GetInstance()->SetChannelHPF(viewData_->mixerCol_, 0);
+            SetNotification("      High Pass Filter: OFF");
+        } else
+            Mixer::GetInstance()->SetChannelVolume(viewData_->mixerCol_, 0xFF);
+        isDirty_ = true;
+
+        return;
+    }
+    // Direction bindings are independent of the edit modifier binding, so
+    // an individual adjustment can be moved to a different chord.
+    unsigned int adjustment = 0;
+    if (shortcuts.Matches(Shortcuts::MixerIncreaseCoarse, mask, true))
+        adjustment |= EPBM_UP;
+    if (shortcuts.Matches(Shortcuts::MixerDecreaseCoarse, mask, true))
+        adjustment |= EPBM_DOWN;
+    if (shortcuts.Matches(Shortcuts::MixerIncreaseFine, mask, true))
+        adjustment |= EPBM_RIGHT;
+    if (shortcuts.Matches(Shortcuts::MixerDecreaseFine, mask, true))
+        adjustment |= EPBM_LEFT;
+    if (adjustment || shortcuts.Matches(Shortcuts::MixerEdit, mask, true)) {
+        adjustValue(adjustment);
+        return;
+    }
+    if (shortcuts.Matches(Shortcuts::MixerUp, mask, true))
+        updateCursor(0, -1);
+    if (shortcuts.Matches(Shortcuts::MixerDown, mask, true))
+        updateCursor(0, 1);
+    if (shortcuts.Matches(Shortcuts::MixerLeft, mask, true))
+        updateCursor(-1, 0);
+    if (shortcuts.Matches(Shortcuts::MixerRight, mask, true))
+        updateCursor(1, 0);
+    if (shortcuts.Matches(Shortcuts::MixerPlay, mask, true))
+        onStart();
+}
+
+void MixerView::adjustValue(unsigned int mask) {
+    if (mixerRow_ == 4) {
+        Mixer *mixer = Mixer::GetInstance();
+        int value = mixer->GetChannelSend(viewData_->mixerCol_);
+        if (mask & EPBM_UP)
+            value += 16;
+        if (mask & EPBM_DOWN)
+            value -= 16;
+        if (mask & EPBM_RIGHT)
+            value += 1;
+        if (mask & EPBM_LEFT)
+            value -= 1;
+        mixer->SetChannelSend(viewData_->mixerCol_, value);
+        isDirty_ = true;
+    } else if (mixerRow_ == 3) {
+        // LPF coarse changes use 10%; fine changes use 10 Hz.
+        // Editing without a direction only displays the current value.
+        Mixer *m = Mixer::GetInstance();
+        int col = viewData_->mixerCol_;
+        unsigned short freq = m->GetChannelLPF(col);
+        unsigned short newFreq = freq;
+        if (mask & EPBM_UP) {
+            if (freq == 0)
+                newFreq = 20;
+            else {
+                unsigned short step = freq / 10 < 1 ? 1 : freq / 10;
+                newFreq =
+                    (unsigned short)(freq + step > 20000 ? 0 : freq + step);
+            }
         } else if (mask & EPBM_DOWN) {
-            viewData_->songX_ = viewData_->mixerCol_;
-            ViewType type = VT_FX;
-            ViewEvent event(VET_SWITCH_VIEW, &type);
-            SetChanged();
-            NotifyObservers(&event);
+            if (freq == 0)
+                newFreq = 20000;
+            else {
+                unsigned short step = freq / 10 < 1 ? 1 : freq / 10;
+                newFreq =
+                    (freq <= step)
+                        ? 0
+                        : (unsigned short)(freq - step < 20 ? 0 : freq - step);
+            }
         } else if (mask & EPBM_RIGHT) {
-            ViewType vt = VT_TABLE;
-            ViewEvent ve(VET_SWITCH_VIEW, &vt);
-            // Go back to the same column as in MixerView
-            viewData_->songX_ = viewData_->mixerCol_;
-            unsigned char *data = viewData_->GetCurrentSongPointer();
-            if (*data != 0xFF) { // Set chain
-                viewData_->currentChain_ = *data;
-            }
-            data = viewData_->GetCurrentChainPointer();
-            if (*data != 0xFF) { // Set phrase
-                viewData_->currentPhrase_ = *data;
-            }
-            SetChanged();
-            NotifyObservers(&ve);
-        } else if (mask & EPBM_START) {
-            onStop();
+            if (freq == 0)
+                newFreq = 20;
+            else
+                newFreq = (unsigned short)(freq + 10 > 20000 ? 0 : freq + 10);
+        } else if (mask & EPBM_LEFT) {
+            if (freq == 0)
+                newFreq = 20000;
+            else
+                newFreq =
+                    (freq <= 10)
+                        ? 0
+                        : (unsigned short)(freq - 10 < 20 ? 0 : freq - 10);
         }
-    } else if (mask & EPBM_B) {
-        if (mask & EPBM_A) {
-            // B + A = cut: disable the selected filter/send or restore volume.
-            if (mixerRow_ == 4)
-                Mixer::GetInstance()->SetChannelSend(viewData_->mixerCol_, 0);
-            else if (mixerRow_ == 3) {
-                Mixer::GetInstance()->SetChannelLPF(viewData_->mixerCol_, 0);
-                SetNotification("       Low Pass Filter: OFF");
-            } else if (mixerRow_ == 2) {
-                Mixer::GetInstance()->SetChannelHPF(viewData_->mixerCol_, 0);
-                SetNotification("      High Pass Filter: OFF");
-            } else
-                Mixer::GetInstance()->SetChannelVolume(viewData_->mixerCol_,
-                                                       0xFF);
+        if (newFreq != freq) {
+            m->SetChannelLPF(col, newFreq);
             isDirty_ = true;
         }
-    } else if (mask & EPBM_A) {
-        if (mixerRow_ == 4) {
-            Mixer *mixer = Mixer::GetInstance();
-            int value = mixer->GetChannelSend(viewData_->mixerCol_);
-            if (mask & EPBM_UP)
-                value += 16;
-            if (mask & EPBM_DOWN)
-                value -= 16;
-            if (mask & EPBM_RIGHT)
-                value += 1;
-            if (mask & EPBM_LEFT)
-                value -= 1;
-            mixer->SetChannelSend(viewData_->mixerCol_, value);
-            isDirty_ = true;
-        } else if (mixerRow_ == 3) {
-            // On LPF row: A+Up/Down = coarse ×2/÷2, A+Left/Right = fine
-            // ±10Hz A alone (no direction) = toggle off/1000Hz
+        // show notification
+        if (newFreq == 0) {
+            SetNotification("       Low Pass Filter: OFF");
+        } else {
+            char notifBuf[40];
+            sprintf(notifBuf, "       Low Pass Filter: %dHz", (int)newFreq);
+            SetNotification(notifBuf);
+        }
+    } else if (mixerRow_ == 2) {
+        // On HPF row: A+Right cycles forward, A+Left cycles backward
+        if (mask & (EPBM_RIGHT | EPBM_LEFT)) {
             Mixer *m = Mixer::GetInstance();
             int col = viewData_->mixerCol_;
-            unsigned short freq = m->GetChannelLPF(col);
-            unsigned short newFreq = freq;
-            if (mask & EPBM_UP) {
-                if (freq == 0)
-                    newFreq = 20;
-                else {
-                    unsigned short step = freq / 10 < 1 ? 1 : freq / 10;
-                    newFreq =
-                        (unsigned short)(freq + step > 20000 ? 0
-                                                                : freq + step);
-                }
-            } else if (mask & EPBM_DOWN) {
-                if (freq == 0)
-                    newFreq = 20000;
-                else {
-                    unsigned short step = freq / 10 < 1 ? 1 : freq / 10;
-                    newFreq = (freq <= step)
-                                    ? 0
-                                    : (unsigned short)(freq - step < 20
-                                                            ? 0
-                                                            : freq - step);
-                }
-            } else if (mask & EPBM_RIGHT) {
-                if (freq == 0)
-                    newFreq = 20;
-                else
-                    newFreq =
-                        (unsigned short)(freq + 10 > 20000 ? 0 : freq + 10);
-            } else if (mask & EPBM_LEFT) {
-                if (freq == 0)
-                    newFreq = 20000;
-                else
-                    newFreq =
-                        (freq <= 10)
-                            ? 0
-                            : (unsigned short)(freq - 10 < 20 ? 0
-                                                                : freq - 10);
-            }
-            if (newFreq != freq) {
-                m->SetChannelLPF(col, newFreq);
-                isDirty_ = true;
-            }
-            // show notification
-            if (newFreq == 0) {
-                SetNotification("       Low Pass Filter: OFF");
-            } else {
-                char notifBuf[40];
-                sprintf(notifBuf, "       Low Pass Filter: %dHz",
-                        (int)newFreq);
-                SetNotification(notifBuf);
-            }
-        } else if (mixerRow_ == 2) {
-            // On HPF row: A+Right cycles forward, A+Left cycles backward
-            if (mask & (EPBM_RIGHT | EPBM_LEFT)) {
-                Mixer *m = Mixer::GetInstance();
-                int col = viewData_->mixerCol_;
-                int mode = m->GetChannelHPF(col);
-                if (mask & EPBM_RIGHT) {
-                    mode = (mode + 1) % 3;
-                } else {
-                    mode = (mode + 2) % 3;
-                }
-                m->SetChannelHPF(col, mode);
-                isDirty_ = true;
-                const char *modeStr = (mode == 0)   ? "OFF"
-                                        : (mode == 1) ? "20Hz"
-                                                    : "90Hz";
-                std::string notif =
-                    std::string("      High Pass Filter: ") + modeStr;
-                SetNotification(notif.c_str());
-            }
-        } else if (mixerRow_ == 1) {
-            // On volume row: A adjusts volume
-            Mixer *mixer = Mixer::GetInstance();
-            int col = viewData_->mixerCol_;
-            int currentVol = mixer->GetChannelVolume(col);
-            int newVol = currentVol;
-
-            // Coarse adjustment (UP/DOWN)
-            if (mask & EPBM_UP) {
-                newVol = currentVol + 16;
-            }
-            if (mask & EPBM_DOWN) {
-                newVol = currentVol - 16;
-            }
-
-            // Fine adjustment (RIGHT/LEFT)
+            int mode = m->GetChannelHPF(col);
             if (mask & EPBM_RIGHT) {
-                newVol = currentVol + 1;
+                mode = (mode + 1) % 3;
+            } else {
+                mode = (mode + 2) % 3;
             }
-            if (mask & EPBM_LEFT) {
-                newVol = currentVol - 1;
-            }
-
-            // Clamp to valid range (0-255)
-            if (newVol < 0)
-                newVol = 0;
-            if (newVol > 255)
-                newVol = 255;
-
-            if (newVol != currentVol) {
-                mixer->SetChannelVolume(col, newVol);
-                isDirty_ = true;
-            }
+            m->SetChannelHPF(col, mode);
+            isDirty_ = true;
+            const char *modeStr = (mode == 0)   ? "OFF"
+                                  : (mode == 1) ? "20Hz"
+                                                : "90Hz";
+            std::string notif =
+                std::string("      High Pass Filter: ") + modeStr;
+            SetNotification(notif.c_str());
         }
-    } else {
-        // Normal cursor movement (no modifier)
-		// This works everywhere, including Master channel
-		if (mask & EPBM_UP)
-			updateCursor(0, -1);
-		if (mask & EPBM_DOWN)
-			updateCursor(0, 1);
-		if (mask & EPBM_LEFT)
-			updateCursor(-1, 0);
-		if (mask & EPBM_RIGHT)
-			updateCursor(1, 0);
+    } else if (mixerRow_ == 1) {
+        // On volume row: A adjusts volume
+        Mixer *mixer = Mixer::GetInstance();
+        int col = viewData_->mixerCol_;
+        int currentVol = mixer->GetChannelVolume(col);
+        int newVol = currentVol;
 
-		if (mask & EPBM_START) {
-			onStart();
-		}
+        // Coarse adjustment (UP/DOWN)
+        if (mask & EPBM_UP) {
+            newVol = currentVol + 16;
+        }
+        if (mask & EPBM_DOWN) {
+            newVol = currentVol - 16;
+        }
+
+        // Fine adjustment (RIGHT/LEFT)
+        if (mask & EPBM_RIGHT) {
+            newVol = currentVol + 1;
+        }
+        if (mask & EPBM_LEFT) {
+            newVol = currentVol - 1;
+        }
+
+        // Clamp to valid range (0-255)
+        if (newVol < 0)
+            newVol = 0;
+        if (newVol > 255)
+            newVol = 255;
+
+        if (newVol != currentVol) {
+            mixer->SetChannelVolume(col, newVol);
+            isDirty_ = true;
+        }
     }
 }
 
-/******************************************************
- processSelectionButtonMask:
-        process button mask in the case there is a
-        selection active
- ******************************************************/
-
 void MixerView::processSelectionButtonMask(unsigned int mask) {
-
-	// B Modifier
-
-    if (mask & EPBM_B) {
-
-    } else {
-
-        // A modifier
-
-        if (mask & EPBM_A) {
-
-        } else {
-
-            // R Modifier
-
-            if (mask & EPBM_R) {
-                if (mask&EPBM_START) {
-				    onStop() ;
-                }
-            } else {
-
-                // No modifier
-                if (mask & EPBM_START) {
-                    onStart();
-                }
-            }
-        }
-    }
+    const Shortcuts &shortcuts = Shortcuts::Get();
+    if (shortcuts.Matches(Shortcuts::MixerSelectionPlayFromStart, mask, true))
+        onStop();
+    else if (shortcuts.Matches(Shortcuts::MixerSelectionPlay, mask, true))
+        onStart();
 }
 
 void MixerView::DrawView() {

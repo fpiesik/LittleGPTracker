@@ -1,6 +1,7 @@
 #include "SongView.h"
 #if defined(PLATFORM_X64)
 #include "Adapters/SDL2/Audio/SDLAudioDriver.h"
+#include "Application/Controllers/Shortcuts.h"
 #endif
 #include "Application/Commands/ApplicationCommandDispatcher.h"
 #include "Application/Mixer/MixerService.h"
@@ -601,20 +602,19 @@ void SongView::jumpToNextSection(int direction) {
 void SongView::ProcessButtonMask(unsigned short mask, bool pressed) {
 
 #if defined(PLATFORM_X64)
-    if (mask & EPBM_SELECT) {
-        if (pressed && mask == (EPBM_SELECT | EPBM_A)) {
-            if (Player::GetInstance()->IsRunning() ||
-                viewData_->renderMode_ != 0) {
-                SetNotification("Stop playback and disable render");
-            } else {
-                clipboard_.active_ = false;
-                viewMode_ = VM_NORMAL;
-                recordDialog_ = new RecordDialog(*this);
-                DoModal(recordDialog_, RecordClosed);
-            }
+    if (Shortcuts::Get().Matches(Shortcuts::SongRecord, mask, pressed)) {
+        if (Player::GetInstance()->IsRunning() || viewData_->renderMode_ != 0) {
+            SetNotification("Stop playback and disable render");
+        } else {
+            clipboard_.active_ = false;
+            viewMode_ = VM_NORMAL;
+            recordDialog_ = new RecordDialog(*this);
+            DoModal(recordDialog_, RecordClosed);
         }
         return;
     }
+    if (mask & EPBM_SELECT)
+        return;
 #endif
     if (!pressed) {
         if (viewMode_ == VM_MUTEON) {

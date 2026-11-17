@@ -1,4 +1,5 @@
 #include "ProjectView.h"
+#include "Application/Controllers/Shortcuts.h"
 #include "Application/Mixer/MixerService.h"
 #include "Application/Model/ProjectDatas.h"
 #include "Application/Model/Scale.h"
@@ -32,16 +33,23 @@ class RecordOptionsDialog : public ModalView {
                                                        : "Channels: Mono",
                    props);
         props.invert_ = false;
-        DrawString(0, 4, "Left/Right: change  B: back", props);
+        const Shortcuts &keys = Shortcuts::Get();
+        std::string hint =
+            keys.KeyNames(Shortcuts::RecordOptionsToggle) + ": change  " +
+            keys.KeyNames(Shortcuts::RecordOptionsBack) + ": back";
+        DrawString(0, 4, hint.c_str(), props);
     }
     virtual void ProcessButtonMask(unsigned short mask, bool pressed) {
         if (!pressed)
             return;
-        if (mask == EPBM_LEFT || mask == EPBM_RIGHT || mask == EPBM_A) {
+        const Shortcuts &keys = Shortcuts::Get();
+        if (keys.Matches(Shortcuts::RecordOptionsLeft, mask, pressed) ||
+            keys.Matches(Shortcuts::RecordOptionsRight, mask, pressed) ||
+            keys.Matches(Shortcuts::RecordOptionsToggle, mask, pressed)) {
             SDLAudioDriver::RecordChannels = 3 - SDLAudioDriver::RecordChannels;
             isDirty_ = true;
         }
-        if (mask == EPBM_B)
+        if (keys.Matches(Shortcuts::RecordOptionsBack, mask, pressed))
             EndModal(0);
     }
 };
@@ -246,44 +254,60 @@ ProjectView::ProjectView(GUIWindow &w,ViewData *data):FieldView(w,data) {
 ProjectView::~ProjectView() {
 }
 
-void ProjectView::ProcessButtonMask(unsigned short mask,bool pressed) {
-
+void ProjectView::ProcessButtonMask(unsigned short mask, bool pressed) {
     if (!pressed)
         return;
 
-    FieldView::ProcessButtonMask(mask);
-
-    if (mask & EPBM_R) {
-        if (mask&EPBM_DOWN) {
-			ViewType vt=VT_SONG;
-			ViewEvent ve(VET_SWITCH_VIEW,&vt) ;
-			SetChanged();
-            NotifyObservers(&ve);
-        }
-    } else {
-        if (mask&EPBM_START) {
-            Player *player = Player::GetInstance();
-
-            int renderMode = viewData_->renderMode_;
-			if (renderMode > 0 && !player->IsRunning()) {
-				viewData_->isRendering_ = true;
-				View::SetNotification("Rendering started!");
-			} else if (viewData_->isRendering_ && player->IsRunning()) {
-				viewData_->isRendering_ = false;
-				View::SetNotification("Rendering done!");
-			}
-
-			player->OnStartButton(PM_SONG,viewData_->songX_,false,viewData_->songX_) ;
-		}
+    static const struct {
+        Shortcuts::Action action;
+        unsigned short fieldMask;
+    } fields[] = {
+        {Shortcuts::ProjectActivate, EPBM_A},
+        {Shortcuts::ProjectTapTempo, EPBM_B},
+        {Shortcuts::ProjectDown, EPBM_DOWN},
+        {Shortcuts::ProjectUp, EPBM_UP},
+        {Shortcuts::ProjectLeft, EPBM_LEFT},
+        {Shortcuts::ProjectRight, EPBM_RIGHT},
+        {Shortcuts::ProjectEditDown, EPBM_A | EPBM_DOWN},
+        {Shortcuts::ProjectEditUp, EPBM_A | EPBM_UP},
+        {Shortcuts::ProjectEditLeft, EPBM_A | EPBM_LEFT},
+        {Shortcuts::ProjectEditRight, EPBM_A | EPBM_RIGHT},
+        {Shortcuts::ProjectNudgeDown, EPBM_B | EPBM_LEFT},
+        {Shortcuts::ProjectNudgeUp, EPBM_B | EPBM_RIGHT},
     };
-} ;
+
+    const Shortcuts &keys = Shortcuts::Get();
+    unsigned short fieldMask = 0;
+    for (unsigned i = 0; i < sizeof(fields) / sizeof(fields[0]); ++i)
+        if (keys.Matches(fields[i].action, mask, pressed))
+            fieldMask |= fields[i].fieldMask;
+    FieldView::ProcessButtonMask(fieldMask);
+
+    if (keys.Matches(Shortcuts::ProjectSong, mask, pressed)) {
+        ViewType type = VT_SONG;
+        ViewEvent event(VET_SWITCH_VIEW, &type);
+        SetChanged();
+        NotifyObservers(&event);
+    } else if (keys.Matches(Shortcuts::ProjectPlay, mask, pressed)) {
+        Player *player = Player::GetInstance();
+        if (viewData_->renderMode_ > 0 && !player->IsRunning()) {
+            viewData_->isRendering_ = true;
+            View::SetNotification("Rendering started!");
+        } else if (viewData_->isRendering_ && player->IsRunning()) {
+            viewData_->isRendering_ = false;
+            View::SetNotification("Rendering done!");
+        }
+        player->OnStartButton(PM_SONG, viewData_->songX_, false,
+                              viewData_->songX_);
+    }
+}
 
 void ProjectView::DrawView() {
 
-    Clear() ;
+    Clear();
 
-	GUITextProperties props ;
-	GUIPoint pos=GetTitlePosition() ;
+    GUITextProperties props;
+    GUIPoint pos=GetTitlePosition() ;
 
 // Draw title
 
@@ -301,7 +325,10 @@ void ProjectView::DrawView() {
     if ((viewData_->renderMode_ != currentMode) && !MixerService::GetInstance()->IsRendering()) {
         // Mode changed
         if (currentMode > 0 && viewData_->renderMode_ == 0) {
-            View::SetNotification("Rendering on, press start");
+            const std::string hint =
+                "Rendering on, press " +
+                Shortcuts::Get().KeyNames(Shortcuts::ProjectPlay);
+            View::SetNotification(hint.c_str());
         } else if (currentMode == 0 && viewData_->renderMode_ > 0) {
             View::SetNotification("Rendering off");
         }
@@ -310,7 +337,7 @@ void ProjectView::DrawView() {
     }
 
     View::EnableNotification();
-} ;
+};
 
 void ProjectView::Update(Observable &,I_ObservableData *data) {
 

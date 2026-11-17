@@ -1,5 +1,6 @@
 
 #include "NewProjectDialog.h"
+#include "Application/Controllers/Shortcuts.h"
 #include "Application/Utils/KeyboardLayout.h"
 #include "Application/Utils/RandomNames.h"
 
@@ -78,9 +79,17 @@ void NewProjectDialog::DrawView() {
         }
         props.invert_ = false;
         int xOffset = 0, yOffset = 13;
-        DrawString(x + xOffset, yOffset, "A=input, B=erase", props);
-        DrawString(x + xOffset, yOffset + 2, "L, R=move cursor", props);
-		return; // Don't draw buttons in keyboard mode
+        const Shortcuts &shortcuts = Shortcuts::Get();
+        if (shortcuts.Matches(Shortcuts::NewProjectKeyboardInput, EPBM_A,
+                              true) &&
+            shortcuts.Matches(Shortcuts::NewProjectKeyboardErase, EPBM_B, true))
+            DrawString(x + xOffset, yOffset, "A=input, B=erase", props);
+        if (shortcuts.Matches(Shortcuts::NewProjectKeyboardCursorLeft, EPBM_L,
+                              true) &&
+            shortcuts.Matches(Shortcuts::NewProjectKeyboardCursorRight, EPBM_R,
+                              true))
+            DrawString(x + xOffset, yOffset + 2, "L, R=move cursor", props);
+        return; // Don't draw buttons in keyboard mode
     }
 
     // Draw buttons
@@ -116,9 +125,11 @@ void NewProjectDialog::ProcessButtonMask(unsigned short mask, bool pressed) {
     if (!pressed)
         return;
 
+    const Shortcuts &shortcuts = Shortcuts::Get();
     // Handle keyboard mode navigation first
     if (keyboardMode_) {
-        if (mask == EPBM_A) {
+        if (shortcuts.Matches(Shortcuts::NewProjectKeyboardInput, mask,
+                              pressed)) {
             // Insert character at current position
             char ch = getKeyAtPosition(keyboardRow_, keyboardCol_);
             if (ch == '\b') {
@@ -143,7 +154,8 @@ void NewProjectDialog::ProcessButtonMask(unsigned short mask, bool pressed) {
             }
             isDirty_ = true;
             return;
-        } else if (mask == EPBM_B) {
+        } else if (shortcuts.Matches(Shortcuts::NewProjectKeyboardErase, mask,
+                                     pressed)) {
             // Backspace: delete character and move cursor left
             if (currentChar_ > 0) {
                 currentChar_--;
@@ -151,136 +163,134 @@ void NewProjectDialog::ProcessButtonMask(unsigned short mask, bool pressed) {
                 isDirty_ = true;
             }
             return;
-        } else if (mask == EPBM_L) {
+        } else if (shortcuts.Matches(Shortcuts::NewProjectKeyboardCursorLeft,
+                                     mask, pressed)) {
             // Move cursor left
             moveCursor(-1);
             isDirty_ = true;
             return;
-        } else if (mask == EPBM_R) {
+        } else if (shortcuts.Matches(Shortcuts::NewProjectKeyboardCursorRight,
+                                     mask, pressed)) {
             // Move cursor right
             moveCursor(1);
             isDirty_ = true;
             return;
-        } else if (mask == EPBM_UP) {
+        } else if (shortcuts.Matches(Shortcuts::NewProjectKeyboardUp, mask,
+                                     pressed)) {
             keyboardRow_ = (keyboardRow_ - 1 + KEYBOARD_ROWS) % KEYBOARD_ROWS;
             clampKeyboardColumn(keyboardRow_, keyboardCol_);
             isDirty_ = true;
             return;
-        } else if (mask == EPBM_DOWN) {
+        } else if (shortcuts.Matches(Shortcuts::NewProjectKeyboardDown, mask,
+                                     pressed)) {
             keyboardRow_ = (keyboardRow_ + 1) % KEYBOARD_ROWS;
             clampKeyboardColumn(keyboardRow_, keyboardCol_);
             isDirty_ = true;
             return;
-        } else if (mask == EPBM_LEFT) {
+        } else if (shortcuts.Matches(Shortcuts::NewProjectKeyboardLeft, mask,
+                                     pressed)) {
             cycleKeyboardColumn(keyboardRow_, -1, keyboardCol_);
             isDirty_ = true;
             return;
-        } else if (mask == EPBM_RIGHT) {
+        } else if (shortcuts.Matches(Shortcuts::NewProjectKeyboardRight, mask,
+                                     pressed)) {
             cycleKeyboardColumn(keyboardRow_, 1, keyboardCol_);
             isDirty_ = true;
             return;
-        } else if (mask == EPBM_START) {
+        } else if (shortcuts.Matches(Shortcuts::NewProjectKeyboardDone, mask,
+                                     pressed)) {
             keyboardMode_ = false;
             isDirty_ = true;
             return;
         }
         return;
-    } else if (mask & EPBM_A) {
-        if (mask == EPBM_A) {
-            std::string randomName = "";
-            switch (selected_) {
-            case 0:
-                // Toggle keyboard mode
-                keyboardMode_ = !keyboardMode_;
-                // When entering keyboard mode, jump to current character
-                if (keyboardMode_) {
-                    findCharacterInKeyboard(name_[currentChar_], keyboardRow_,
-                                            keyboardCol_);
-                }
-                isDirty_ = true;
-                break;
-            case 1:
-                do {
-                    randomName = getRandomName();
-                    std::fill(name_ + randomName.length(),
-                              name_ + sizeof(name_) / sizeof(name_[0]), ' ');
-                    strncpy(name_, randomName.c_str(), randomName.length());
-                    lastChar_ = currentChar_ = randomName.length() - 1;
-                } while (currentPath_.Descend(GetName()).Exists());
-                isDirty_ = true;
-                break;
-            case 2:
-                if (currentPath_.Descend(GetName()).Exists()) {
-                    std::string res("Name " + std::string(name_) + " busy");
-                    View::SetNotification(res.c_str(), -6);
-                } else {
-                    EndModal(1);
-                }
-                break;
-            case 3:
-                EndModal(0);
-                break;
+    }
+    if (shortcuts.Matches(Shortcuts::NewProjectActivate, mask, pressed)) {
+        std::string randomName = "";
+        switch (selected_) {
+        case 0:
+            // Toggle keyboard mode
+            keyboardMode_ = !keyboardMode_;
+            // When entering keyboard mode, jump to current character
+            if (keyboardMode_) {
+                findCharacterInKeyboard(name_[currentChar_], keyboardRow_,
+                                        keyboardCol_);
             }
-        }
-        if (mask & EPBM_UP) {
-            name_[currentChar_]+=1;
-			lastChar_=name_[currentChar_] ;
-			isDirty_=true ;
-        }
-        if (mask&EPBM_DOWN) {
-			name_[currentChar_]-=1;
-			lastChar_=name_[currentChar_] ;
-			isDirty_=true ;
-        }
-        } else {
-
-            // R Modifier
-
-            if (mask & EPBM_R) {
+            isDirty_ = true;
+            break;
+        case 1:
+            do {
+                randomName = getRandomName();
+                std::fill(name_ + randomName.length(),
+                          name_ + sizeof(name_) / sizeof(name_[0]), ' ');
+                strncpy(name_, randomName.c_str(), randomName.length());
+                lastChar_ = currentChar_ = randomName.length() - 1;
+            } while (currentPath_.Descend(GetName()).Exists());
+            isDirty_ = true;
+            break;
+        case 2:
+            if (currentPath_.Descend(GetName()).Exists()) {
+                std::string res("Name " + std::string(name_) + " busy");
+                View::SetNotification(res.c_str(), -6);
             } else {
-                // No modifier
-                if (mask == EPBM_UP) {
-                    selected_ = (selected_ == 0) ? 1 : 0;
-                    isDirty_ = true;
-                }
-                if (mask == EPBM_DOWN) {
-                    selected_ = (selected_ == 0) ? 1 : 0;
-                    isDirty_ = true;
-                }
-
-                if (mask == EPBM_LEFT) {
-                    switch (selected_) {
-                    case 0:
-                        if (currentChar_ > 0)
-                            currentChar_--;
-                        break;
-                    case 1:
-                    case 2:
-                    case 3:
-                        if (selected_ > 0)
-                            selected_--;
-                        break;
-                    }
-                    isDirty_ = true;
-                }
-                if (mask == EPBM_RIGHT) {
-                    switch (selected_) {
-                    case 0:
-                        if (currentChar_ < MAX_NAME_LENGTH - 1)
-                            currentChar_++;
-                        else
-                            selected_++;
-                        break;
-                    case 1:
-                    case 2:
-                    case 3:
-                        if (selected_ < BUTTONS_LENGTH)
-                            selected_++;
-                        break;
-                    }
-                    isDirty_ = true;
-                }
+                EndModal(1);
             }
+            break;
+        case 3:
+            EndModal(0);
+            break;
+        }
+    }
+    if (shortcuts.Matches(Shortcuts::NewProjectIncrement, mask, pressed)) {
+        name_[currentChar_] += 1;
+        lastChar_ = name_[currentChar_];
+        isDirty_ = true;
+    }
+    if (shortcuts.Matches(Shortcuts::NewProjectDecrement, mask, pressed)) {
+        name_[currentChar_] -= 1;
+        lastChar_ = name_[currentChar_];
+        isDirty_ = true;
+    }
+    if (shortcuts.Matches(Shortcuts::NewProjectUp, mask, pressed)) {
+        selected_ = (selected_ == 0) ? 1 : 0;
+        isDirty_ = true;
+    }
+    if (shortcuts.Matches(Shortcuts::NewProjectDown, mask, pressed)) {
+        selected_ = (selected_ == 0) ? 1 : 0;
+        isDirty_ = true;
+    }
+
+    if (shortcuts.Matches(Shortcuts::NewProjectLeft, mask, pressed)) {
+        switch (selected_) {
+        case 0:
+            if (currentChar_ > 0)
+                currentChar_--;
+            break;
+        case 1:
+        case 2:
+        case 3:
+            if (selected_ > 0)
+                selected_--;
+            break;
+        }
+        isDirty_ = true;
+    }
+    if (shortcuts.Matches(Shortcuts::NewProjectRight, mask, pressed)) {
+        switch (selected_) {
+        case 0:
+            if (currentChar_ < MAX_NAME_LENGTH - 1)
+                currentChar_++;
+            else
+                selected_++;
+            break;
+        case 1:
+        case 2:
+        case 3:
+            if (selected_ < BUTTONS_LENGTH)
+                selected_++;
+            break;
+        }
+        isDirty_ = true;
     }
 };
 

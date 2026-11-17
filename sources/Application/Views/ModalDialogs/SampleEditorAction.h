@@ -19,6 +19,14 @@ class SampleEditorAction {
                 limit_ = static_cast<uint32_t>(value);
         }
     }
+    // A multi-button tap stays armed through partial releases until all keys
+    // are up.
+    bool UpdateChord(bool complete, bool onlyTapKeys, unsigned short held,
+                     bool pressed, bool editing, uint32_t now) {
+        const bool releasing = held_ && held && onlyTapKeys && !pressed;
+        return Update(complete || releasing, onlyTapKeys && !editing, pressed,
+                      now);
+    }
     bool Update(bool aDown, bool aOnly, bool pressed, uint32_t now) {
         if (aDown) {
             if (!held_) {

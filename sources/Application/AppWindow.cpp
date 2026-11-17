@@ -1,6 +1,7 @@
 #include "AppWindow.h"
 #include "Application/Commands/ApplicationCommandDispatcher.h"
 #include "Application/Commands/EventDispatcher.h"
+#include "Application/Controllers/Shortcuts.h"
 #include "Application/Instruments/SamplePool.h"
 #include "Application/Mixer/MixerService.h"
 #include "Application/Model/Mixer.h"
@@ -69,6 +70,7 @@ void AppWindow::defineColor(const char *colorName, GUIColor &color) {
 }
 
 AppWindow::AppWindow(I_GUIWindowImp &imp) : GUIWindow(imp) {
+    Shortcuts::Get(); // Load editable bindings once, before opening any views.
 
     instance = this;
 

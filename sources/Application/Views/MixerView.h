@@ -19,6 +19,7 @@ protected:
 	void onStart() ;
 	void onStop() ;
 	void updateCursor(int dx,int dy)  ;
+    void adjustValue(unsigned int mask);
     void toggleMute();
     void toggleSolo();
     void unMuteAll();

@@ -1,6 +1,7 @@
 #include "RecordDialog.h"
 #if defined(PLATFORM_X64)
 #include "Adapters/SDL2/Audio/SDLAudioDriver.h"
+#include "Application/Controllers/Shortcuts.h"
 #include "Application/Instruments/SampleInstrument.h"
 #include "Application/Instruments/SamplePool.h"
 #include "Application/Model/Config.h"
@@ -281,21 +282,23 @@ bool RecordDialog::saveTake() {
 void RecordDialog::ProcessButtonMask(unsigned short mask, bool pressed) {
     if (!pressed)
         return;
+    const Shortcuts &keys = Shortcuts::Get();
     if (state_ == COUNT_IN) {
-        if (mask == EPBM_START)
+        if (keys.Matches(Shortcuts::RecordCancel, mask, pressed))
             EndModal(0);
     } else if (state_ == RECORDING) {
-        if (mask == EPBM_START)
+        if (keys.Matches(Shortcuts::RecordStop, mask, pressed))
             stopTake();
     } else if (state_ == ERROR) {
-        if (mask == EPBM_A || mask == EPBM_B)
+        if (keys.Matches(Shortcuts::RecordClose, mask, pressed) ||
+            keys.Matches(Shortcuts::RecordBack, mask, pressed))
             EndModal(0);
     } else {
-        if (mask == EPBM_UP)
+        if (keys.Matches(Shortcuts::RecordUp, mask, pressed))
             selected_ = (selected_ + 2) % 3;
-        if (mask == EPBM_DOWN)
+        if (keys.Matches(Shortcuts::RecordDown, mask, pressed))
             selected_ = (selected_ + 1) % 3;
-        if (mask == EPBM_A) {
+        if (keys.Matches(Shortcuts::RecordAccept, mask, pressed)) {
             if (selected_ == 0) {
                 if (saveTake())
                     EndModal(1);
@@ -311,6 +314,7 @@ void RecordDialog::ProcessButtonMask(unsigned short mask, bool pressed) {
 }
 
 void RecordDialog::DrawView() {
+    const Shortcuts &keys = Shortcuts::Get();
     SetWindow(32, 7);
     SetColor(CD_NORMAL);
     GUITextProperties props;
@@ -322,16 +326,25 @@ void RecordDialog::DrawView() {
         snprintf(message, sizeof(message), "Count in: %d",
                  beat < 4 ? 4 - beat : 1);
         DrawString(0, 0, message, props);
-        DrawString(0, 2, "Start: cancel", props);
+        DrawString(
+            0, 2, (keys.KeyNames(Shortcuts::RecordCancel) + ": cancel").c_str(),
+            props);
     } else if (state_ == RECORDING) {
         char message[32];
         snprintf(message, sizeof(message), "Recording: %us",
                  bytes_ / (sampleRate * 2 * channels_));
         DrawString(0, 0, message, props);
-        DrawString(0, 2, "Start: stop recording", props);
+        DrawString(
+            0, 2,
+            (keys.KeyNames(Shortcuts::RecordStop) + ": stop recording").c_str(),
+            props);
     } else if (state_ == ERROR) {
         DrawString(0, 0, error_.c_str(), props);
-        DrawString(0, 2, "A/B: close", props);
+        DrawString(0, 2,
+                   (keys.KeyNames(Shortcuts::RecordClose) + "/" +
+                    keys.KeyNames(Shortcuts::RecordBack) + ": close")
+                       .c_str(),
+                   props);
     } else {
         DrawString(0, 0, "Save Record?", props);
         const char *choices[] = {"Yes", "No, abort", "No, rec again"};

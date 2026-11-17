@@ -18,5 +18,5 @@ g++ -std=gnu++03 -g -Wall -DPLATFORM_X64 -D_64BIT -DSDL2 -DTEST \
 g++ -std=gnu++03 -g -Wall -DPLATFORM_X64 -D_64BIT -DSDL2 \
     -DLGPT_PLAITS -D_FEAT_MIDI_LOCK -Isources \
     tests/engine_selection_test.cpp "${objects[@]}" -lSDL2 -lasound -ljack \
-    -o "$task_dir/engine_selection"
+    -Wl,--wrap=_ZN6Player13OnStartButtonE8PlayModejbh -o "$task_dir/engine_selection"
 "$task_dir/engine_selection"

@@ -1,5 +1,8 @@
 # Sample editor
 
+These are the default controls. Edit the `sample_editor.*` entries in `shortcuts.xml` and restart LGPT to change them.
+
+
 In the instrument view, select **Edit** below **sample:** and press A.
 The editor works on a private copy of the loaded mono/stereo WAV sample.
 SoundFont instruments are not supported.

@@ -1,4 +1,5 @@
 #include "MessageBox.h"
+#include "Application/Controllers/Shortcuts.h"
 
 static const char *buttonText[MBL_LAST] = {
 	"Ok",
@@ -60,22 +61,19 @@ void MessageBox::OnPlayerUpdate(PlayerEventType ,unsigned int currentTick) {
 } ;
 void MessageBox::OnFocus() {
 } ;
-void MessageBox::ProcessButtonMask(unsigned short mask,bool pressed) {
-	if (mask&EPBM_A) {
-		EndModal(button_[selected_]) ;
-	}
-	if (mask&EPBM_LEFT) {
-		selected_=(selected_+1) ;
-		if (selected_>=buttonCount_) {
-			selected_=0 ;
-		}
-	} 
-	if (mask&EPBM_RIGHT) {
-		selected_=(selected_-1) ;
-		if (selected_<0) {
-			selected_=buttonCount_-1 ;
-		}
-	} 
-	isDirty_=true ;
-} ;
-
+void MessageBox::ProcessButtonMask(unsigned short mask, bool pressed) {
+    const Shortcuts &shortcuts = Shortcuts::Get();
+    if (shortcuts.Matches(pressed ? Shortcuts::MessageBoxConfirm
+                                  : Shortcuts::MessageBoxConfirmRelease,
+                          mask, pressed))
+        EndModal(button_[selected_]);
+    if (shortcuts.Matches(pressed ? Shortcuts::MessageBoxLeft
+                                  : Shortcuts::MessageBoxLeftRelease,
+                          mask, pressed))
+        selected_ = (selected_ + 1) % buttonCount_;
+    if (shortcuts.Matches(pressed ? Shortcuts::MessageBoxRight
+                                  : Shortcuts::MessageBoxRightRelease,
+                          mask, pressed))
+        selected_ = (selected_ + buttonCount_ - 1) % buttonCount_;
+    isDirty_ = true;
+}

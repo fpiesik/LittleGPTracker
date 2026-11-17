@@ -1,4 +1,5 @@
 #include "ChainView.h"
+#include "Application/Controllers/Shortcuts.h"
 #include "Application/Utils/char.h"
 #include "System/Console/Trace.h"
 #include "UIController.h"
@@ -378,33 +379,35 @@ void ChainView::switchSoloMode() {
 
 void ChainView::ProcessButtonMask(unsigned short mask, bool pressed) {
 
+    const Shortcuts &shortcuts = Shortcuts::Get();
     if (!pressed) {
         if (viewMode_ == VM_MUTEON) {
-            if (mask & EPBM_R) {
+            if (shortcuts.Matches(Shortcuts::ChainMuteRelease, mask, pressed)) {
                 toggleMute();
             }
         };
-        if (viewMode_ == VM_SOLOON && (mask & EPBM_R)) {
+        if (viewMode_ == VM_SOLOON &&
+            shortcuts.Matches(Shortcuts::ChainSoloRelease, mask, pressed)) {
             switchSoloMode();
         }
         return;
     };
 
     if (viewMode_ == VM_NEW) {
-        if (mask == EPBM_A) {
+        if (shortcuts.Matches(Shortcuts::ChainNextUnused, mask, pressed)) {
             unsigned short next = viewData_->song_->phrase_->GetNext();
             if (next != NO_MORE_PHRASE) {
                 setPhrase((unsigned char)next);
                 isDirty_ = true;
             }
-            mask &= (0xFFFF - EPBM_A);
+            mask = shortcuts.RemainingButtons(Shortcuts::ChainNextUnused, mask);
         }
     }
 
     if (viewMode_ == VM_CLONE) {
-        if ((mask & EPBM_A) && (mask & EPBM_L)) {
+        if (shortcuts.Matches(Shortcuts::ChainClone, mask, pressed)) {
             clonePosition();
-            mask &= (0xFFFF - (EPBM_A | EPBM_L));
+            mask = shortcuts.RemainingButtons(Shortcuts::ChainClone, mask);
         } else {
             viewMode_ = VM_SELECTION;
         }
@@ -432,212 +435,184 @@ void ChainView::ProcessButtonMask(unsigned short mask, bool pressed) {
 }
 
 void ChainView::processNormalButtonMask(unsigned short mask) {
-
+    const Shortcuts &shortcuts = Shortcuts::Get();
     Player *player = Player::GetInstance();
-
-    // B Modifier
-
-    if (mask & EPBM_B) {
-        if (mask & EPBM_LEFT)
-            warpToNeighbour(-1);
-        if (mask & EPBM_RIGHT)
-            warpToNeighbour(+1);
-        if (mask & EPBM_UP)
-            warpInColumn(-1);
-        if (mask & EPBM_DOWN)
-            warpInColumn(+1);
-        if (mask & EPBM_A)
-            cutPosition();
-        if (mask & EPBM_L) {
-            viewMode_ = VM_CLONE;
-        };
-        if (mask & EPBM_R)
-            toggleMute();
-    } else {
-
-        // A Modifier
-
-        if (mask & EPBM_A) {
-            if (mask & EPBM_DOWN)
-                updateCursorValue(viewData_->chainCol_ == 0 ? -0x10 : -0x0C);
-            if (mask & EPBM_UP)
-                updateCursorValue(viewData_->chainCol_ == 0 ? 0x10 : 0x0C);
-            if (mask & EPBM_LEFT)
-                updateCursorValue(-0x01);
-            if (mask & EPBM_RIGHT)
-                updateCursorValue(0x01);
-            if (mask & EPBM_L)
-                pasteClipboard();
-            if (mask == EPBM_A) {
-                pasteLastPhrase();
-                if (viewData_->chainCol_ == 0)
-                    viewMode_ = VM_NEW;
-            }
-            if (mask & EPBM_R)
-                switchSoloMode();
-        } else {
-
-            // R Modifier
-
-            if (mask & EPBM_R) {
-
-                if (mask & EPBM_LEFT) {
-                    ViewType vt = VT_SONG;
-                    ViewEvent ve(VET_SWITCH_VIEW, &vt);
-                    SetChanged();
-                    NotifyObservers(&ve);
-                }
-
-                if (mask & EPBM_RIGHT) {
-                    unsigned char *data = viewData_->GetCurrentChainPointer();
-                    if (*data != 0xFF) {
-                        ViewType vt = VT_PHRASE;
-                        ViewEvent ve(VET_SWITCH_VIEW, &vt);
-                        viewData_->currentPhrase_ = *data;
-                        SetChanged();
-                        NotifyObservers(&ve);
-                    }
-                }
-
-                if (mask & EPBM_DOWN) {
-                    ViewType vt = VT_MIXER;
-                    ViewEvent ve(VET_SWITCH_VIEW, &vt);
-                    SetChanged();
-                    NotifyObservers(&ve);
-                }
-
-                // We toggle full chain start only if we"re not in live mode
-                // or if the player ain't playing yet
-
-                if (mask & EPBM_START) {
-                    player->OnStartButton(PM_CHAIN, viewData_->songX_, true,
-                                          viewData_->chainRow_);
-                }
-                if (mask & EPBM_L)
-                    unMuteAll();
-            } else {
-                // L Modifier
-                if (mask & EPBM_L) {
-
-                } else {
-                    // NO modifier
-                    if (mask & EPBM_DOWN)
-                        updateCursor(0, 1);
-                    if (mask & EPBM_UP)
-                        updateCursor(0, -1);
-                    if (mask & EPBM_LEFT)
-                        updateCursor(-1, 0);
-                    if (mask & EPBM_RIGHT)
-                        updateCursor(1, 0);
-                    if (mask & EPBM_START) {
-                        player->OnStartButton(PM_CHAIN, viewData_->songX_,
-                                              false, viewData_->chainRow_);
-                    }
-                }
-            }
+    if (shortcuts.Matches(Shortcuts::ChainPreviousChannel, mask, true)) {
+        warpToNeighbour(-1);
+    }
+    if (shortcuts.Matches(Shortcuts::ChainNextChannel, mask, true)) {
+        warpToNeighbour(1);
+    }
+    if (shortcuts.Matches(Shortcuts::ChainPreviousChain, mask, true)) {
+        warpInColumn(-1);
+    }
+    if (shortcuts.Matches(Shortcuts::ChainNextChain, mask, true)) {
+        warpInColumn(1);
+    }
+    if (shortcuts.Matches(Shortcuts::ChainCut, mask, true)) {
+        cutPosition();
+    }
+    if (shortcuts.Matches(Shortcuts::ChainBeginCloneSelection, mask, true)) {
+        viewMode_ = VM_CLONE;
+    }
+    if (shortcuts.Matches(Shortcuts::ChainMute, mask, true)) {
+        toggleMute();
+    }
+    if (shortcuts.Matches(Shortcuts::ChainDecreaseCoarse, mask, true)) {
+        updateCursorValue(viewData_->chainCol_ == 0 ? -0x10 : -0x0C);
+    }
+    if (shortcuts.Matches(Shortcuts::ChainIncreaseCoarse, mask, true)) {
+        updateCursorValue(viewData_->chainCol_ == 0 ? 0x10 : 0x0C);
+    }
+    if (shortcuts.Matches(Shortcuts::ChainDecreaseFine, mask, true)) {
+        updateCursorValue(-1);
+    }
+    if (shortcuts.Matches(Shortcuts::ChainIncreaseFine, mask, true)) {
+        updateCursorValue(1);
+    }
+    if (shortcuts.Matches(Shortcuts::ChainPaste, mask, true)) {
+        pasteClipboard();
+    }
+    if (shortcuts.Matches(Shortcuts::ChainInsert, mask, true)) {
+        pasteLastPhrase();
+        if (viewData_->chainCol_ == 0)
+            viewMode_ = VM_NEW;
+    }
+    if (shortcuts.Matches(Shortcuts::ChainSolo, mask, true)) {
+        switchSoloMode();
+    }
+    if (shortcuts.Matches(Shortcuts::ChainSong, mask, true)) {
+        ViewType vt = VT_SONG;
+        ViewEvent ve(VET_SWITCH_VIEW, &vt);
+        SetChanged();
+        NotifyObservers(&ve);
+    }
+    if (shortcuts.Matches(Shortcuts::ChainPhrase, mask, true)) {
+        unsigned char *data = viewData_->GetCurrentChainPointer();
+        if (*data != 0xFF) {
+            ViewType vt = VT_PHRASE;
+            ViewEvent ve(VET_SWITCH_VIEW, &vt);
+            viewData_->currentPhrase_ = *data;
+            SetChanged();
+            NotifyObservers(&ve);
         }
     }
-    if ((!(mask & EPBM_A)) && updatingPhrase_) {
+    if (shortcuts.Matches(Shortcuts::ChainMixer, mask, true)) {
+        ViewType vt = VT_MIXER;
+        ViewEvent ve(VET_SWITCH_VIEW, &vt);
+        SetChanged();
+        NotifyObservers(&ve);
+    }
+    if (shortcuts.Matches(Shortcuts::ChainPlayFromStart, mask, true)) {
+        player->OnStartButton(PM_CHAIN, viewData_->songX_, true,
+                              viewData_->chainRow_);
+    }
+    if (shortcuts.Matches(Shortcuts::ChainUnmuteAll, mask, true)) {
+        unMuteAll();
+    }
+    if (shortcuts.Matches(Shortcuts::ChainDown, mask, true)) {
+        updateCursor(0, 1);
+    }
+    if (shortcuts.Matches(Shortcuts::ChainUp, mask, true)) {
+        updateCursor(0, -1);
+    }
+    if (shortcuts.Matches(Shortcuts::ChainLeft, mask, true)) {
+        updateCursor(-1, 0);
+    }
+    if (shortcuts.Matches(Shortcuts::ChainRight, mask, true)) {
+        updateCursor(1, 0);
+    }
+    if (shortcuts.Matches(Shortcuts::ChainPlay, mask, true)) {
+        player->OnStartButton(PM_CHAIN, viewData_->songX_, false,
+                              viewData_->chainRow_);
+    }
+    if (!shortcuts.Matches(Shortcuts::ChainEditHold, mask, true) &&
+        updatingPhrase_) {
         unsigned char *c = viewData_->song_->chain_->data_ +
                            (16 * viewData_->currentChain_ + updateRow_);
         viewData_->song_->phrase_->SetUsed(*c);
         updatingPhrase_ = false;
     }
-};
+}
 
 void ChainView::processSelectionButtonMask(unsigned short mask) {
-
+    const Shortcuts &shortcuts = Shortcuts::Get();
     Player *player = Player::GetInstance();
-
-    // B Modifier
-
-    if (mask & EPBM_B) {
-        if (mask == EPBM_B)
-            copySelection();
-        if (mask & EPBM_R)
-            toggleMute();
-        if (mask & EPBM_L)
-            extendSelection();
-    } else {
-
-        // A modifier
-
-        if (mask & EPBM_A) {
-
-            if (mask & EPBM_DOWN)
-                updateSelectionValue(viewData_->chainCol_ == 0 ? -0x10 : -0x0C);
-            if (mask & EPBM_UP)
-                updateSelectionValue(viewData_->chainCol_ == 0 ? 0x10 : 0x0C);
-            if (mask & EPBM_LEFT)
-                updateSelectionValue(-0x01);
-            if (mask & EPBM_RIGHT)
-                updateSelectionValue(0x01);
-
-            if (mask & EPBM_L) {
-                cutSelection();
-            }
-            if (mask & EPBM_R)
-                switchSoloMode();
-        } else {
-
-            // R Modifier
-
-            if (mask & EPBM_R) {
-
-                if (mask & EPBM_LEFT) {
-                    ViewType vt = VT_SONG;
-                    ViewEvent ve(VET_SWITCH_VIEW, &vt);
-                    SetChanged();
-                    NotifyObservers(&ve);
-                }
-
-                if (mask & EPBM_RIGHT) {
-                    unsigned char *data = viewData_->GetCurrentChainPointer();
-                    if (*data != 0xFF) {
-                        ViewType vt = VT_PHRASE;
-                        ViewEvent ve(VET_SWITCH_VIEW, &vt);
-                        viewData_->currentPhrase_ = *data;
-                        SetChanged();
-                        NotifyObservers(&ve);
-                    }
-                }
-
-                if (mask & EPBM_DOWN) {
-                    ViewType vt = VT_MIXER;
-                    ViewEvent ve(VET_SWITCH_VIEW, &vt);
-                    SetChanged();
-                    NotifyObservers(&ve);
-                }
-
-                if (mask & EPBM_START) {
-                    player->OnStartButton(PM_CHAIN, viewData_->songX_, true,
-                                          viewData_->chainRow_);
-                }
-
-                if (mask & EPBM_L)
-                    unMuteAll();
-
-            } else {
-
-                // No modifier
-
-                if (mask & EPBM_DOWN)
-                    updateCursor(0, 1);
-                if (mask & EPBM_UP)
-                    updateCursor(0, -1);
-                if (mask & EPBM_LEFT)
-                    updateCursor(-1, 0);
-                if (mask & EPBM_RIGHT)
-                    updateCursor(1, 0);
-
-                if (mask & EPBM_START) {
-                    player->OnStartButton(PM_CHAIN, viewData_->songX_, false,
-                                          viewData_->chainRow_);
-                }
-            }
+    if (shortcuts.Matches(Shortcuts::ChainSelectionCopy, mask, true)) {
+        copySelection();
+    }
+    if (shortcuts.Matches(Shortcuts::ChainSelectionMute, mask, true)) {
+        toggleMute();
+    }
+    if (shortcuts.Matches(Shortcuts::ChainSelectionExtend, mask, true)) {
+        extendSelection();
+    }
+    if (shortcuts.Matches(Shortcuts::ChainSelectionDecreaseCoarse, mask,
+                          true)) {
+        updateSelectionValue(viewData_->chainCol_ == 0 ? -0x10 : -0x0C);
+    }
+    if (shortcuts.Matches(Shortcuts::ChainSelectionIncreaseCoarse, mask,
+                          true)) {
+        updateSelectionValue(viewData_->chainCol_ == 0 ? 0x10 : 0x0C);
+    }
+    if (shortcuts.Matches(Shortcuts::ChainSelectionDecreaseFine, mask, true)) {
+        updateSelectionValue(-1);
+    }
+    if (shortcuts.Matches(Shortcuts::ChainSelectionIncreaseFine, mask, true)) {
+        updateSelectionValue(1);
+    }
+    if (shortcuts.Matches(Shortcuts::ChainSelectionCut, mask, true)) {
+        cutSelection();
+    }
+    if (shortcuts.Matches(Shortcuts::ChainSelectionSolo, mask, true)) {
+        switchSoloMode();
+    }
+    if (shortcuts.Matches(Shortcuts::ChainSelectionSong, mask, true)) {
+        ViewType vt = VT_SONG;
+        ViewEvent ve(VET_SWITCH_VIEW, &vt);
+        SetChanged();
+        NotifyObservers(&ve);
+    }
+    if (shortcuts.Matches(Shortcuts::ChainSelectionPhrase, mask, true)) {
+        unsigned char *data = viewData_->GetCurrentChainPointer();
+        if (*data != 0xFF) {
+            ViewType vt = VT_PHRASE;
+            ViewEvent ve(VET_SWITCH_VIEW, &vt);
+            viewData_->currentPhrase_ = *data;
+            SetChanged();
+            NotifyObservers(&ve);
         }
     }
-};
+    if (shortcuts.Matches(Shortcuts::ChainSelectionMixer, mask, true)) {
+        ViewType vt = VT_MIXER;
+        ViewEvent ve(VET_SWITCH_VIEW, &vt);
+        SetChanged();
+        NotifyObservers(&ve);
+    }
+    if (shortcuts.Matches(Shortcuts::ChainSelectionPlayFromStart, mask, true)) {
+        player->OnStartButton(PM_CHAIN, viewData_->songX_, true,
+                              viewData_->chainRow_);
+    }
+    if (shortcuts.Matches(Shortcuts::ChainSelectionUnmuteAll, mask, true)) {
+        unMuteAll();
+    }
+    if (shortcuts.Matches(Shortcuts::ChainSelectionDown, mask, true)) {
+        updateCursor(0, 1);
+    }
+    if (shortcuts.Matches(Shortcuts::ChainSelectionUp, mask, true)) {
+        updateCursor(0, -1);
+    }
+    if (shortcuts.Matches(Shortcuts::ChainSelectionLeft, mask, true)) {
+        updateCursor(-1, 0);
+    }
+    if (shortcuts.Matches(Shortcuts::ChainSelectionRight, mask, true)) {
+        updateCursor(1, 0);
+    }
+    if (shortcuts.Matches(Shortcuts::ChainSelectionPlay, mask, true)) {
+        player->OnStartButton(PM_CHAIN, viewData_->songX_, false,
+                              viewData_->chainRow_);
+    }
+}
 
 void ChainView::OnFocus() { clipboard_.active_ = false; };
 

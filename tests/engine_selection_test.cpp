@@ -1,5 +1,6 @@
 #include "Adapters/LINUX/System/LINUXSystem.h"
 #include "Adapters/Unix/FileSystem/UnixFileSystem.h"
+#include "Application/Controllers/Shortcuts.h"
 #include "Application/Instruments/PlaitsInstrument.h"
 #include "Application/Instruments/SampleInstrument.h"
 #include "Application/Persistency/PersistencyService.h"
@@ -12,6 +13,7 @@
 #include <cassert>
 #include <cstdio>
 #include <cstring>
+#include <vector>
 
 class TestWindowImp : public I_GUIWindowImp {
   public:
@@ -50,10 +52,69 @@ static Variable &Focused(InstrumentView &view) {
     return static_cast<UIIntVarField *>(view.GetFocus())->GetVariable();
 }
 
+class InstrumentSwitchObserver : public I_Observer {
+  public:
+    std::vector<ViewType> destinations;
+    void Update(Observable &, I_ObservableData *data) {
+        ViewEvent *event = static_cast<ViewEvent *>(data);
+        assert(event->GetType() == VET_SWITCH_VIEW);
+        destinations.push_back(*static_cast<ViewType *>(event->GetData()));
+    }
+};
+
+static std::vector<bool> playRequests;
+extern "C" void __wrap__ZN6Player13OnStartButtonE8PlayModejbh(
+    Player *, PlayMode mode, unsigned int channel, bool fromStart,
+    unsigned char row) {
+    assert(mode == PM_PHRASE && channel == 2 && row == 3);
+    playRequests.push_back(fromStart);
+}
+
+static void CheckInstrumentShortcuts(InstrumentView &view, ViewData &data) {
+    view.ProcessButtonMask(EPBM_B | EPBM_LEFT, true);
+    assert(data.currentInstrument_ == MAX_INSTRUMENT_COUNT - 1);
+    view.ProcessButtonMask(EPBM_B | EPBM_RIGHT, true);
+    assert(data.currentInstrument_ == 0);
+    view.ProcessButtonMask(EPBM_B | EPBM_DOWN, true);
+    assert(data.currentInstrument_ == MAX_INSTRUMENT_COUNT - 16);
+    view.ProcessButtonMask(EPBM_B | EPBM_UP, true);
+    assert(data.currentInstrument_ == 0);
+
+    InstrumentSwitchObserver observer;
+    view.AddObserver(observer);
+    view.ProcessButtonMask(EPBM_R | EPBM_LEFT, true);
+    view.ProcessButtonMask(EPBM_R | EPBM_DOWN, true);
+    assert(observer.destinations.size() == 2);
+    assert(observer.destinations[0] == VT_PHRASE);
+    assert(observer.destinations[1] == VT_TABLE2);
+    view.RemoveObserver(observer);
+
+    data.songX_ = 2;
+    data.chainRow_ = 3;
+    view.ProcessButtonMask(EPBM_START, true);
+    view.ProcessButtonMask(EPBM_B | EPBM_START, true);
+    view.ProcessButtonMask(EPBM_R | EPBM_START, true);
+    assert(playRequests.size() == 2 && !playRequests[0] && playRequests[1]);
+
+    TiXmlDocument document;
+    document.Parse("<SHORTCUTS version='1'><BIND action='instrument.next' "
+                   "keys='SELECT' event='press'/></SHORTCUTS>");
+    std::string error;
+    assert(Shortcuts::Get().Load(document.RootElement(), error));
+    view.ProcessButtonMask(EPBM_B | EPBM_RIGHT, true);
+    view.ProcessButtonMask(EPBM_SELECT, false);
+    assert(data.currentInstrument_ == 0);
+    view.ProcessButtonMask(EPBM_SELECT, true);
+    assert(data.currentInstrument_ == 1);
+    view.ProcessButtonMask(EPBM_B | EPBM_LEFT, true);
+    assert(data.currentInstrument_ == 0);
+}
+
 int main() {
     System::Install(new LINUXSystem);
     UnixFileSystem fs;
     FileSystem::Install(&fs);
+    Path::SetAlias("bin", "projects");
     TestMidi midi;
     MidiService::Install(&midi);
     AudioSettings settings;
@@ -72,6 +133,7 @@ int main() {
     {
         InstrumentView view(window, &data);
         assert(!std::strcmp(Focused(view).GetString(), "Sampler"));
+        CheckInstrumentShortcuts(view, data);
         int selectorY = view.GetFocus()->GetPosition()._y;
         IteratorPtr<UIField> fields(view.GetIterator());
         int highlighted = 0;

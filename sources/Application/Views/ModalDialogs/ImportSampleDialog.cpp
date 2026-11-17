@@ -1,4 +1,5 @@
 #include "ImportSampleDialog.h"
+#include "Application/Controllers/Shortcuts.h"
 #include "Application/Instruments/SampleInstrument.h"
 #include "Application/Instruments/SamplePool.h"
 #include "Application/Views/ModalDialogs/MessageBox.h"
@@ -151,116 +152,123 @@ void ImportSampleDialog::import(Path &element) {
 	isDirty_=true ;
 } ;
 
-void ImportSampleDialog::ProcessButtonMask(unsigned short mask,bool pressed) {
+void ImportSampleDialog::ProcessButtonMask(unsigned short mask, bool pressed) {
+    if (!pressed)
+        return;
+    const Shortcuts &s = Shortcuts::Get();
+    bool pageUp = s.Matches(Shortcuts::SampleBrowserPageUp, mask, pressed);
+    bool pageDown = s.Matches(Shortcuts::SampleBrowserPageDown, mask, pressed);
+    if (pageUp || pageDown) {
+        if (pageUp)
+            warpToNextSample(-LIST_SIZE);
+        if (pageDown)
+            warpToNextSample(LIST_SIZE);
+        return;
+    }
 
-	if (!pressed) return ;
+    bool previous =
+        s.Matches(Shortcuts::SampleBrowserActivatePrevious, mask, pressed);
+    bool next = s.Matches(Shortcuts::SampleBrowserActivateNext, mask, pressed);
+    if (previous || next ||
+        s.Matches(Shortcuts::SampleBrowserActivate, mask, pressed)) {
+        if (previous)
+            warpToNextSample(-1);
+        if (next)
+            warpToNextSample(1);
+        if (selected_ == 2) {
+            endPreview();
+            EndModal(0);
+            return;
+        }
+        Path *element = getImportElement();
+        if (!element)
+            return;
+        if (element->IsDirectory()) {
+            if (!previous && !next)
+                enterFolder(*element);
+        } else if (selected_ == 1) {
+            import(*element);
+        } else if (!element->Matches("*.sf2")) {
+            preview(*element);
+        }
+        return;
+    }
 
-	if (mask&EPBM_B) {  
-		if (mask&EPBM_UP) warpToNextSample(-LIST_SIZE) ;
-		if (mask&EPBM_DOWN) warpToNextSample(LIST_SIZE) ;
-	} else if (mask&EPBM_A) {
-		// Allow browse preview
-		if (mask&EPBM_UP) warpToNextSample(-1) ;
-		if (mask&EPBM_DOWN) warpToNextSample(1) ;
-
-		Path *element = getImportElement();
-		setCurrent(element, mask);
-
-		switch(selected_) {
-			case 0: // preview
-                if (!(element->IsDirectory() ||
-                      element->Matches(
-                          "*.sf2"))) { // Don't preview folders or SoundFonts
-                    preview(*element);
-                }
-                break;
-            case 1: // import
-				if(!element->IsDirectory()) { // Don't import folders
-					import(*element);
-				}
-				break ;
-			case 2: // Exit ;
-				endPreview(); // Stop playback when exiting
-				EndModal(0) ;
-				break ;
-		}
-	} else if (mask&EPBM_START) { // START Modifier
-		if (mask&EPBM_UP) warpToNextSample(-1);
-		if (mask&EPBM_DOWN) warpToNextSample(1);
-		Path *element = getImportElement();
-		setCurrent(element, mask);
-		if(!element->IsDirectory()) {
-			preview(*element);
-		}
-		if (mask&EPBM_RIGHT) { // Load sample
-			if (!element->IsDirectory()) {
-				endPreview();
-				import(*element);
-			}
-		}
-		if (mask&EPBM_LEFT) { // Navigate up
-			if (isSampleLibRoot()) {
-			} else {
-				Path parent = element->GetParent().GetParent();
-				setCurrentFolder(&parent);
-				isDirty_=true;
-			}
-		}
-	} else { // No modifier
-		if (mask==EPBM_UP) warpToNextSample(-1);
-		if (mask==EPBM_DOWN) warpToNextSample(1);
-		if (mask==EPBM_LEFT) {
-			selected_-=1;
-			if (selected_<0) selected_+=3;
-			isDirty_=true;
-		}
-		if (mask==EPBM_RIGHT) {
-			selected_=(selected_+1)%3;
-			isDirty_=true;
-		}
-	}
-} ;
-
-bool ImportSampleDialog::isSampleLibRoot()
-{
-    // return sampleLib_.GetPath().find(currentPath_.GetPath()) != std::string::npos; // Causes issues in Win, Miyoo
-	return currentPath_.GetPath()==sampleLib_.GetPath();
-};
-
-Path* ImportSampleDialog::getImportElement() {
-	IteratorPtr<Path> it(sampleList_.GetIterator());
-	int count = 0;
-	Path *element = 0;
-	for(it->Begin(); !it->IsDone(); it->Next()) {
-		if (count++ == currentSample_) {
-			return &it->CurrentItem();
-		}
-	}
+    previous =
+        s.Matches(Shortcuts::SampleBrowserPreviewPrevious, mask, pressed);
+    next = s.Matches(Shortcuts::SampleBrowserPreviewNext, mask, pressed);
+    bool load = s.Matches(Shortcuts::SampleBrowserLoad, mask, pressed);
+    bool parent = s.Matches(Shortcuts::SampleBrowserParent, mask, pressed);
+    if (previous || next || load || parent ||
+        s.Matches(Shortcuts::SampleBrowserPreview, mask, pressed)) {
+        if (previous)
+            warpToNextSample(-1);
+        if (next)
+            warpToNextSample(1);
+        Path *element = getImportElement();
+        if (element && !element->IsDirectory()) {
+            preview(*element);
+            if (load) {
+                endPreview();
+                import(*element);
+            }
+        }
+        if (parent) {
+            if (!isSampleLibRoot()) {
+                Path folder = currentPath_.GetParent();
+                setCurrentFolder(&folder);
+            }
+        } else if (element && element->IsDirectory() && selected_ != 2 &&
+                   !previous && !next) {
+            enterFolder(*element);
+        }
+        return;
+    }
+    if (s.Matches(Shortcuts::SampleBrowserPrevious, mask, pressed))
+        warpToNextSample(-1);
+    if (s.Matches(Shortcuts::SampleBrowserNext, mask, pressed))
+        warpToNextSample(1);
+    if (s.Matches(Shortcuts::SampleBrowserLeft, mask, pressed)) {
+        selected_ = (selected_ + 2) % 3;
+        isDirty_ = true;
+    }
+    if (s.Matches(Shortcuts::SampleBrowserRight, mask, pressed)) {
+        selected_ = (selected_ + 1) % 3;
+        isDirty_ = true;
+    }
 }
 
-void ImportSampleDialog::setCurrent(Path *element, unsigned short mask) {
-	if (selected_ != 2 && element->IsDirectory() && // Folders
-		!(mask&EPBM_UP||mask&EPBM_DOWN)) { // Don't browse preview folders
-			if (element->GetName()=="..") {
-				if (isSampleLibRoot()) {
-				} else {
-					Path parent = element->GetParent().GetParent();
-					setCurrentFolder(&parent);
-				}
-		} else {
-			setCurrentFolder(element);
-		}
-		isDirty_ = true;
-		return;
-	}
+bool ImportSampleDialog::isSampleLibRoot() {
+    // return sampleLib_.GetPath().find(currentPath_.GetPath()) !=
+    // std::string::npos; // Causes issues in Win, Miyoo
+    return currentPath_.GetPath() == sampleLib_.GetPath();
+};
+
+Path *ImportSampleDialog::getImportElement() {
+    IteratorPtr<Path> it(sampleList_.GetIterator());
+    int count = 0;
+    for (it->Begin(); !it->IsDone(); it->Next()) {
+        if (count++ == currentSample_) {
+            return &it->CurrentItem();
+        }
+    }
+    return 0;
+}
+
+void ImportSampleDialog::enterFolder(Path &entry) {
+    if (entry.GetName() == ".." && isSampleLibRoot())
+        return;
+    // Changing directories replaces the list that owns entry.
+    Path folder = entry.GetName() == ".." ? currentPath_.GetParent() : entry;
+    setCurrentFolder(&folder);
 }
 
 void ImportSampleDialog::setCurrentFolder(Path *path) {
 
-	Path formerPath(currentPath_) ;
+    Path formerPath(currentPath_);
 
-	topIndex_=0 ;
-	currentSample_=0 ;
+    topIndex_ = 0;
+    currentSample_=0 ;
 
 	currentPath_=Path(*path) ;
 	sampleList_.Empty() ;
@@ -295,4 +303,5 @@ void ImportSampleDialog::setCurrentFolder(Path *path) {
 			}
 		}
 	}
-} ;
+    isDirty_ = true;
+};

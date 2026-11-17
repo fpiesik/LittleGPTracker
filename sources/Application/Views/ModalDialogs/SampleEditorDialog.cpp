@@ -1,5 +1,6 @@
 #include "SampleEditorDialog.h"
 #include "Application/AppWindow.h"
+#include "Application/Controllers/Shortcuts.h"
 #include "Application/Instruments/SampleInstrument.h"
 #include "Application/Instruments/SamplePool.h"
 #include "Application/Player/PlayerMixer.h"
@@ -135,8 +136,16 @@ void SampleEditorDialog::DrawView() {
     text(12, 18, "Overwrite", row_ == 6);
     text(27, 18, "Exit", row_ == 7);
     text(0, 20, status_.substr(0, 36).c_str());
-    text(0, 21, "A+arrows: edit   tap A: execute");
-    text(0, 22, "START: listen   L: zoom selection");
+    const Shortcuts &keys = Shortcuts::Get();
+    text(0, 21,
+         ("Tap " + keys.KeyNames(Shortcuts::EditorTap) + ": execute")
+             .substr(0, 36)
+             .c_str());
+    text(0, 22,
+         (keys.KeyNames(Shortcuts::EditorPreview) + ": listen   " +
+          keys.KeyNames(Shortcuts::EditorZoom) + ": zoom selection")
+             .substr(0, 36)
+             .c_str());
 }
 
 void SampleEditorDialog::stopPreview() {
@@ -179,7 +188,7 @@ void SampleEditorDialog::preview() {
     Player::GetInstance()->StartStreaming(Path(previewPath_));
     mixer->Unlock();
     playing_ = true;
-    status_ = "START stops; START again replays";
+    status_ = "Playing selection";
 }
 
 void SampleEditorDialog::ConfirmOverwrite(View &v, ModalView &d) {
@@ -274,14 +283,26 @@ void SampleEditorDialog::save(bool overwrite) {
 }
 
 void SampleEditorDialog::ProcessButtonMask(unsigned short mask, bool pressed) {
-    const bool click =
-        action_.Update((mask & EPBM_A) != 0, mask == EPBM_A || mask == 0,
-                       pressed, SDL_GetTicks());
+    const Shortcuts &keys = Shortcuts::Get();
+    const bool up = keys.Matches(Shortcuts::EditorEditUp, mask, pressed);
+    const bool down = keys.Matches(Shortcuts::EditorEditDown, mask, pressed);
+    const bool left = keys.Matches(Shortcuts::EditorEditLeft, mask, pressed);
+    const bool right = keys.Matches(Shortcuts::EditorEditRight, mask, pressed);
+    const bool editing = up || down || left || right;
+    const bool exitEditor = keys.Matches(Shortcuts::EditorExit, mask, pressed);
+    const bool listen = keys.Matches(Shortcuts::EditorPreview, mask, pressed);
+    const bool zoom = keys.Matches(Shortcuts::EditorZoom, mask, pressed);
+    // Test the held chord on both event edges. Only an isolated short tap
+    // executes.
+    const bool tapHeld = keys.Matches(Shortcuts::EditorTap, mask, true);
+    const bool click = action_.UpdateChord(
+        tapHeld, !keys.RemainingButtons(Shortcuts::EditorTap, mask), mask,
+        pressed, editing || exitEditor || listen || zoom, SDL_GetTicks());
     if (!pressed && !click)
         return;
     isDirty_ = true;
     try {
-        if (mask == EPBM_B || (click && row_ == 7)) {
+        if (exitEditor || (click && row_ == 7)) {
             stopPreview();
             if (dirty_)
                 DoModal(new MessageBox(*this, "Discard unsaved edits?",
@@ -293,20 +314,20 @@ void SampleEditorDialog::ProcessButtonMask(unsigned short mask, bool pressed) {
         }
         if (buffer_.pcm.empty())
             return;
-        if (mask == EPBM_START) {
+        if (listen) {
             preview();
             return;
         }
-        if (mask == EPBM_L) {
+        if (zoom) {
             zoom_ = !zoom_;
             return;
         }
-        if ((mask & EPBM_A) || click) {
-            int direction = (mask & EPBM_UP) ? 1 : (mask & EPBM_DOWN) ? -1 : 0;
+        if (editing || tapHeld || click) {
+            int direction = up ? 1 : down ? -1 : 0;
             if (row_ < 2) {
-                if (mask & EPBM_LEFT)
+                if (left)
                     digit_ = std::min(7, digit_ + 1);
-                if (mask & EPBM_RIGHT)
+                if (right)
                     digit_ = std::max(0, digit_ - 1);
                 if (direction) {
                     stopPreview();
@@ -319,9 +340,9 @@ void SampleEditorDialog::ProcessButtonMask(unsigned short mask, bool pressed) {
                         std::min(static_cast<long long>(maximum), value));
                 }
             } else if (row_ == 2) {
-                if (mask & EPBM_LEFT)
+                if (left)
                     operation_ = (operation_ + 5) % 6;
-                if (mask & EPBM_RIGHT)
+                if (right)
                     operation_ = (operation_ + 1) % 6;
                 if (click) {
                     stopPreview();
@@ -360,9 +381,9 @@ void SampleEditorDialog::ProcessButtonMask(unsigned short mask, bool pressed) {
                     status_ = "Last process undone";
                 }
             } else if (row_ == 4) {
-                if (mask & EPBM_LEFT)
+                if (left)
                     nameCursor_ = std::max(0, nameCursor_ - 1);
-                if (mask & EPBM_RIGHT)
+                if (right)
                     nameCursor_ = std::min(15, nameCursor_ + 1);
                 const char *alphabet = " ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijkl"
                                        "mnopqrstuvwxyz0123456789_-";
@@ -379,9 +400,11 @@ void SampleEditorDialog::ProcessButtonMask(unsigned short mask, bool pressed) {
                                        MBBF_YES | MBBF_NO),
                         ConfirmOverwrite);
         } else {
-            if (mask == EPBM_DOWN || mask == EPBM_RIGHT)
+            if (keys.Matches(Shortcuts::EditorDown, mask, pressed) ||
+                keys.Matches(Shortcuts::EditorRight, mask, pressed))
                 row_ = (row_ + 1) % 8;
-            if (mask == EPBM_UP || mask == EPBM_LEFT)
+            if (keys.Matches(Shortcuts::EditorUp, mask, pressed) ||
+                keys.Matches(Shortcuts::EditorLeft, mask, pressed))
                 row_ = (row_ + 7) % 8;
         }
     } catch (const std::bad_alloc &) {

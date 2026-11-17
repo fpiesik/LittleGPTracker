@@ -1,8 +1,9 @@
 
 #include "SelectProjectDialog.h"
+#include "Application/Controllers/Shortcuts.h"
+#include "Application/Views/ModalDialogs/MessageBox.h"
 #include "NewProjectDialog.h"
 #include "System/Console/Trace.h"
-#include "Application/Views/ModalDialogs/MessageBox.h"
 
 #include <algorithm>
 
@@ -171,12 +172,50 @@ void SelectProjectDialog::OnFocus() {
     currentProject_ = lastProject_;
 };
 
-void SelectProjectDialog::ProcessButtonMask(unsigned short mask,bool pressed) {
-	if (!pressed) return ;
+void SelectProjectDialog::ProcessButtonMask(unsigned short mask, bool pressed) {
+    if (!pressed)
+        return;
 
-    if (mask&EPBM_B) {
-        // Handle A + B combination for delete
-        if (mask & EPBM_A) {
+    const Shortcuts &shortcuts = Shortcuts::Get();
+    if (shortcuts.Matches(Shortcuts::ProjectPickerDelete, mask, pressed)) {
+        int count = 0;
+        Path *current = 0;
+
+        IteratorPtr<Path> it(content_.GetIterator());
+        for (it->Begin(); !it->IsDone(); it->Next()) {
+            if (count == currentProject_) {
+                current = &it->CurrentItem();
+                break;
+            }
+            count++;
+        }
+
+        if (current && current->GetName() != "..") {
+            std::string message =
+                "Delete project '" + current->GetName() + "' ?";
+            MessageBox *mb =
+                new MessageBox(*this, message.c_str(), MBBF_YES | MBBF_NO);
+            DoModal(mb, DeleteProjectCallback);
+            DrawView();
+        }
+        return;
+    }
+    const bool pageUp =
+        shortcuts.Matches(Shortcuts::ProjectPickerPageUp, mask, pressed);
+    const bool pageDown =
+        shortcuts.Matches(Shortcuts::ProjectPickerPageDown, mask, pressed);
+    if (pageUp || pageDown) {
+        if (pageUp)
+            warpToNextProject(-LIST_SIZE);
+        if (pageDown)
+            warpToNextProject(LIST_SIZE);
+        return;
+    }
+    if (shortcuts.Matches(Shortcuts::ProjectPickerActivate, mask, pressed)) {
+        switch (selected_) {
+        case 0: // load
+        {
+            // locate folder user had selected when they hit a
             int count = 0;
             Path *current = 0;
 
@@ -189,103 +228,66 @@ void SelectProjectDialog::ProcessButtonMask(unsigned short mask,bool pressed) {
                 count++;
             }
 
-            if (current != 0) {
-                std::string message =
-                    "Delete project '" + current->GetName() + "' ?";
-                MessageBox *mb =
-                    new MessageBox(*this, message.c_str(), MBBF_YES | MBBF_NO);
-                DoModal(mb, DeleteProjectCallback);
-                DrawView();
-            }
-            return;
-        }
-        if (mask & EPBM_UP)
-            warpToNextProject(-LIST_SIZE);
-        if (mask&EPBM_DOWN) warpToNextProject(LIST_SIZE) ;
-    } else {
-
-        // A modifier
-        if (mask & EPBM_A) {
-            switch (selected_) {
-			case 0: // load
-				{
-                // locate folder user had selected when they hit a
-                int count = 0;
-                Path *current = 0;
-
-                IteratorPtr<Path> it(content_.GetIterator());
-                for (it->Begin(); !it->IsDone(); it->Next()) {
-                    if (count == currentProject_) {
-                        current = &it->CurrentItem();
-                        break;
-                    }
-                    count++;
-                }
-
-					//check if folder is a project, indicated by 'lgpt' being the first 4 characters of the folder name
-					std::string name = current->GetName() ;
-					std::string firstFourChars = name.substr(0,4);
-					std::transform(firstFourChars.begin(), firstFourChars.end(), firstFourChars.begin(), ::tolower);
-					if(firstFourChars == "lgpt"){
-						//ugly hack to make the "name" include subdirectories
-						//we pass along everything past the root dir
-						selection_ = *current ;
-						lastFolder_=currentPath_ ;
-						lastProject_=currentProject_ ;
-						//load the project
-						EndModal(1) ;
-					} else {
-						if (current->GetName() == "..") {
-							Path parent=currentPath_.GetParent() ;
-							setCurrentFolder(parent) ;
-						} else {
-							Path newdir=*current ;
-							setCurrentFolder(newdir) ;
-						}
-					}
-				break ;
-			}
-			case 1: // new
-			{
-                NewProjectDialog *npd =
-                    new NewProjectDialog(*this, currentPath_);
-                DoModal(npd,NewProjectCallback) ;
-				break ;
-            }
-            case 2: // Exit ;
-                EndModal(0) ;
-				break ;
-		}
-        } else {
-
-            // R Modifier
-
-            if (mask & EPBM_R) {
+            if (!current)
+                return;
+            // check if folder is a project, indicated by 'lgpt' being the first
+            // 4 characters of the folder name
+            std::string name = current->GetName();
+            std::string firstFourChars = name.substr(0, 4);
+            std::transform(firstFourChars.begin(), firstFourChars.end(),
+                           firstFourChars.begin(), ::tolower);
+            if (firstFourChars == "lgpt") {
+                // ugly hack to make the "name" include subdirectories
+                // we pass along everything past the root dir
+                selection_ = *current;
+                lastFolder_ = currentPath_;
+                lastProject_ = currentProject_;
+                // load the project
+                EndModal(1);
             } else {
-                // No modifier
-				if (mask==EPBM_UP) warpToNextProject(-1) ;
-				if (mask==EPBM_DOWN) warpToNextProject(1) ;
-				if (mask==EPBM_LEFT) {
-					selected_-- ;
-					if (selected_<0) selected_+=3 ;
-					isDirty_=true ;
-				}
-				if (mask==EPBM_RIGHT) {
-					selected_=(selected_+1)%3 ;
-					isDirty_=true ;
-				}
+                if (current->GetName() == "..") {
+                    Path parent = currentPath_.GetParent();
+                    setCurrentFolder(parent);
+                } else {
+                    Path newdir = *current;
+                    setCurrentFolder(newdir);
+                }
             }
+            break;
         }
+        case 1: // new
+        {
+            NewProjectDialog *npd = new NewProjectDialog(*this, currentPath_);
+            DoModal(npd, NewProjectCallback);
+            break;
+        }
+        case 2: // Exit ;
+            EndModal(0);
+            break;
+        }
+        return;
     }
-};
+    if (shortcuts.Matches(Shortcuts::ProjectPickerPrevious, mask, pressed))
+        warpToNextProject(-1);
+    if (shortcuts.Matches(Shortcuts::ProjectPickerNext, mask, pressed))
+        warpToNextProject(1);
+    if (shortcuts.Matches(Shortcuts::ProjectPickerLeft, mask, pressed)) {
+        selected_ = (selected_ + 2) % 3;
+        isDirty_ = true;
+    }
+    if (shortcuts.Matches(Shortcuts::ProjectPickerRight, mask, pressed)) {
+        selected_ = (selected_ + 1) % 3;
+        isDirty_ = true;
+    }
+}
 
 void SelectProjectDialog::warpToNextProject(int amount) {
 
     int offset = currentProject_ - topIndex_;
     int size = content_.Size();
-    currentProject_+=amount ;
-	if (currentProject_<0) currentProject_+=size ;
-	if (currentProject_>=size) currentProject_-=size ;
+    if (!size)
+        return;
+    currentProject_ = ((currentProject_ + amount) % size + size) % size;
 
 	if ((amount>1)||(amount<-1)) {
 		topIndex_=currentProject_-offset ;
