@@ -58,7 +58,13 @@ class TestSong : public I_Observer {
     }
 };
 
-static void run(int rate, int tempo, int callbackFrames, double latencyMs) {
+static void run(int rate, int tempo, int callbackFrames, double latencyMs,
+                int countIn = 4,
+                int metronome = SDLAudioDriver::METRONOME_RECORD,
+                int volume = 100) {
+    SDLAudioDriver::RecordCountIn = countIn;
+    SDLAudioDriver::RecordMetronomeVolume = volume;
+    SDLAudioDriver::RecordMetronome = metronome;
     TestProcess process;
     SysProcessFactory::Install(&process);
     AudioSettings settings;
@@ -73,7 +79,20 @@ static void run(int rate, int tempo, int callbackFrames, double latencyMs) {
     driver.AddObserver(song);
     starts = 0;
     testCounter = 0;
+    short click[2] = {0, 0};
+    driver.MixMetronome(click, 1, tempo, true, false);
+    assert(click[0] == 0 && click[1] == 0);
+    driver.MixMetronome(click, 1, tempo, true, true);
+    assert(click[0] == (metronome == SDLAudioDriver::METRONOME_PLAY_AND_REC
+                            ? -30 * volume
+                            : 0));
     driver.BeginRecording(tempo, latencyMs, startSong);
+    click[0] = click[1] = -30000;
+    driver.MixMetronome(click, 1, tempo, true, true);
+    assert(click[0] == (metronome == SDLAudioDriver::METRONOME_OFF
+                            ? -30000
+                            : SDL_max(-32768, -30000 - 30 * volume)));
+    assert(click[1] == click[0]);
     std::vector<short> output;
     std::vector<short> block(callbackFrames * 2);
     int firstClick = -1, firstSong = -1;
@@ -93,16 +112,18 @@ static void run(int rate, int tempo, int callbackFrames, double latencyMs) {
         assert(driver.RecordingBeat() != -2);
         process.Pump(driver);
     }
-    assert(starts == 1 && firstClick >= 0 && firstSong > firstClick);
-    // Independent rounded musical duration: the fifth beat is the first song
-    // sample.
-    int duration = int(240.0 * rate / tempo + 0.5);
-    assert(firstSong - firstClick == duration);
-    for (int beat = 0; beat < 4; ++beat) {
-        int onset = firstClick + int(60.0 * rate * beat / tempo + 0.5);
-        assert(output[onset] == -3000);
-        if (beat)
-            assert(output[onset - 1] == 0);
+    assert(starts == 1 && firstSong >= 0);
+    if (countIn && volume && metronome != SDLAudioDriver::METRONOME_OFF) {
+        int duration = int(60.0 * countIn * rate / tempo + 0.5);
+        assert(firstSong - firstClick == duration);
+        for (int beat = 0; beat < countIn; ++beat) {
+            int onset = firstClick + int(60.0 * rate * beat / tempo + 0.5);
+            assert(output[onset] == -30 * volume);
+            if (beat)
+                assert(output[onset - 1] == 0);
+        }
+    } else {
+        assert(firstClick == firstSong);
     }
     double latency = latencyMs >= 0
                          ? latencyMs / 1000.0
@@ -151,7 +172,7 @@ static void run(int rate, int tempo, int callbackFrames, double latencyMs) {
     for (int i = 0; i < 50 && driver.RecordingBeat() != -2; ++i)
         driver.OnChunkDone(reinterpret_cast<Uint8 *>(&block[0]),
                            callbackFrames * 4);
-    assert(driver.RecordingBeat() == -2 && starts == 0);
+    assert(driver.RecordingBeat() == -2 && starts == (countIn == 0 ? 1 : 0));
     driver.StopCapture();
     assert(driver.ReadCapture(&oversized[0], 2) == -1);
     driver.RemoveObserver(song);
@@ -165,8 +186,8 @@ int main() {
     capturing = true;
     captureWaiting = false;
     captureSkip = 1;
-    Uint16 stereo[] = {SDL_SwapLE16(100), SDL_SwapLE16(200),
-                       SDL_SwapLE16(300), SDL_SwapLE16(400)};
+    Uint16 stereo[] = {SDL_SwapLE16(100), SDL_SwapLE16(200), SDL_SwapLE16(300),
+                       SDL_SwapLE16(400)};
     captureCallback(0, reinterpret_cast<Uint8 *>(stereo), sizeof(stereo));
     assert(captureSize == 4);
     assert(memcmp(captureBuffer, stereo + 2, 4) == 0);
@@ -185,6 +206,14 @@ int main() {
     run(44100, 120, 1024, 75);
     run(44100, 137, 256, 0);
     run(48000, 300, 1024, -1);
+    run(44100, 137, 256, 0, 0);
+    run(44100, 120, 1024, 75, 1);
+    run(48000, 137, 256, -1, 8);
+    run(44100, 120, 1024, 75, 8, SDLAudioDriver::METRONOME_OFF);
+    run(44100, 120, 1024, 75, 0, SDLAudioDriver::METRONOME_OFF);
+    run(44100, 120, 1024, 75, 4, SDLAudioDriver::METRONOME_PLAY_AND_REC);
+    run(44100, 120, 1024, 75, 4, SDLAudioDriver::METRONOME_RECORD, 50);
+    run(44100, 120, 1024, 75, 4, SDLAudioDriver::METRONOME_PLAY_AND_REC, 0);
     assert(RecordTiming::CaptureSkip(-0.01) == 0);
     assert(RecordTiming::CaptureSkip(0.1) == 4410);
     puts("record timing tests passed (synthetic audio, no hardware)");

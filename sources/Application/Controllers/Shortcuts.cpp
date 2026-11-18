@@ -204,6 +204,8 @@ const DefaultBinding defaults[] = {
     {"sample_browser.right", "RIGHT", "LEFT+DOWN+UP+L+B+A+R+START+SELECT",
      true},
     {"song.record", "SELECT+A", "LEFT+DOWN+RIGHT+UP+L+B+R+START", true},
+    {"record_options.up", "UP", "LEFT+DOWN+RIGHT+L+B+A+R+START+SELECT", true},
+    {"record_options.down", "DOWN", "LEFT+RIGHT+UP+L+B+A+R+START+SELECT", true},
     {"record_options.left", "LEFT", "DOWN+RIGHT+UP+L+B+A+R+START+SELECT", true},
     {"record_options.right", "RIGHT", "LEFT+DOWN+UP+L+B+A+R+START+SELECT",
      true},

@@ -1,4 +1,6 @@
 Unreleased
+    Add Metronome volume (0-100%) to Record Options, applying to count-in and playback.
+    Add Metronome (off, record, play and rec) and Count in (off, 1-8 beats) to Linux X64 Record Options.
     Include shortcuts.xml in release ZIPs and build the shortcut loader in the Windows and macOS release projects.
     Make Phrase insert, free-slot and clone gestures configurable for instruments and both TABL parameter columns.
     Skip the source instrument when choosing a clone destination and resolve TABL clone sources as in playback.

@@ -470,8 +470,9 @@ All entries use press events.
 ## Recording on Linux X64
 
 In Song, `song.record` (SELECT+A) starts capture on an empty slot with playback
-stopped and rendering disabled. The Record Options dialog uses LEFT, RIGHT or A
-to toggle mono/stereo and B to return (`record_options.*`).
+stopped and rendering disabled. The Record Options dialog uses UP/DOWN to select Channels, Metronome,
+Metronome volume or Count in,
+LEFT/RIGHT or A to change the selected value, and B to return (`record_options.*`).
 
 During count-in, START cancels. During capture, START stops and opens the take
 decision. These are separate bindings (`record.cancel_count_in`, `record.stop`).

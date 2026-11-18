@@ -140,7 +140,7 @@ void RecordDialog::beginTake() {
         if (end != value && !*end && parsed >= 0 && parsed <= 2000)
             latencyMs = parsed;
     }
-    state_ = COUNT_IN;
+    state_ = SDLAudioDriver::RecordCountIn ? COUNT_IN : RECORDING;
     SDLAudioDriver::BeginRecording(viewData_->project_->GetTempo(), latencyMs,
                                    startRecordedSong);
     selected_ = 1;
@@ -216,7 +216,7 @@ void RecordDialog::AnimationUpdate() {
         int beat = SDLAudioDriver::RecordingBeat();
         if (beat == -2)
             fail("Output underrun: retry take");
-        else if (beat >= 4)
+        else if (beat >= SDLAudioDriver::RecordCountIn)
             state_ = RECORDING;
     }
     // Also drain during count-in: a calibrated input boundary can precede the
@@ -324,7 +324,9 @@ void RecordDialog::DrawView() {
         if (beat < 0)
             beat = 0;
         snprintf(message, sizeof(message), "Count in: %d",
-                 beat < 4 ? 4 - beat : 1);
+                 beat < SDLAudioDriver::RecordCountIn
+                     ? SDLAudioDriver::RecordCountIn - beat
+                     : 1);
         DrawString(0, 0, message, props);
         DrawString(
             0, 2, (keys.KeyNames(Shortcuts::RecordCancel) + ": cancel").c_str(),

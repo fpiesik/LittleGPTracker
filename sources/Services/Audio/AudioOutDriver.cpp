@@ -1,5 +1,9 @@
 
 #include "AudioOutDriver.h"
+#if defined(PLATFORM_X64)
+#include "Adapters/SDL2/Audio/SDLAudioDriver.h"
+#include "Application/Player/Player.h"
+#endif
 #include "Application/Model/Project.h"
 #include "Application/Player/SyncMaster.h" // Should be installable
 #include "AudioDriver.h"
@@ -49,7 +53,14 @@ void AudioOutDriver::Trigger() {
     prepareMixBuffers();
     hasSound_=AudioMixer::Render(primarySoundBuffer_,sampleCount_) ;
     clipToMix();
-    driver_->AddBuffer(mixBuffer_,sampleCount_) ;
+#if defined(PLATFORM_X64)
+    SyncMaster *sync = SyncMaster::GetInstance();
+    SDLAudioDriver::MixMetronome(mixBuffer_, sampleCount_, sync->GetTempo(),
+                                 sync->MajorSlice() &&
+                                     sync->GetBeatCount() % 4 == 0,
+                                 Player::GetInstance()->IsRunning());
+#endif
+    driver_->AddBuffer(mixBuffer_, sampleCount_);
 }
 
 void AudioOutDriver::Update(Observable &o,I_ObservableData *d) 

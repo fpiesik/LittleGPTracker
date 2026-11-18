@@ -621,8 +621,9 @@ The uConsole must be in gamecontroller mode. Select needs the mapping
 `<MAP src="but:0:4" dst="/event/select" />` for its built-in controller.
 Existing X+A solo controls are unchanged.
 
-Stop playback and disable rendering before starting a take. Four audible
-clicks and a visible countdown use the current project tempo. Clicks and song
+Stop playback and disable rendering before starting a take. By default, four
+audible clicks and a visible countdown use the current project tempo.
+Project > Record Options changes the click mode and count-in length. Clicks and song
 playback share the audio sample timeline, so UI refreshes do not schedule the
 transition. The default
 SDL audio input is then recorded while the song plays from the selected row.
@@ -641,7 +642,7 @@ Up/Down and confirm with A:
   assigns a free sample instrument, and creates a new chain and phrase in the
   chosen slot. Phrase step 00 plays the default root note (60, displayed as C 3) with that instrument.
 - **No, abort** discards the temporary take and closes recording mode.
-- **No, rec again** discards the take and repeats the four-beat count-in at
+- **No, rec again** discards the take and repeats the selected count-in at
   the same slot and song row.
 
 Start during count-in cancels. Occupied slots and exhausted chain, phrase,
@@ -675,11 +676,22 @@ in milliseconds (1–2000, default 250). Currently used by the sample editor:
 longer A presses and A+arrow combinations do not execute actions. Invalid values use the default.
 Restart LGPT after changing `config.xml`.
 
-### Recording channels (Linux SDL2)
+### Record Options (Linux SDL2)
 
-Project > Record Options selects Mono (default) or Stereo for subsequent takes.
-Use Left/Right or A to change the mode and B to return. The selection lasts for
-the application session. During count-in and recording, the song level meter
+Project > Record Options provides these settings:
+
+- **Channels**: Mono (default) or Stereo for subsequent takes.
+- **Metronome**: `off`, `record` (default), or `play and rec`. The click sounds
+  during count-in and recording in `record` mode, and also during normal
+  playback in `play and rec` mode. `off` silences the click, including count-in.
+  The click is added only to device playback; exported mixes do not include it.
+- **Metronome volume**: 0–100% in steps of 10 (default 100%, the original
+  click level). Applies to count-in and playback; 0% silences the click.
+- **Count in**: `off` or 1–8 beats (default 4). `off` starts playback and
+  recording without a count-in. Retrying a take uses the selected duration.
+
+Use Up/Down to select a setting, Left/Right or A to change it, and B to return.
+The selections last for the application session. During count-in and recording, the song level meter
 shows the input peaks; afterward it returns to the output level. Mono input is
 shown on both meter bars. Stereo recordings retain both input channels.
 

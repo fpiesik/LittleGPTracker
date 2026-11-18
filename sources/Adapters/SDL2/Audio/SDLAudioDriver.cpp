@@ -7,6 +7,9 @@
 SDLAudioDriver *SDLAudioDriver::instance_ = 0;
 static SDL_atomic_t recordingBeat;
 int SDLAudioDriver::RecordChannels = 1;
+int SDLAudioDriver::RecordMetronome = SDLAudioDriver::METRONOME_RECORD;
+int SDLAudioDriver::RecordCountIn = 4;
+int SDLAudioDriver::RecordMetronomeVolume = 100;
 
 namespace {
 SDL_AudioDeviceID captureDevice = 0;
@@ -133,8 +136,9 @@ void SDLAudioDriver::BeginRecording(int tempo, double latencyMs,
     captureTarget = 0;
     driver->countTempo_ = tempo > 0 ? tempo : 120;
     driver->countFrame_ = 0;
-    driver->countLength_ =
-        RecordTiming::BeatFrame(4, driver->sampleRate_, driver->countTempo_);
+    driver->countBeats_ = RecordCountIn;
+    driver->countLength_ = RecordTiming::BeatFrame(
+        driver->countBeats_, driver->sampleRate_, driver->countTempo_);
     // SDL2 has no portable hardware latency query. Estimate one period each
     // way, or use the user's measured callback-to-input round-trip latency.
     driver->recordLatency_ =
@@ -189,7 +193,11 @@ void SDLAudioDriver::RenderBuffer() {
             SDL_min(Sint64(SDL_max(frames, 1)), countLength_ - countFrame_));
         for (int i = 0; i < frames; ++i)
             buffer[i * 2] = buffer[i * 2 + 1] =
-                RecordTiming::Click(countFrame_ + i, sampleRate_, countTempo_);
+                RecordMetronome == METRONOME_OFF
+                    ? 0
+                    : RecordTiming::Click(countFrame_ + i, sampleRate_,
+                                          countTempo_, countBeats_,
+                                          RecordMetronomeVolume);
         SDL_LockAudio();
         countTags_[poolQueuePosition_] = countFrame_;
         AddBuffer(buffer, frames);
@@ -200,11 +208,42 @@ void SDLAudioDriver::RenderBuffer() {
         if (recordStart_) {
             void (*start)() = recordStart_;
             recordStart_ = 0;
+            // With no count-in, tag the first song buffer as the capture
+            // origin.
+            if (countLength_ == 0) {
+                SDL_LockAudio();
+                countTags_[poolQueuePosition_] = 0;
+                SDL_UnlockAudio();
+            }
             start();
         }
         OnNewBufferNeeded();
     }
     SDL_UnlockMutex(recordMutex_);
+}
+
+// Mix only into device playback, after the song mix/file rendering stage.
+void SDLAudioDriver::MixMetronome(short *buffer, int frames, int tempo,
+                                  bool beatStart, bool playing) {
+    SDLAudioDriver *driver = instance_;
+    if (!driver || !playing)
+        return;
+    if (beatStart)
+        driver->metronomeFrame_ = 0;
+    bool enabled =
+        RecordMetronome == METRONOME_PLAY_AND_REC ||
+        (RecordMetronome == METRONOME_RECORD && RecordingBeat() >= 0);
+    for (int i = 0; i < frames; ++i) {
+        int click = enabled ? RecordTiming::Click(driver->metronomeFrame_,
+                                                  driver->sampleRate_, tempo, 1,
+                                                  RecordMetronomeVolume)
+                            : 0;
+        for (int channel = 0; channel < 2; ++channel) {
+            int value = buffer[i * 2 + channel] + click;
+            buffer[i * 2 + channel] = SDL_max(-32768, SDL_min(32767, value));
+        }
+        ++driver->metronomeFrame_;
+    }
 }
 
 int SDLAudioDriver::ReadCapture(Uint8 *buffer, int size) {
@@ -273,6 +312,7 @@ SDLAudioDriver::SDLAudioDriver(AudioSettings &settings)
     recordMutex_ = SDL_CreateMutex();
     recordStart_ = 0;
     recordOutputStarted_ = false;
+    metronomeFrame_ = 0;
     for (int i = 0; i < SOUND_BUFFER_COUNT; ++i)
         countTags_[i] = -1;
     SDL_AtomicSet(&recordingBeat, -1);
@@ -423,10 +463,10 @@ void SDLAudioDriver::OnChunkDone(Uint8 *stream, int len) {
                         recordLatency_;
                     SDL_UnlockAudioDevice(captureDevice);
                 }
-                int beat = 4;
+                int beat = countBeats_;
                 if (tag >= 0) {
                     beat = 0;
-                    while (beat < 3 &&
+                    while (beat < countBeats_ &&
                            tag >= RecordTiming::BeatFrame(beat + 1, sampleRate_,
                                                           countTempo_))
                         ++beat;

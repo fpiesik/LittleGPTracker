@@ -39,6 +39,16 @@ class SDLAudioDriver : public AudioDriver {
     static int RecordingBeat();
     static SDL_AudioDeviceID OpenCapture();
     static int RecordChannels;
+    enum MetronomeMode {
+        METRONOME_OFF,
+        METRONOME_RECORD,
+        METRONOME_PLAY_AND_REC
+    };
+    static int RecordMetronome;
+    static int RecordMetronomeVolume;
+    static int RecordCountIn;
+    static void MixMetronome(short *buffer, int frames, int tempo,
+                             bool beatStart, bool playing);
     static bool CapturePeak(unsigned int &peak);
     static void CloseCapture();
     static void StopCapture();
@@ -52,7 +62,8 @@ class SDLAudioDriver : public AudioDriver {
     SDL_mutex *recordMutex_;
     void (*recordStart_)();
     Sint64 countFrame_, countLength_;
-    int countTempo_;
+    int countTempo_, countBeats_;
+    Sint64 metronomeFrame_;
     Sint64 countTags_[SOUND_BUFFER_COUNT];
     double recordLatency_;
     bool recordOutputStarted_;

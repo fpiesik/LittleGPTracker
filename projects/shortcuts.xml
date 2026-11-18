@@ -194,6 +194,8 @@
     <BIND action="sample_browser.right" keys="RIGHT" exclude="LEFT+DOWN+UP+L+B+A+R+START+SELECT" event="press" />
     <!-- Linux X64 recording controls -->
     <BIND action="song.record" keys="SELECT+A" exclude="LEFT+DOWN+RIGHT+UP+L+B+R+START" event="press" />
+    <BIND action="record_options.up" keys="UP" exclude="LEFT+DOWN+RIGHT+L+B+A+R+START+SELECT" event="press" />
+    <BIND action="record_options.down" keys="DOWN" exclude="LEFT+RIGHT+UP+L+B+A+R+START+SELECT" event="press" />
     <BIND action="record_options.left" keys="LEFT" exclude="DOWN+RIGHT+UP+L+B+A+R+START+SELECT" event="press" />
     <BIND action="record_options.right" keys="RIGHT" exclude="LEFT+DOWN+UP+L+B+A+R+START+SELECT" event="press" />
     <BIND action="record_options.toggle" keys="A" exclude="LEFT+DOWN+RIGHT+UP+L+B+R+START+SELECT" event="press" />

@@ -188,6 +188,8 @@ class Shortcuts {
         SampleBrowserLeft,
         SampleBrowserRight,
         SongRecord,
+        RecordOptionsUp,
+        RecordOptionsDown,
         RecordOptionsLeft,
         RecordOptionsRight,
         RecordOptionsToggle,

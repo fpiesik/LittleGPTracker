@@ -19,39 +19,80 @@
 #include "Adapters/SDL2/Audio/SDLAudioDriver.h"
 class RecordOptionsDialog : public ModalView {
   public:
-    explicit RecordOptionsDialog(View &parent) : ModalView(parent) {}
+    explicit RecordOptionsDialog(View &parent)
+        : ModalView(parent), selected_(0) {}
     virtual void OnFocus() {}
     virtual void OnPlayerUpdate(PlayerEventType, unsigned int) {}
     virtual void DrawView() {
-        SetWindow(29, 5);
+        SetWindow(29, 9);
         SetColor(CD_NORMAL);
         GUITextProperties props;
         DrawString(0, 0, "Record Options", props);
-        props.invert_ = true;
-        DrawString(0, 2,
-                   SDLAudioDriver::RecordChannels == 2 ? "Channels: Stereo"
-                                                       : "Channels: Mono",
-                   props);
+        const char *metronome[] = {"off", "record", "play and rec"};
+        char countIn[24];
+        if (SDLAudioDriver::RecordCountIn == 0)
+            snprintf(countIn, sizeof(countIn), "Count in: off");
+        else
+            snprintf(countIn, sizeof(countIn), "Count in: %d",
+                     SDLAudioDriver::RecordCountIn);
+        char volume[32];
+        snprintf(volume, sizeof(volume), "Metronome volume: %d%%",
+                 SDLAudioDriver::RecordMetronomeVolume);
+        std::string rows[] = {SDLAudioDriver::RecordChannels == 2
+                                  ? "Channels: Stereo"
+                                  : "Channels: Mono",
+                              std::string("Metronome: ") +
+                                  metronome[SDLAudioDriver::RecordMetronome],
+                              volume, countIn};
+        for (int i = 0; i < 4; ++i) {
+            props.invert_ = selected_ == i;
+            DrawString(0, i + 2, rows[i].c_str(), props);
+        }
         props.invert_ = false;
         const Shortcuts &keys = Shortcuts::Get();
         std::string hint =
             keys.KeyNames(Shortcuts::RecordOptionsToggle) + ": change  " +
             keys.KeyNames(Shortcuts::RecordOptionsBack) + ": back";
-        DrawString(0, 4, hint.c_str(), props);
+        DrawString(0, 7, hint.c_str(), props);
     }
     virtual void ProcessButtonMask(unsigned short mask, bool pressed) {
         if (!pressed)
             return;
         const Shortcuts &keys = Shortcuts::Get();
-        if (keys.Matches(Shortcuts::RecordOptionsLeft, mask, pressed) ||
-            keys.Matches(Shortcuts::RecordOptionsRight, mask, pressed) ||
-            keys.Matches(Shortcuts::RecordOptionsToggle, mask, pressed)) {
-            SDLAudioDriver::RecordChannels = 3 - SDLAudioDriver::RecordChannels;
+        if (keys.Matches(Shortcuts::RecordOptionsUp, mask, pressed)) {
+            selected_ = (selected_ + 3) % 4;
+            isDirty_ = true;
+        } else if (keys.Matches(Shortcuts::RecordOptionsDown, mask, pressed)) {
+            selected_ = (selected_ + 1) % 4;
+            isDirty_ = true;
+        } else if (keys.Matches(Shortcuts::RecordOptionsLeft, mask, pressed) ||
+                   keys.Matches(Shortcuts::RecordOptionsRight, mask, pressed) ||
+                   keys.Matches(Shortcuts::RecordOptionsToggle, mask,
+                                pressed)) {
+            int direction =
+                keys.Matches(Shortcuts::RecordOptionsLeft, mask, pressed) ? -1
+                                                                          : 1;
+            if (selected_ == 0)
+                SDLAudioDriver::RecordChannels =
+                    3 - SDLAudioDriver::RecordChannels;
+            else if (selected_ == 1)
+                SDLAudioDriver::RecordMetronome =
+                    (SDLAudioDriver::RecordMetronome + direction + 3) % 3;
+            else if (selected_ == 2)
+                SDLAudioDriver::RecordMetronomeVolume = SDL_max(
+                    0, SDL_min(100, SDLAudioDriver::RecordMetronomeVolume +
+                                        direction * 10));
+            else
+                SDLAudioDriver::RecordCountIn =
+                    (SDLAudioDriver::RecordCountIn + direction + 9) % 9;
             isDirty_ = true;
         }
         if (keys.Matches(Shortcuts::RecordOptionsBack, mask, pressed))
             EndModal(0);
     }
+
+  private:
+    int selected_;
 };
 static void RecordOptionsClosed(View &, ModalView &) {}
 #define ACTION_RECORD_OPTIONS MAKE_FOURCC('R', 'O', 'P', 'T')
