@@ -18,8 +18,12 @@ for test_name in shortcuts mixer_shortcuts fx_shortcuts table_shortcuts chain_sh
     if [[ $test_name == fx_shortcuts || $test_name == table_shortcuts || $test_name == chain_shortcuts ]]; then
         link_flags+=(-Wl,--wrap=_ZN6Player13OnStartButtonE8PlayModejbh)
     fi
+    if [[ $test_name == chain_shortcuts ]]; then
+        link_flags+=(-Wl,--wrap=_ZN6Player17OnSongStartButtonEjjbb)
+    fi
     if [[ $test_name == table_shortcuts ]]; then
-        link_flags+=(-Wl,--wrap=_ZN4View7DoModalEP9ModalViewPFvRS_RS0_E
+        link_flags+=(-Wl,--wrap=_ZN6Player4StopEv
+                    -Wl,--wrap=_ZN4View7DoModalEP9ModalViewPFvRS_RS0_E
                     -Wl,--wrap=_ZN6Player14StartStreamingERK4Path,--wrap=_ZN6Player13StopStreamingEv
                     -Wl,--wrap=_ZN10SamplePool12ImportSampleER4Path)
     fi

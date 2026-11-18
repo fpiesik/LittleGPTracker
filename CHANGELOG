@@ -1,4 +1,22 @@
 Unreleased
+    Include shortcuts.xml in release ZIPs and build the shortcut loader in the Windows and macOS release projects.
+    Make Phrase insert, free-slot and clone gestures configurable for instruments and both TABL parameter columns.
+    Skip the source instrument when choosing a clone destination and resolve TABL clone sources as in playback.
+    Make Phrase clipboard, selection and interpolation shortcuts editable and restore the selection anchor after copying edited values.
+    Make Phrase value edits, selection edits, command picker and audition shortcuts configurable.
+    Wrap the scale lookup when lowering a note past the bottom of its range.
+    Make Phrase playback, track mute/solo, unmute-all and release gestures configurable.
+    Keep the Phrase selection active after a solo gesture.
+    Make Phrase switches to Chain, Instrument, Table and Groove editable.
+    Make Phrase cursor movement, selection movement and navigation between channels and Chain rows configurable.
+    Make Song Chain edits and clipboard actions configurable. Bound clipboard shifts at the song edges and clear vacated rows after cuts.
+    Make switches from Song to Chain, Project and Mixer editable in normal and selection mode.
+    Make Song and Live playback, mode switches and tempo nudges configurable.
+    Make Song mute, solo, unmute-all and release gestures configurable for tracks and selections.
+    Make Song insert and Chain clone sequences editable. Deep clones retain velocity and require room for all Phrase copies.
+    Make Song cursor movement, selection movement, page and section jumps configurable.
+    Make Instrument field navigation, parameter edits, engine selection and clearing configurable.
+    Make Instrument sample editing, import, Print FX and table allocation/clone gestures configurable.
     Make Instrument slot changes, Phrase/Table navigation and playback shortcuts editable.
     Make Project settings controls editable, including tap tempo, tempo nudges and playback.
     Make sample editor controls configurable, including short-tap execution.

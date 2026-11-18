@@ -1,9 +1,9 @@
 #include "SongView.h"
 #if defined(PLATFORM_X64)
 #include "Adapters/SDL2/Audio/SDLAudioDriver.h"
-#include "Application/Controllers/Shortcuts.h"
 #endif
 #include "Application/Commands/ApplicationCommandDispatcher.h"
+#include "Application/Controllers/Shortcuts.h"
 #include "Application/Mixer/MixerService.h"
 #include "Application/Model/ProjectDatas.h"
 #include "Application/Player/Player.h"
@@ -13,6 +13,8 @@
 #include "System/System/System.h"
 #include "UIController.h"
 #include "VuMeterUtil.h"
+#include <algorithm>
+#include <cstring>
 #include <iostream>
 #include <sstream>
 #include <stdlib.h>
@@ -28,7 +30,7 @@ SongView::SongView(GUIWindow &w, ViewData *viewData, const char *song)
 #if defined(PLATFORM_X64)
     recordDialog_ = 0;
 #endif
-    updatingChain_ = false;
+    pendingChain_ = NO_MORE_CHAIN;
     lastChain_ = 0;
     songname_ = song;
 
@@ -41,7 +43,7 @@ SongView::SongView(GUIWindow &w, ViewData *viewData, const char *song)
     clipboard_.active_ = false;
     clipboard_.data_ = 0;
     invertBatt_ = false;
-    canDeepClone_ = false;
+    deepCloneChain_ = NO_MORE_CHAIN;
     jumpLength_ = 0x10; // B-jump 16 rows like LSDJ
 }
 
@@ -67,12 +69,10 @@ SongView::~SongView() {
 void SongView::updateChain(int offset) {
 
     unsigned int chain = viewData_->UpdateSongChain(offset);
-    updatingChain_ = true;
+    pendingChain_ = chain;
     lastChain_ = chain;
-    updateX_ = viewData_->songX_;
-    updateY_ = viewData_->songY_;
     isDirty_ = true;
-    canDeepClone_ = false;
+    deepCloneChain_ = NO_MORE_CHAIN;
 }
 
 /******************************************************
@@ -95,7 +95,7 @@ void SongView::setChain(unsigned char value) {
 void SongView::updateSongOffset(int offset) {
     viewData_->UpdateSongOffset(offset);
     isDirty_ = true;
-    canDeepClone_ = false;
+    deepCloneChain_ = NO_MORE_CHAIN;
 }
 
 /******************************************************
@@ -107,7 +107,7 @@ void SongView::updateSongOffset(int offset) {
 void SongView::updateCursor(int dx, int dy) {
     viewData_->UpdateSongCursor(dx, dy);
     isDirty_ = true;
-    canDeepClone_ = false;
+    deepCloneChain_ = NO_MORE_CHAIN;
 }
 
 /******************************************************
@@ -157,16 +157,16 @@ void SongView::pasteLast() {
         slim clone current position
  ******************************************************/
 
-void SongView::clonePosition() {
+bool SongView::clonePosition() {
 
     unsigned char *pos = viewData_->GetCurrentSongPointer();
     unsigned char current = *pos;
     if (current == 255)
-        return;
+        return false;
 
     unsigned short next = viewData_->song_->chain_->GetNext();
     if (next == NO_MORE_CHAIN)
-        return;
+        return false;
 
     unsigned char *src = viewData_->song_->chain_->data_ + 16 * current;
     unsigned char *dst = viewData_->song_->chain_->data_ + 16 * next;
@@ -182,7 +182,7 @@ void SongView::clonePosition() {
         *dst++ = *src++;
     };
     setChain((unsigned char)next);
-    isDirty_ = true;
+    return true;
 };
 
 /******************************************************
@@ -202,62 +202,48 @@ void SongView::deepClonePosition() {
         return;
     }
 
-    unsigned char *srcChain = ch->data_ + 16 * curChainNum;
-    unsigned char *dstChain = ch->data_ + 16 * curChainNum;
-    unsigned short srcPhrases[16];
-    unsigned short dstPhrases[16];
-
-    // Init outside valid range
-    for (int i = 0; i < 16; i++) {
-        srcPhrases[i] = NO_MORE_CHAIN;
-        dstPhrases[i] = NO_MORE_CHAIN;
+    unsigned char *steps = ch->data_ + 16 * curChainNum;
+    unsigned char copies[PHRASE_COUNT];
+    memset(copies, 0xff, sizeof(copies));
+    int needed = 0;
+    for (int i = 0; i < 16; ++i) {
+        unsigned char phrase = steps[i];
+        if (phrase != 0xff && copies[phrase] == 0xff) {
+            copies[phrase] = 0;
+            ++needed;
+        }
+    }
+    int available = 0;
+    for (int i = 0; i < PHRASE_COUNT && available < needed; ++i) {
+        if (!ph->IsUsed(i))
+            ++available;
+    }
+    if (available < needed) {
+        View::SetNotification("no more phrases!");
+        return;
     }
 
-    for (int i = 0; i < 16; i++) {
-        unsigned short srcPhraseNum = *srcChain;
-
-        // skip when "--"
-        if (srcPhraseNum == CHAIN_COUNT) {
-            srcChain++;
-            dstChain++;
+    memset(copies, 0xff, sizeof(copies));
+    for (int i = 0; i < 16; ++i) {
+        unsigned char phrase = steps[i];
+        if (phrase == 0xff)
             continue;
-        }
-
-        unsigned short newPhraseNum = NO_MORE_CHAIN;
-
-        for (int j = 0; j < 16; j++) {
-            if (srcPhrases[j] == srcPhraseNum) {
-                newPhraseNum = dstPhrases[j];
-                break;
+        if (copies[phrase] == 0xff) {
+            unsigned char next = ph->GetNext();
+            copies[phrase] = next;
+            for (int k = 0; k < 16; ++k) {
+                int src = 16 * phrase + k;
+                int dst = 16 * next + k;
+                ph->note_[dst] = ph->note_[src];
+                ph->velocity_[dst] = ph->velocity_[src];
+                ph->instr_[dst] = ph->instr_[src];
+                ph->cmd1_[dst] = ph->cmd1_[src];
+                ph->param1_[dst] = ph->param1_[src];
+                ph->cmd2_[dst] = ph->cmd2_[src];
+                ph->param2_[dst] = ph->param2_[src];
             }
         }
-
-        if (newPhraseNum == NO_MORE_CHAIN) {
-            newPhraseNum = ph->GetNext();
-            if (newPhraseNum == NO_MORE_PHRASE) {
-                View::SetNotification("no more phrases!");
-                return;
-            }
-            for (int k = 0; k < 16; k++) {
-                *(ph->note_ + 16 * newPhraseNum + k) =
-                    *(ph->note_ + 16 * srcPhraseNum + k);
-                *(ph->instr_ + 16 * newPhraseNum + k) =
-                    *(ph->instr_ + 16 * srcPhraseNum + k);
-                *(ph->cmd1_ + 16 * newPhraseNum + k) =
-                    *(ph->cmd1_ + 16 * srcPhraseNum + k);
-                *(ph->cmd2_ + 16 * newPhraseNum + k) =
-                    *(ph->cmd2_ + 16 * srcPhraseNum + k);
-                *(ph->param1_ + 16 * newPhraseNum + k) =
-                    *(ph->param1_ + 16 * srcPhraseNum + k);
-                *(ph->param2_ + 16 * newPhraseNum + k) =
-                    *(ph->param2_ + 16 * srcPhraseNum + k);
-            }
-        }
-        srcPhrases[i] = srcPhraseNum;
-        dstPhrases[i] = newPhraseNum;
-        *dstChain = newPhraseNum;
-        srcChain++;
-        dstChain++;
+        steps[i] = copies[phrase];
     }
     View::SetNotification("deep clone");
 
@@ -278,10 +264,12 @@ void SongView::extendSelection() {
     } else {
         if (viewData_->songY_ < clipboard_.y_) {
             viewData_->songY_ = 0;
-            clipboard_.y_ = 0x17;
+            clipboard_.y_ =
+                std::min(0x17, SONG_ROW_COUNT - 1 - clipboard_.offset_);
         } else {
             clipboard_.y_ = 0;
-            viewData_->songY_ = 0x17;
+            viewData_->songY_ =
+                std::min(0x17, SONG_ROW_COUNT - 1 - viewData_->songOffset_);
         }
         isDirty_ = true;
     }
@@ -309,35 +297,29 @@ GUIRect SongView::getSelectionRect() {
         fill clipboard with current selection value
  ******************************************************/
 
-void SongView::fillClipboardData() {
-
-    // Clear current selection data
-
-    if (!clipboard_.data_)
-        SYS_FREE((void *)clipboard_.data_);
-
-    // Prepare selection related information
-
+bool SongView::fillClipboardData() {
     GUIRect selRect = getSelectionRect();
-
-    // Set current selection  data
-
-    clipboard_.width_ = selRect.Width() + 1;
-    clipboard_.height_ = selRect.Height() + 1;
-
-    clipboard_.data_ =
-        (unsigned char *)SYS_MALLOC(clipboard_.width_ * clipboard_.height_);
-
-    unsigned char *src = viewData_->song_->data_ + selRect.Left() +
-                         SONG_CHANNEL_COUNT * selRect.Top();
-    unsigned char *dst = clipboard_.data_;
-
-    for (int j = 0; j < clipboard_.height_; j++) {
-        for (int i = 0; i < clipboard_.width_; i++) {
-            *dst++ = *src++;
-        }
-        src += (SONG_CHANNEL_COUNT - clipboard_.width_);
+    int width = selRect.Width() + 1;
+    int height = selRect.Height() + 1;
+    unsigned char *copy =
+        static_cast<unsigned char *>(SYS_MALLOC(width * height));
+    if (!copy) {
+        SetNotification("Clipboard allocation failed");
+        return false;
     }
+    if (clipboard_.data_)
+        SYS_FREE(clipboard_.data_);
+    clipboard_.data_ = copy;
+    clipboard_.width_ = width;
+    clipboard_.height_ = height;
+    for (int row = 0; row < clipboard_.height_; ++row) {
+        const unsigned char *src = viewData_->song_->data_ +
+                                   (selRect.Top() + row) * SONG_CHANNEL_COUNT +
+                                   selRect.Left();
+        std::memcpy(clipboard_.data_ + row * clipboard_.width_, src,
+                    clipboard_.width_);
+    }
+    return true;
 };
 
 /******************************************************
@@ -347,7 +329,8 @@ void SongView::fillClipboardData() {
 
 void SongView::copySelection() {
 
-    fillClipboardData();
+    if (!fillClipboardData())
+        return;
     clipboard_.active_ = false;
     viewMode_ = VM_NORMAL;
     viewData_->songX_ = saveX_;
@@ -365,32 +348,21 @@ void SongView::cutSelection() {
 
     // first copy the data to clipboard
 
-    fillClipboardData();
+    if (!fillClipboardData())
+        return;
     GUIRect selRect = getSelectionRect();
 
     // now move all rows up for cut
 
-    unsigned char *dst = viewData_->song_->data_ + selRect.Left() +
-                         SONG_CHANNEL_COUNT * (selRect.Top());
-    unsigned char *src = dst + SONG_CHANNEL_COUNT * clipboard_.height_;
-
-    int rowCount = SONG_ROW_COUNT - selRect.Bottom() - 1;
-
-    for (int j = 0; j < rowCount; j++) {
-
-        for (int i = 0; i < clipboard_.width_; i++) {
-            *dst++ = *src++;
-        }
-        src += (SONG_CHANNEL_COUNT - clipboard_.width_);
-        dst += (SONG_CHANNEL_COUNT - clipboard_.width_);
+    for (int row = selRect.Top(); row < SONG_ROW_COUNT; ++row) {
+        unsigned char *dst =
+            viewData_->song_->data_ + row * SONG_CHANNEL_COUNT + selRect.Left();
+        if (row + clipboard_.height_ < SONG_ROW_COUNT)
+            std::memcpy(dst, dst + clipboard_.height_ * SONG_CHANNEL_COUNT,
+                        clipboard_.width_);
+        else
+            std::memset(dst, 0xff, clipboard_.width_);
     }
-
-    for (int j = 0; j > clipboard_.height_; j++) {
-        for (int i = 0; i < clipboard_.width_; i++) {
-            *dst++ = 0xFF;
-        }
-        dst += (SONG_CHANNEL_COUNT - clipboard_.width_);
-    };
 
     clipboard_.active_ = false;
     viewMode_ = VM_NORMAL;
@@ -411,49 +383,20 @@ void SongView::pasteClipboard() {
     if (!clipboard_.data_)
         return;
 
-    // Check we're not out of scope
-
-    int width = clipboard_.width_;
-    int height = clipboard_.height_;
-
-    if (viewData_->songX_ + width > SONG_CHANNEL_COUNT) {
-        width = SONG_CHANNEL_COUNT - viewData_->songX_;
+    int top = viewData_->songY_ + viewData_->songOffset_;
+    int width =
+        std::min(clipboard_.width_, SONG_CHANNEL_COUNT - viewData_->songX_);
+    int height = std::min(clipboard_.height_, SONG_ROW_COUNT - top);
+    for (int row = SONG_ROW_COUNT - 1; row >= top + height; --row) {
+        unsigned char *dst = viewData_->song_->data_ +
+                             row * SONG_CHANNEL_COUNT + viewData_->songX_;
+        std::memcpy(dst, dst - height * SONG_CHANNEL_COUNT, width);
     }
-    if (viewData_->songY_ + viewData_->songOffset_ + height > SONG_ROW_COUNT) {
-        height = SONG_ROW_COUNT - viewData_->songY_ - viewData_->songOffset_;
-    } else {
-
-        // Move down from insert point
-
-        unsigned char *dst = viewData_->song_->data_ + viewData_->songX_ +
-                             (SONG_ROW_COUNT - 1) * SONG_CHANNEL_COUNT;
-        unsigned char *src = dst - height * SONG_CHANNEL_COUNT;
-
-        int rowCount =
-            SONG_ROW_COUNT - (viewData_->songY_ + viewData_->songOffset_);
-
-        for (int j = 0; j < rowCount; j++) {
-            for (int i = 0; i < width; i++) {
-                *dst++ = *src++;
-            }
-            dst -= (SONG_CHANNEL_COUNT + width);
-            src -= (SONG_CHANNEL_COUNT + width);
-        }
+    for (int row = 0; row < height; ++row) {
+        unsigned char *dst =
+            viewData_->GetCurrentSongPointer() + row * SONG_CHANNEL_COUNT;
+        std::memcpy(dst, clipboard_.data_ + row * clipboard_.width_, width);
     }
-
-    // Prepare copy pointer
-
-    unsigned char *dst = viewData_->GetCurrentSongPointer();
-    unsigned char *src = clipboard_.data_;
-
-    for (int j = 0; j < height; j++) {
-        for (int i = 0; i < width; i++) {
-            *dst++ = *src++;
-        }
-        dst += (SONG_CHANNEL_COUNT - width);
-        src += (clipboard_.width_ - width);
-    }
-
     updateCursor(0, height);
 }
 
@@ -593,6 +536,185 @@ void SongView::jumpToNextSection(int direction) {
     isDirty_ = true;
 }
 
+namespace {
+enum SongMovement {
+    MoveDown = 1,
+    MoveUp = 2,
+    MoveLeft = 4,
+    MoveRight = 8,
+    PageDown = 16,
+    PageUp = 32,
+    NextSection = 64,
+    PreviousSection = 128
+};
+
+bool songMatches(Shortcuts::Action action, unsigned short mask,
+                 bool pressed = true) {
+    const Shortcuts &keys = Shortcuts::Get();
+#if defined(PLATFORM_X64)
+    if ((mask & EPBM_SELECT) &&
+        (keys.RemainingButtons(action, mask) & EPBM_SELECT))
+        return false;
+#endif
+    return keys.Matches(action, mask, pressed);
+}
+
+enum SongEdit {
+    CutCell = 1 << 0,
+    PasteCells = 1 << 1,
+    DecreaseCoarse = 1 << 2,
+    IncreaseCoarse = 1 << 3,
+    DecreaseFine = 1 << 4,
+    IncreaseFine = 1 << 5,
+    HoldEdit = 1 << 6,
+    ExtendSelection = 1 << 7,
+    CopySelection = 1 << 8,
+    CutSelection = 1 << 9,
+};
+
+unsigned int songEdits(unsigned short mask, bool selection) {
+    static const struct {
+        Shortcuts::Action binding;
+        bool selection;
+        SongEdit edit;
+    } bindings[] = {
+        {Shortcuts::SongCut, false, CutCell},
+        {Shortcuts::SongPaste, false, PasteCells},
+        {Shortcuts::SongDecreaseCoarse, false, DecreaseCoarse},
+        {Shortcuts::SongIncreaseCoarse, false, IncreaseCoarse},
+        {Shortcuts::SongDecreaseFine, false, DecreaseFine},
+        {Shortcuts::SongIncreaseFine, false, IncreaseFine},
+        {Shortcuts::SongEditHold, false, HoldEdit},
+        {Shortcuts::SongSelectionExtend, true, ExtendSelection},
+        {Shortcuts::SongSelectionCopy, true, CopySelection},
+        {Shortcuts::SongSelectionCut, true, CutSelection},
+    };
+    unsigned int edits = 0;
+    for (unsigned i = 0; i < sizeof(bindings) / sizeof(bindings[0]); ++i)
+        if (bindings[i].selection == selection &&
+            songMatches(bindings[i].binding, mask))
+            edits |= bindings[i].edit;
+    return edits;
+}
+
+enum SongChannelAction {
+    NoChannelAction,
+    MuteChannels,
+    SoloChannels,
+    UnmuteAllChannels
+};
+
+SongChannelAction songChannelAction(unsigned short mask, bool selection) {
+    if (songMatches(selection ? Shortcuts::SongSelectionMute
+                              : Shortcuts::SongMute,
+                    mask))
+        return MuteChannels;
+    if (songMatches(selection ? Shortcuts::SongSelectionSolo
+                              : Shortcuts::SongSolo,
+                    mask))
+        return SoloChannels;
+    if (songMatches(selection ? Shortcuts::SongSelectionUnmuteAll
+                              : Shortcuts::SongUnmuteAll,
+                    mask))
+        return UnmuteAllChannels;
+    return NoChannelAction;
+}
+
+enum SongViewSwitch { OpenChain = 1, OpenProject = 2, OpenMixer = 4 };
+
+unsigned int songViewSwitches(unsigned short mask, bool selection) {
+    unsigned int switches = 0;
+    if (songMatches(selection ? Shortcuts::SongSelectionChain
+                              : Shortcuts::SongChain,
+                    mask))
+        switches |= OpenChain;
+    if (songMatches(selection ? Shortcuts::SongSelectionProject
+                              : Shortcuts::SongProject,
+                    mask))
+        switches |= OpenProject;
+    if (songMatches(selection ? Shortcuts::SongSelectionMixer
+                              : Shortcuts::SongMixer,
+                    mask))
+        switches |= OpenMixer;
+    return switches;
+}
+
+enum SongTransport {
+    ToggleMode = 1,
+    Play = 2,
+    Stop = 4,
+    StartRow = 8,
+    Immediate = 16,
+    NudgeDown = 32,
+    NudgeUp = 64
+};
+
+unsigned int songTransport(unsigned short mask, bool selection) {
+    static const struct {
+        Shortcuts::Action normal, selected;
+        SongTransport action;
+    } bindings[] = {
+        {Shortcuts::SongToggleModeLeft, Shortcuts::Count, ToggleMode},
+        {Shortcuts::SongToggleModeRight, Shortcuts::Count, ToggleMode},
+        {Shortcuts::SongPlay, Shortcuts::SongSelectionPlay, Play},
+        {Shortcuts::SongStop, Shortcuts::SongSelectionStop, Stop},
+        {Shortcuts::SongStartRow, Shortcuts::Count, StartRow},
+        {Shortcuts::SongImmediate, Shortcuts::Count, Immediate},
+        {Shortcuts::SongNudgeDown, Shortcuts::Count, NudgeDown},
+        {Shortcuts::SongNudgeUp, Shortcuts::Count, NudgeUp},
+    };
+    unsigned int result = 0;
+    for (unsigned i = 0; i < sizeof(bindings) / sizeof(bindings[0]); ++i)
+        if (songMatches(selection ? bindings[i].selected : bindings[i].normal,
+                        mask))
+            result |= bindings[i].action;
+    return result;
+}
+
+unsigned int songMovements(unsigned short mask, bool selection) {
+    static const struct {
+        Shortcuts::Action normal, selected;
+        SongMovement movement;
+    } bindings[] = {
+        {Shortcuts::SongDown, Shortcuts::SongSelectionDown, MoveDown},
+        {Shortcuts::SongUp, Shortcuts::SongSelectionUp, MoveUp},
+        {Shortcuts::SongLeft, Shortcuts::SongSelectionLeft, MoveLeft},
+        {Shortcuts::SongRight, Shortcuts::SongSelectionRight, MoveRight},
+        {Shortcuts::SongPageDown, Shortcuts::Count, PageDown},
+        {Shortcuts::SongPageUp, Shortcuts::Count, PageUp},
+        {Shortcuts::SongNextSection, Shortcuts::Count, NextSection},
+        {Shortcuts::SongPreviousSection, Shortcuts::Count, PreviousSection},
+    };
+    unsigned int result = 0;
+    for (unsigned i = 0; i < sizeof(bindings) / sizeof(bindings[0]); ++i) {
+        Shortcuts::Action action = selection ? bindings[i].selected : bindings[i].normal;
+        if (!songMatches(action, mask))
+            continue;
+        result |= bindings[i].movement;
+    }
+    return result;
+}
+} // namespace
+
+void SongView::processMovement(unsigned int movements) {
+    if (movements & PageDown)
+        updateSongOffset(jumpLength_);
+    if (movements & PageUp)
+        updateSongOffset(-jumpLength_);
+    if (movements & NextSection)
+        jumpToNextSection(1);
+    if (movements & PreviousSection)
+        jumpToNextSection(-1);
+    if (movements & MoveDown)
+        updateCursor(0, 1);
+    if (movements & MoveUp)
+        updateCursor(0, -1);
+    if (movements & MoveLeft)
+        updateCursor(-1, 0);
+    if (movements & MoveRight)
+        updateCursor(1, 0);
+}
+
 /******************************************************
  ProcessButtonMask:
         process button mask even coming from the main
@@ -600,6 +722,24 @@ void SongView::jumpToNextSection(int direction) {
  ******************************************************/
 
 void SongView::ProcessButtonMask(unsigned short mask, bool pressed) {
+    const Shortcuts &keys = Shortcuts::Get();
+    if (!pressed) {
+        if (viewMode_ == VM_MUTEON &&
+            songMatches(Shortcuts::SongMuteRelease, mask, false))
+            toggleMute();
+        else if (viewMode_ == VM_SOLOON &&
+                 songMatches(Shortcuts::SongSoloRelease, mask, false))
+            switchSoloMode();
+        return;
+    }
+    Shortcuts::Action sequence = Shortcuts::Count;
+    if (viewMode_ == VM_NEW && songMatches(Shortcuts::SongNextUnused, mask))
+        sequence = Shortcuts::SongNextUnused;
+    else if (viewMode_ == VM_CLONE && songMatches(Shortcuts::SongClone, mask))
+        sequence = Shortcuts::SongClone;
+    else if (deepCloneChain_ == *viewData_->GetCurrentSongPointer() &&
+             songMatches(Shortcuts::SongDeepClone, mask))
+        sequence = Shortcuts::SongDeepClone;
 
 #if defined(PLATFORM_X64)
     if (Shortcuts::Get().Matches(Shortcuts::SongRecord, mask, pressed)) {
@@ -613,47 +753,34 @@ void SongView::ProcessButtonMask(unsigned short mask, bool pressed) {
         }
         return;
     }
-    if (mask & EPBM_SELECT)
-        return;
+    if (mask & EPBM_SELECT) {
+        bool selection = clipboard_.active_ || viewMode_ == VM_SELECTION ||
+                         viewMode_ == VM_CLONE;
+        if (sequence == Shortcuts::Count && !songMovements(mask, selection) &&
+            songChannelAction(mask, selection) == NoChannelAction &&
+            !songTransport(mask, selection) &&
+            !songViewSwitches(mask, selection) && !songEdits(mask, selection) &&
+            (selection ||
+             (!songMatches(Shortcuts::SongInsert, mask) &&
+              !songMatches(Shortcuts::SongBeginCloneSelection, mask))))
+            return;
+    }
 #endif
-    if (!pressed) {
-        if (viewMode_ == VM_MUTEON) {
-            if (mask & EPBM_R) {
-                toggleMute();
-            }
-        };
-        if (viewMode_ == VM_SOLOON && (mask & EPBM_R)) {
-            switchSoloMode();
-        }
-        return;
-    };
-
-    if (viewMode_ == VM_NEW) {
-        if (mask == EPBM_A) {
-            unsigned short next = viewData_->song_->chain_->GetNext();
-            if (next != NO_MORE_CHAIN) {
-                setChain((unsigned char)next);
-                isDirty_ = true;
-            }
-            mask &= (0xFFFF - EPBM_A);
-        }
-    }
-
-    if (viewMode_ == VM_CLONE) {
-        if ((mask & EPBM_A) && (mask & EPBM_L)) {
-            clonePosition();
-            mask &= (0xFFFF - (EPBM_A | EPBM_L));
-            canDeepClone_ = true;
-        } else {
-            viewMode_ = VM_SELECTION;
-        }
-    };
-
-    if (canDeepClone_ && (mask & EPBM_A) && (mask & EPBM_L)) {
+    if (sequence == Shortcuts::SongNextUnused) {
+        unsigned short next = viewData_->song_->chain_->GetNext();
+        if (next != NO_MORE_CHAIN)
+            setChain((unsigned char)next);
+    } else if (sequence == Shortcuts::SongClone) {
+        deepCloneChain_ = clonePosition() ? *viewData_->GetCurrentSongPointer()
+                                          : NO_MORE_CHAIN;
+    } else if (sequence == Shortcuts::SongDeepClone) {
         deepClonePosition();
-        mask &= (0xFFFF - (EPBM_A | EPBM_L));
-        canDeepClone_ = false;
+        deepCloneChain_ = NO_MORE_CHAIN;
+    } else if (viewMode_ == VM_CLONE) {
+        viewMode_ = VM_SELECTION;
     }
+    if (sequence != Shortcuts::Count)
+        mask = keys.RemainingButtons(sequence, mask);
     if (clipboard_.active_) {
         viewMode_ = VM_SELECTION;
     };
@@ -669,12 +796,14 @@ void SongView::ProcessButtonMask(unsigned short mask, bool pressed) {
             saveY_ = clipboard_.y_;
             saveOffset_ = clipboard_.offset_;
         }
+        processMovement(songMovements(mask, true));
         processSelectionButtonMask(mask);
     } else {
 
         // Switch back to normal mode
 
         viewMode_ = VM_NORMAL;
+        processMovement(songMovements(mask, false));
         processNormalButtonMask(mask);
     }
 }
@@ -687,144 +816,50 @@ void SongView::ProcessButtonMask(unsigned short mask, bool pressed) {
 
 void SongView::processNormalButtonMask(unsigned int mask) {
 
-    // B Modifier
-
-    if (mask & EPBM_B) {
-
-        if (mask & EPBM_DOWN)
-            updateSongOffset(SongView::jumpLength_);
-        if (mask & EPBM_UP)
-            updateSongOffset(-SongView::jumpLength_);
-        if (mask & (EPBM_RIGHT | EPBM_LEFT)) {
-            Player *player = Player::GetInstance();
-            switch (player->GetSequencerMode()) {
-            case SM_SONG:
-                player->SetSequencerMode(SM_LIVE);
-                break;
-            case SM_LIVE:
-                player->SetSequencerMode(SM_SONG);
-                break;
-            }
-            isDirty_ = true;
-        }
-        if ((mask & EPBM_A) && (!(mask & EPBM_R)))
-            cutPosition();
-        if (mask & EPBM_L) {
-
-            viewMode_ = VM_CLONE;
-        };
-        if (mask & EPBM_R) {
-            toggleMute();
-        };
-        if (mask & EPBM_START) {
-            startImmediate();
-        }
-    } else {
-
-        // A modifier
-
-        if (mask & EPBM_A) {
-
-            if (mask & EPBM_DOWN)
-                updateChain(-0x10);
-            if (mask & EPBM_UP)
-                updateChain(0x10);
-            if (mask & EPBM_LEFT)
-                updateChain(-0x01);
-            if (mask & EPBM_RIGHT)
-                updateChain(0x01);
-            if (mask & EPBM_L && !canDeepClone_) {
-                pasteClipboard();
-            }
-            if (mask == EPBM_A) {
-
-                pasteLast();
-                viewMode_ = VM_NEW;
-            }
-            if (mask & EPBM_R) {
-                switchSoloMode();
-            };
-        } else {
-
-            // R Modifier
-
-            if (mask & EPBM_R) {
-
-                if (mask & EPBM_L) {
-                    unMuteAll();
-                }
-
-                if (mask & EPBM_RIGHT) {
-                    unsigned char *data = viewData_->GetCurrentSongPointer();
-                    if (*data != 0xFF) {
-                        ViewType vt = VT_CHAIN;
-                        ViewEvent ve(VET_SWITCH_VIEW, &vt);
-                        viewData_->currentChain_ = *data;
-                        SetChanged();
-                        NotifyObservers(&ve);
-                    }
-                }
-
-                if (mask & EPBM_UP) {
-                    ViewType vt = VT_PROJECT;
-                    ViewEvent ve(VET_SWITCH_VIEW, &vt);
-                    SetChanged();
-                    NotifyObservers(&ve);
-                }
-
-                if (mask & EPBM_DOWN) {
-                    ViewType vt = VT_MIXER;
-                    ViewEvent ve(VET_SWITCH_VIEW, &vt);
-                    SetChanged();
-                    NotifyObservers(&ve);
-                }
-
-                if (mask & EPBM_START) {
-                    onStop();
-                }
-
-            } else {
-
-                // L Modifier
-
-                if (mask & EPBM_L) {
-                    if (mask & EPBM_DOWN)
-                        jumpToNextSection(1);
-                    if (mask & EPBM_UP)
-                        jumpToNextSection(-1);
-                    if (mask & EPBM_START)
-                        startCurrentRow();
-                    if (mask & EPBM_LEFT)
-                        nudgeTempo(-1);
-                    if (mask & EPBM_RIGHT)
-                        nudgeTempo(1);
-                } else {
-
-                    // No modifier
-
-                    if (mask & EPBM_DOWN)
-                        updateCursor(0, 1);
-                    if (mask & EPBM_UP)
-                        updateCursor(0, -1);
-                    if (mask & EPBM_LEFT)
-                        updateCursor(-1, 0);
-                    if (mask & EPBM_RIGHT)
-                        updateCursor(1, 0);
-
-                    if (mask & EPBM_START) {
-                        onStart();
-                    }
-                }
-            }
-        }
+    unsigned int edits = songEdits(mask, false);
+    unsigned int switches = songViewSwitches(mask, false);
+    unsigned int transport = songTransport(mask, false);
+    SongChannelAction channel = songChannelAction(mask, false);
+    bool insert = songMatches(Shortcuts::SongInsert, mask);
+    bool beginClone = songMatches(Shortcuts::SongBeginCloneSelection, mask);
+    if (transport & ToggleMode) {
+        Player *player = Player::GetInstance();
+        player->SetSequencerMode(
+            player->GetSequencerMode() == SM_SONG ? SM_LIVE : SM_SONG);
+        isDirty_ = true;
     }
+    if (edits & CutCell)
+        cutPosition();
+    if (beginClone)
+        viewMode_ = VM_CLONE;
+    if (insert) {
+        pasteLast();
+        viewMode_ = VM_NEW;
+    }
+    if (edits & DecreaseCoarse)
+        updateChain(-0x10);
+    if (edits & IncreaseCoarse)
+        updateChain(0x10);
+    if (edits & DecreaseFine)
+        updateChain(-1);
+    if (edits & IncreaseFine)
+        updateChain(1);
+    if ((edits & PasteCells) &&
+        deepCloneChain_ != *viewData_->GetCurrentSongPointer())
+        pasteClipboard();
+    if (channel == MuteChannels)
+        toggleMute();
+    else if (channel == SoloChannels)
+        switchSoloMode();
+    else if (channel == UnmuteAllChannels)
+        unMuteAll();
 
-    if ((!(mask & EPBM_A)) && updatingChain_) {
-        unsigned char *c =
-            viewData_->song_->data_ + updateX_ +
-            SONG_CHANNEL_COUNT * (viewData_->songOffset_ + updateY_);
-        viewData_->song_->chain_->SetUsed(*c);
-        updatingChain_ = false;
+    processViewSwitch(switches);
+    processPlayback(transport);
+
+    if (!(edits & HoldEdit) && pendingChain_ < CHAIN_COUNT) {
+        viewData_->song_->chain_->SetUsed(pendingChain_);
+        pendingChain_ = NO_MORE_CHAIN;
     }
 };
 
@@ -836,87 +871,67 @@ void SongView::processNormalButtonMask(unsigned int mask) {
 
 void SongView::processSelectionButtonMask(unsigned int mask) {
 
-    // B Modifier
+    unsigned int edits = songEdits(mask, true);
+    unsigned int switches = songViewSwitches(mask, true);
+    unsigned int transport = songTransport(mask, true);
+    SongChannelAction channel = songChannelAction(mask, true);
+    if (channel == MuteChannels)
+        toggleMute();
+    if (edits & ExtendSelection)
+        extendSelection();
+    if (edits & CopySelection)
+        copySelection();
+    if (edits & CutSelection)
+        cutSelection();
+    if (channel == SoloChannels)
+        switchSoloMode();
+    else if (channel == UnmuteAllChannels)
+        unMuteAll();
+    processViewSwitch(switches);
+    processPlayback(transport);
+}
 
-    if (mask & EPBM_B) {
-        if (mask & EPBM_R) {
-            toggleMute();
-        };
-        if (mask & EPBM_L) {
-            extendSelection();
-        };
-        if (mask == EPBM_B) {
-            copySelection();
-        }
-
-    } else {
-
-        // A modifier
-
-        if (mask & EPBM_A) {
-            if (mask & EPBM_L) {
-                cutSelection();
-            }
-            if (mask & EPBM_R) {
-                switchSoloMode();
-            };
-        } else {
-
-            // R Modifier
-
-            if (mask & EPBM_R) {
-
-                if (mask & EPBM_L) {
-                    unMuteAll();
-                }
-
-                if (mask & EPBM_RIGHT) {
-                    unsigned char *data = viewData_->GetCurrentSongPointer();
-                    if (*data != 0xFF) {
-                        ViewType vt = VT_CHAIN;
-                        ViewEvent ve(VET_SWITCH_VIEW, &vt);
-                        viewData_->currentChain_ = *data;
-                        SetChanged();
-                        NotifyObservers(&ve);
-                    }
-                }
-
-                if (mask & EPBM_UP) {
-                    ViewType vt = VT_PROJECT;
-                    ViewEvent ve(VET_SWITCH_VIEW, &vt);
-                    SetChanged();
-                    NotifyObservers(&ve);
-                }
-
-                if (mask & EPBM_DOWN) {
-                    ViewType vt = VT_MIXER;
-                    ViewEvent ve(VET_SWITCH_VIEW, &vt);
-                    SetChanged();
-                    NotifyObservers(&ve);
-                }
-
-                if (mask & EPBM_START) {
-                    onStop();
-                }
-
-            } else {
-
-                // No modifier
-
-                if (mask & EPBM_DOWN)
-                    updateCursor(0, 1);
-                if (mask & EPBM_UP)
-                    updateCursor(0, -1);
-                if (mask & EPBM_LEFT)
-                    updateCursor(-1, 0);
-                if (mask & EPBM_RIGHT)
-                    updateCursor(1, 0);
-                if (mask & EPBM_START) {
-                    onStart();
-                }
-            }
+void SongView::processViewSwitch(unsigned int switches) {
+    if (switches & OpenChain) {
+        unsigned char *data = viewData_->GetCurrentSongPointer();
+        if (*data != 0xFF) {
+            ViewType vt = VT_CHAIN;
+            ViewEvent ve(VET_SWITCH_VIEW, &vt);
+            viewData_->currentChain_ = *data;
+            SetChanged();
+            NotifyObservers(&ve);
         }
     }
+
+    if (switches & OpenProject) {
+        ViewType vt = VT_PROJECT;
+        ViewEvent ve(VET_SWITCH_VIEW, &vt);
+        SetChanged();
+        NotifyObservers(&ve);
+    }
+
+    if (switches & OpenMixer) {
+        ViewType vt = VT_MIXER;
+        ViewEvent ve(VET_SWITCH_VIEW, &vt);
+        SetChanged();
+        NotifyObservers(&ve);
+    }
+}
+
+void SongView::processPlayback(unsigned int transport) {
+    if (transport & Immediate)
+        startImmediate();
+    else if (transport & Stop)
+        onStop();
+    else if (transport & StartRow)
+        startCurrentRow();
+    else if (transport & Play)
+        onStart();
+
+    if (transport & NudgeDown)
+        nudgeTempo(-1);
+    if (transport & NudgeUp)
+        nudgeTempo(1);
 }
 
 /******************************************************
@@ -933,7 +948,7 @@ void SongView::DrawVuBars() {
     GUIPoint vuPos = anchor;
     vuPos._x += SONG_CHANNEL_COUNT * 3 + 1;
     vuPos._y += View::songRowCount_ - 1;
-    
+
     GUITextProperties vuProps;
     vuProps.invert_ = true;
 

@@ -17,7 +17,7 @@ collect_resources() { #1PLATFORM #2lgpt.*-exe
   BINARY=" $(find . -iname $2)"
   chmod +x $BINARY
   CONTENTS="./resources/$1/*"
-  CONTENTS+=" ./custom_font.xml"
+  CONTENTS+=" ./custom_font.xml ./shortcuts.xml"
   CONTENTS+=" $BINARY"
   if [ "$1" == "PSP" ] ||
   [ "$1" == "GARLIC" ] ||

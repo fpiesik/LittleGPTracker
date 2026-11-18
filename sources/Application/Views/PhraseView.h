@@ -21,6 +21,11 @@ class PhraseView : public View {
     void onCommandSelectorPreview(ModalView &d);
 
   protected:
+    void switchView(ViewType destination);
+    void processViewSwitches(unsigned short mask, bool selection);
+    void processValueEdits(unsigned short mask, bool selection);
+    void processPlayback(unsigned short mask, bool selection);
+    void processNavigation(unsigned short mask, bool selection);
     void updateCursor(int dx, int dy);
     void stopAudition();
     void updateCursorValue(ViewUpdateDirection offset, int xOffset = 0,

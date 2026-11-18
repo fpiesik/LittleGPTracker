@@ -2,6 +2,7 @@
 #include "Adapters/Unix/FileSystem/UnixFileSystem.h"
 #include "Application/Controllers/Shortcuts.h"
 #include "Application/Instruments/CommandList.h"
+#include "Application/Instruments/SampleInstrument.h"
 #include "Application/Instruments/SamplePool.h"
 #include "Application/Views/BaseClasses/ModalView.h"
 #include "Application/Views/ModalDialogs/CommandSelectorModal.h"
@@ -10,6 +11,7 @@
 #include "Application/Views/ModalDialogs/NewProjectDialog.h"
 #include "Application/Views/ModalDialogs/RecordDialog.h"
 #include "Application/Views/ModalDialogs/SelectProjectDialog.h"
+#include "Application/Views/PhraseView.h"
 #include "Application/Views/TableView.h"
 #include "Services/Audio/Audio.h"
 #include "Services/Midi/MidiService.h"
@@ -59,12 +61,18 @@ static bool Load(Shortcuts &shortcuts, const char *xml) {
 }
 
 // Capture playback and modal-opening requests without audio or a real GUI.
-static int playCalls, modalCalls;
+static int playCalls, modalCalls, auditionCalls, stopCalls;
+extern "C" void __wrap__ZN6Player4StopEv(Player *) { ++stopCalls; }
 static bool playFromStart;
 extern "C" void
 __wrap__ZN6Player13OnStartButtonE8PlayModejbh(Player *, PlayMode mode,
                                               unsigned int from, bool fromStart,
                                               unsigned char to) {
+    if (mode == PM_AUDITION) {
+        assert(!fromStart && from == 0 && to == 0);
+        ++auditionCalls;
+        return;
+    }
     assert(mode == PM_PHRASE && from == 0 && to == 0);
     ++playCalls;
     playFromStart = fromStart;
@@ -222,6 +230,253 @@ class TestSampleBrowser : public ImportSampleDialog {
         return isDirty_;
     }
 };
+static void CheckPhraseClone(TestWindow &window, ViewData &data,
+                             Shortcuts &keys, bool remapped) {
+    assert(Load(
+        keys,
+        remapped
+            ? "<SHORTCUTS version='1'>"
+              "<BIND action='phrase.insert' keys='L+SELECT' event='press'/>"
+              "<BIND action='phrase.next_instrument' keys='SELECT' "
+              "event='press'/>"
+              "<BIND action='phrase.next_table' keys='SELECT' event='press'/>"
+              "<BIND action='phrase.begin_clone_selection' keys='SELECT+B' "
+              "event='press'/>"
+              "<BIND action='phrase.clone_instrument' keys='L+UP' "
+              "event='press'/>"
+              "<BIND action='phrase.clone_table' keys='L+DOWN' event='press'/>"
+              "</SHORTCUTS>"
+            : "<SHORTCUTS version='1'/>"));
+    data.currentPhrase_ = data.songX_ = data.chainRow_ = 0;
+    data.playMode_ = PM_PHRASE;
+    PhraseView view(window, &data);
+    Phrase &phrase = *data.song_->phrase_;
+    unsigned short insert = remapped ? EPBM_L | EPBM_SELECT : EPBM_A;
+    unsigned short next = remapped ? EPBM_SELECT : EPBM_A;
+    unsigned short arm = remapped ? EPBM_SELECT | EPBM_B : EPBM_L | EPBM_B;
+    unsigned short cloneInstrument =
+        remapped ? EPBM_L | EPBM_UP : EPBM_L | EPBM_A;
+    unsigned short cloneTable = remapped ? EPBM_L | EPBM_DOWN : EPBM_L | EPBM_A;
+    phrase.note_[0] = 0xff;
+    if (remapped)
+        view.ProcessButtonMask(EPBM_A, true);
+    assert(phrase.note_[0] == 0xff);
+    view.ProcessButtonMask(insert, true);
+    assert(phrase.note_[0] == 60);
+    view.ProcessButtonMask(EPBM_RIGHT, true);
+    view.ProcessButtonMask(EPBM_RIGHT, true);
+    InstrumentBank &bank = *data.project_->GetInstrumentBank();
+    int freeSlot = bank.GetNext();
+    assert(freeSlot < MAX_SAMPLEINSTRUMENT_COUNT);
+    phrase.instr_[0] = MAX_SAMPLEINSTRUMENT_COUNT;
+    view.ProcessButtonMask(insert, true);
+    view.ProcessButtonMask(0, false);
+    view.ProcessButtonMask(next, true);
+    assert(phrase.instr_[0] == freeSlot);
+    bank.GetInstrument(freeSlot)->FindVariable(SIP_VOLUME)->SetInt(73);
+    view.ProcessButtonMask(arm, true);
+    view.ProcessButtonMask(remapped ? EPBM_SELECT : EPBM_L, false);
+    view.ProcessButtonMask(cloneInstrument, true);
+    int copy = phrase.instr_[0];
+    assert(copy != freeSlot && copy < MAX_SAMPLEINSTRUMENT_COUNT);
+    Variable *volume = bank.GetInstrument(copy)->FindVariable(SIP_VOLUME);
+    assert(volume->GetInt() == 73);
+    volume->SetInt(42);
+    assert(bank.GetInstrument(freeSlot)->FindVariable(SIP_VOLUME)->GetInt() ==
+           73);
+
+    TableHolder &tables = *TableHolder::GetInstance();
+    tables.Reset();
+    for (int lane = 0; lane < 2; ++lane) {
+        view.ProcessButtonMask(EPBM_RIGHT, true);
+        view.ProcessButtonMask(EPBM_RIGHT, true);
+        (lane ? phrase.cmd2_ : phrase.cmd1_)[0] = I_CMD_TABL;
+        ushort &param = (lane ? phrase.param2_ : phrase.param1_)[0];
+        param = 77;
+        view.ProcessButtonMask(insert, true);
+        view.ProcessButtonMask(0, false);
+        view.ProcessButtonMask(next, true);
+        int source = param;
+        assert(source < TABLE_COUNT && source != 77);
+        tables.GetTable(source).param3_[15] = 0xbeef;
+        param |= 0x8080; // Playback uses the low seven bits.
+        view.ProcessButtonMask(arm, true);
+        view.ProcessButtonMask(remapped ? EPBM_SELECT : EPBM_L, false);
+        view.ProcessButtonMask(cloneTable, true);
+        assert(param < TABLE_COUNT && param != source);
+        assert(tables.GetTable(param).param3_[15] == 0xbeef);
+    }
+    for (int i = 0; i < TABLE_COUNT; ++i)
+        tables.SetUsed(i);
+    ushort original = phrase.param2_[0];
+    view.ProcessButtonMask(arm, true);
+    view.ProcessButtonMask(cloneTable, true);
+    assert(phrase.param2_[0] == original);
+}
+
+static void CheckPhraseClipboard(TestWindow &window, ViewData &data,
+                                 Shortcuts &keys, bool remapped) {
+    assert(Load(
+        keys, remapped
+                  ? "<SHORTCUTS version='1'>"
+                    "<BIND action='phrase.cut' keys='L+SELECT' event='press'/>"
+                    "<BIND action='phrase.paste' keys='L+RIGHT' event='press'/>"
+                    "<BIND action='phrase.begin_clone_selection' "
+                    "keys='SELECT+B' event='press'/>"
+                    "<BIND action='phrase.selection_extend' keys='L+SELECT' "
+                    "event='press'/>"
+                    "<BIND action='phrase.selection_copy' keys='SELECT' "
+                    "exclude='L+B' event='press'/>"
+                    "<BIND action='phrase.selection_interpolate' keys='L+UP' "
+                    "event='press'/>"
+                    "<BIND action='phrase.selection_cut' keys='L+DOWN' "
+                    "event='press'/>"
+                    "</SHORTCUTS>"
+                  : "<SHORTCUTS version='1'/>"));
+    data.currentPhrase_ = data.songX_ = data.chainRow_ = 0;
+    data.playMode_ = PM_PHRASE;
+    PhraseView view(window, &data);
+    Phrase &phrase = *data.song_->phrase_;
+    unsigned short cut = remapped ? EPBM_L | EPBM_SELECT : EPBM_A | EPBM_B;
+    unsigned short paste = remapped ? EPBM_L | EPBM_RIGHT : EPBM_A | EPBM_L;
+    unsigned short begin = remapped ? EPBM_SELECT | EPBM_B : EPBM_B | EPBM_L;
+    phrase.note_[0] = 60;
+    phrase.velocity_[0] = 40;
+    phrase.instr_[0] = 7;
+    phrase.param1_[0] = 1234;
+    if (remapped)
+        view.ProcessButtonMask(EPBM_A | EPBM_B, true);
+    view.ProcessButtonMask(cut, false);
+    assert(phrase.note_[0] == 60);
+    view.ProcessButtonMask(cut, true);
+    assert(phrase.note_[0] == 0xff && phrase.velocity_[0] == 127 &&
+           phrase.instr_[0] == 0xff);
+    assert(phrase.param1_[0] == 1234);
+    view.ProcessButtonMask(paste, true);
+    assert(phrase.note_[0] == 60 && phrase.velocity_[0] == 40 &&
+           phrase.instr_[0] == 7);
+    view.ProcessButtonMask(EPBM_UP, true);
+
+    phrase.note_[2] = 64;
+    view.ProcessButtonMask(begin, true);
+    view.ProcessButtonMask(EPBM_DOWN, true);
+    view.ProcessButtonMask(EPBM_DOWN, true);
+    view.ProcessButtonMask(remapped ? EPBM_L | EPBM_UP : EPBM_B | EPBM_R, true);
+    assert(phrase.note_[1] == 62);
+    view.ProcessButtonMask(EPBM_A | EPBM_RIGHT, true);
+    view.ProcessButtonMask(remapped ? EPBM_SELECT : EPBM_B, true);
+    assert(data.phraseCurPos_ == 0);
+    for (int row = 0; row < 15; ++row)
+        view.ProcessButtonMask(EPBM_DOWN, true);
+    view.ProcessButtonMask(paste, true);
+    assert(data.phraseCurPos_ == 2 && data.currentPhrase_ == 0);
+    assert(phrase.note_[15] == 61 && phrase.note_[0] == 63 &&
+           phrase.note_[1] == 65);
+    assert(phrase.velocity_[0] == 40 && phrase.instr_[0] == 7);
+
+    view.ProcessButtonMask(begin, true);
+    view.ProcessButtonMask(EPBM_DOWN, true);
+    unsigned short extend = remapped ? EPBM_L | EPBM_SELECT : EPBM_B | EPBM_L;
+    view.ProcessButtonMask(extend, true);
+    view.ProcessButtonMask(extend, true);
+    view.ProcessButtonMask(remapped ? EPBM_L | EPBM_DOWN : EPBM_A | EPBM_L,
+                           true);
+    assert(data.phraseCurPos_ == 2 && phrase.note_[15] == 0xff &&
+           phrase.param1_[0] == 0);
+    assert(phrase.instr_[0] == 0xff && phrase.velocity_[0] == 127);
+
+    for (int col = 0; col < 3; ++col)
+        view.ProcessButtonMask(EPBM_RIGHT, true);
+    phrase.cmd1_[2] = I_CMD_TABL;
+    phrase.param1_[2] = 0x37;
+    view.ProcessButtonMask(cut, true);
+    assert(phrase.cmd1_[2] == I_CMD_NONE && phrase.param1_[2] == 0);
+    view.ProcessButtonMask(EPBM_RIGHT, true);
+    view.ProcessButtonMask(EPBM_RIGHT, true);
+    view.ProcessButtonMask(paste, true);
+    assert(phrase.cmd2_[2] == I_CMD_TABL && phrase.param2_[2] == 0x37);
+}
+
+static void CheckPhraseEdits(TestWindow &window, ViewData &data,
+                             Shortcuts &keys, bool remapped) {
+    assert(Load(
+        keys,
+        remapped
+            ? "<SHORTCUTS version='1'>"
+              "<BIND action='phrase.edit_up' keys='L+UP' event='press'/>"
+              "<BIND action='phrase.edit_left' keys='L+LEFT' event='press'/>"
+              "<BIND action='phrase.command_picker_up' keys='SELECT' "
+              "event='press'/>"
+              "<BIND action='phrase.command_picker_down' keys='L+DOWN' "
+              "event='press'/>"
+              "<BIND action='phrase.selection_edit_right' keys='L+RIGHT' "
+              "event='press'/>"
+              "<BIND action='phrase.audition' keys='L+SELECT' event='press'/>"
+              "<BIND action='phrase.audition_hold' keys='L' event='press'/>"
+              "</SHORTCUTS>"
+            : "<SHORTCUTS version='1'/>"));
+    data.currentPhrase_ = data.songX_ = data.chainRow_ = 0;
+    data.playMode_ = PM_PHRASE;
+    PhraseView view(window, &data);
+    Phrase &phrase = *data.song_->phrase_;
+    unsigned short modifier = remapped ? EPBM_L : EPBM_A;
+    unsigned short preview = remapped ? EPBM_L | EPBM_SELECT : EPBM_A;
+    auditionCalls = stopCalls = 0;
+    view.ProcessButtonMask(preview, false);
+    assert(auditionCalls == 0);
+    view.ProcessButtonMask(preview, true);
+    assert(auditionCalls == 1);
+    data.playMode_ = PM_AUDITION;
+    view.ProcessButtonMask(modifier, true);
+    assert(stopCalls == 0);
+    view.ProcessButtonMask(EPBM_SELECT, true);
+    assert(stopCalls == 1);
+    data.playMode_ = PM_PHRASE;
+
+    phrase.note_[0] = 0;
+    view.ProcessButtonMask(modifier | EPBM_LEFT, true);
+    assert(phrase.note_[0] == 119);
+    view.ProcessButtonMask(EPBM_RIGHT, true);
+    phrase.velocity_[0] = 100;
+    if (remapped)
+        view.ProcessButtonMask(EPBM_A | EPBM_UP, true);
+    view.ProcessButtonMask(modifier | EPBM_UP, false);
+    assert(phrase.velocity_[0] == 100);
+    view.ProcessButtonMask(modifier | EPBM_UP, true);
+    assert(phrase.velocity_[0] == 116);
+    view.ProcessButtonMask(EPBM_RIGHT, true);
+    view.ProcessButtonMask(EPBM_RIGHT, true);
+    for (int lane = 0; lane < 2; ++lane) {
+        modalCalls = 0;
+        if (remapped)
+            view.ProcessButtonMask(EPBM_A | EPBM_UP, true);
+        assert(modalCalls == 0);
+        view.ProcessButtonMask(remapped ? EPBM_SELECT : EPBM_A | EPBM_UP, true);
+        view.ProcessButtonMask(modifier | EPBM_DOWN, true);
+        assert(modalCalls == 2);
+        ushort *parameter = lane ? phrase.param2_ : phrase.param1_;
+        parameter[0] = 0x20;
+        view.ProcessButtonMask(EPBM_RIGHT, true);
+        view.ProcessButtonMask(modifier | EPBM_LEFT, true);
+        view.ProcessButtonMask(modifier | EPBM_UP, true);
+        assert(parameter[0] == 0x30);
+        view.ProcessButtonMask(EPBM_A | EPBM_RIGHT,
+                               true); // Return to low hex digit.
+        view.ProcessButtonMask(EPBM_RIGHT, true);
+    }
+
+    PhraseView selection(window, &data);
+    phrase.note_[0] = 60;
+    phrase.note_[1] = 64;
+    selection.ProcessButtonMask(EPBM_B | EPBM_L, true);
+    selection.ProcessButtonMask(EPBM_DOWN, true);
+    if (remapped)
+        selection.ProcessButtonMask(EPBM_A | EPBM_RIGHT, true);
+    assert(phrase.note_[0] == 60 && phrase.note_[1] == 64);
+    selection.ProcessButtonMask(modifier | EPBM_RIGHT, true);
+    assert(phrase.note_[0] == 61 && phrase.note_[1] == 65);
+}
+
 int main(int argc, char **argv) {
     System::Install(new LINUXSystem);
     FileSystem::Install(new UnixFileSystem);
@@ -537,5 +792,11 @@ int main(int argc, char **argv) {
     assert(!record.IsFinished());
     record.ProcessButtonMask(EPBM_SELECT | EPBM_R, true);
     assert(record.IsFinished() && record.GetReturnCode() == 0);
+    CheckPhraseClone(window, data, configured, false);
+    CheckPhraseClone(window, data, configured, true);
+    CheckPhraseClipboard(window, data, configured, false);
+    CheckPhraseClipboard(window, data, configured, true);
+    CheckPhraseEdits(window, data, configured, false);
+    CheckPhraseEdits(window, data, configured, true);
     return 0;
 }

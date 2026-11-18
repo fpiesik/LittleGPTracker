@@ -238,38 +238,29 @@ void InstrumentBank::Init() {
 }
 
 unsigned short InstrumentBank::GetNext() {
-	for (int i=0;i<MAX_SAMPLEINSTRUMENT_COUNT;i++) {
-        if (instrument_[i]->GetType() != IT_SAMPLE)
+    return findFreeSlot(NO_MORE_INSTRUMENT);
+}
+
+unsigned short InstrumentBank::findFreeSlot(unsigned short excluded) {
+    for (int i = 0; i < MAX_SAMPLEINSTRUMENT_COUNT; i++) {
+        if (i == excluded || instrument_[i]->GetType() != IT_SAMPLE)
             continue;
-        SampleInstrument *si=(SampleInstrument *)instrument_[i] ;
-		Variable *sample=si->FindVariable(SIP_SAMPLE) ;
-		if (sample) {
-			if (sample->GetInt()==-1) {
-				return i ;
-			}
-		}
-	}
-	return NO_MORE_INSTRUMENT ;
-} ;
+        Variable *sample = instrument_[i]->FindVariable(SIP_SAMPLE);
+        if (sample && sample->GetInt() == -1)
+            return i;
+    }
+    return NO_MORE_INSTRUMENT;
+};
 
 unsigned short InstrumentBank::Clone(unsigned short i) {
-	// can't clone midi instruments
-
-	unsigned short next=GetNext() ;
-	if (next==NO_MORE_INSTRUMENT) 
-  {
-		return NO_MORE_INSTRUMENT ;
-	}
-
-	I_Instrument *src=instrument_[i] ;
-	I_Instrument *dst=instrument_[next] ;
-
-  if (src == dst)
-  {
-		return NO_MORE_INSTRUMENT ;
-	}
-
-	delete dst ;
+    if (i >= MAX_INSTRUMENT_COUNT)
+        return NO_MORE_INSTRUMENT;
+    unsigned short next = findFreeSlot(i);
+    if (next == NO_MORE_INSTRUMENT)
+        return NO_MORE_INSTRUMENT;
+    I_Instrument *src = instrument_[i];
+    I_Instrument *dst = instrument_[next];
+    delete dst ;
   
 	if (src->GetType()==IT_SAMPLE) {
 		dst=new SampleInstrument() ;
@@ -289,8 +280,7 @@ unsigned short InstrumentBank::Clone(unsigned short i) {
 			dstV->CopyFrom(srcV) ;
 		}
 	}
-	return next ;
-
+    return next;
 }
 
 void InstrumentBank::OnStart() {

@@ -341,22 +341,51 @@ void InstrumentView::warpToNext(int offset) {
 	isDirty_=true ;
 } ;
 
-void InstrumentView::ProcessButtonMask(unsigned short mask,bool pressed) {
+static unsigned short instrumentDirections(const Shortcuts &keys,
+                                           unsigned short mask, bool edit) {
+    static const struct {
+        Shortcuts::Action move, adjust;
+        unsigned short direction;
+    } directions[] = {
+        {Shortcuts::InstrumentDown, Shortcuts::InstrumentEditDown, EPBM_DOWN},
+        {Shortcuts::InstrumentUp, Shortcuts::InstrumentEditUp, EPBM_UP},
+        {Shortcuts::InstrumentLeft, Shortcuts::InstrumentEditLeft, EPBM_LEFT},
+        {Shortcuts::InstrumentRight, Shortcuts::InstrumentEditRight,
+         EPBM_RIGHT},
+    };
+    unsigned short result = 0;
+    for (unsigned i = 0; i < sizeof(directions) / sizeof(directions[0]); ++i) {
+        if (keys.Matches(edit ? directions[i].adjust : directions[i].move, mask,
+                         true))
+            result |= directions[i].direction;
+    }
+    return result;
+}
 
-	if (!pressed) return ;
+void InstrumentView::ProcessButtonMask(unsigned short mask, bool pressed) {
 
-	isDirty_=false ;
+    if (!pressed)
+        return;
+
+    isDirty_ = false;
+    const Shortcuts &keys = Shortcuts::Get();
+    bool engineField = false;
 #ifdef LGPT_PLAITS
     // Handle engine edits before the generic field processing. Rebuild only
     // after ProcessArrow returns, so no field deletes itself during a callback.
-    if (GetFocus() &&
-        static_cast<UIIntVarField *>(GetFocus())->GetVariableID() ==
-            SIP_ENGINE &&
-        (mask & EPBM_A)) {
-        if (mask & (EPBM_B | EPBM_L | EPBM_R | EPBM_SELECT | EPBM_START))
+    engineField =
+        GetFocus() &&
+        static_cast<UIIntVarField *>(GetFocus())->GetVariableID() == SIP_ENGINE;
+    if (engineField &&
+        keys.Matches(Shortcuts::InstrumentEngineModifier, mask, pressed)) {
+        unsigned short remaining =
+            keys.RemainingButtons(Shortcuts::InstrumentEngineModifier, mask);
+        unsigned short directions =
+            instrumentDirections(keys, remaining, false);
+        if (remaining && !directions)
             return;
         viewMode_ = VM_NORMAL;
-        FieldView::ProcessButtonMask(mask);
+        FieldView::ProcessButtonMask(EPBM_A | directions);
         InstrumentType type = engine_.GetInt() ? IT_PLAITS : IT_SAMPLE;
         if (type != getInstrumentType()) {
             // AppWindow::onEvent already holds MixerService's lock here.
@@ -374,84 +403,75 @@ void InstrumentView::ProcessButtonMask(unsigned short mask,bool pressed) {
         return;
     }
 #endif
-    if (mask == EPBM_A && GetFocus() &&
+    if (keys.Matches(Shortcuts::InstrumentOpenEditor, mask, pressed) &&
+        GetFocus() &&
         ((UIIntVarField *)GetFocus())->GetVariableID() == SIP_EDIT) {
         viewMode_ = VM_NORMAL;
         DoModal(new SampleEditorDialog(*this), ImportSampleDialogCallback);
         return;
     }
 
-    if (viewMode_==VM_NEW) {
-		if (mask==EPBM_A) {
-			UIIntVarField *field=(UIIntVarField *)GetFocus() ;
-			Variable &v=field->GetVariable() ;
-			switch(v.GetID()) {
-				case SIP_SAMPLE:
-				 {
-                    // First check if the samplelib exists
-
-					 Path sampleLib(SamplePool::GetInstance()->GetSampleLib()) ;
-					 if (FileSystem::GetInstance()->GetFileType(sampleLib.GetPath().c_str())!=FT_DIR) {
-						 MessageBox *mb=new MessageBox(*this,"Can't access the samplelib",MBBF_OK) ;
-						 DoModal(mb) ;
-					 } else { ;
-						// Go to import sample
-
-						 ImportSampleDialog *isd=new ImportSampleDialog(*this) ;
-                         DoModal(isd, ImportSampleDialogCallback);
-                     }
-                    break ;
-				 }
-				case SIP_TABLE:
-				 {
-					int next=TableHolder::GetInstance()->GetNext() ;
-					if (next!=NO_MORE_TABLE) {
-						v.SetInt(next) ;
-						isDirty_=true ;
-					}
-					break ;
-                }
-                case SIP_PRINTFX: {
-                    FxPrinter printer(viewData_);
-                    isDirty_ = printer.Run();
-                    View::SetNotification(printer.GetNotification());
-                    break;
-                }
-                default:
-                    break ;
-			}
-			mask&=(0xFFFF-EPBM_A) ;
-		}
-	}
+    if (viewMode_ == VM_NEW && GetFocus()) {
+        Variable &value =
+            static_cast<UIIntVarField *>(GetFocus())->GetVariable();
+        FourCC field = value.GetID();
+        if (field == SIP_SAMPLE &&
+            keys.Matches(Shortcuts::InstrumentImportSample, mask, pressed)) {
+            mask =
+                keys.RemainingButtons(Shortcuts::InstrumentImportSample, mask);
+            Path library(SamplePool::GetInstance()->GetSampleLib());
+            if (FileSystem::GetInstance()->GetFileType(
+                    library.GetPath().c_str()) != FT_DIR)
+                DoModal(new MessageBox(*this, "Can't access the samplelib",
+                                       MBBF_OK));
+            else
+                DoModal(new ImportSampleDialog(*this),
+                        ImportSampleDialogCallback);
+        } else if (field == SIP_TABLE &&
+                   keys.Matches(Shortcuts::InstrumentNewTable, mask, pressed)) {
+            mask = keys.RemainingButtons(Shortcuts::InstrumentNewTable, mask);
+            int next = TableHolder::GetInstance()->GetNext();
+            if (next != NO_MORE_TABLE) {
+                value.SetInt(next);
+                isDirty_ = true;
+            }
+        } else if (field == SIP_PRINTFX &&
+                   keys.Matches(Shortcuts::InstrumentPrintFx, mask, pressed)) {
+            mask = keys.RemainingButtons(Shortcuts::InstrumentPrintFx, mask);
+            FxPrinter printer(viewData_);
+            isDirty_ = printer.Run();
+            View::SetNotification(printer.GetNotification());
+        }
+    }
 
     if (viewMode_ == VM_CLONE && getInstrumentType() != IT_PLAITS &&
         GetFocus() &&
         static_cast<UIIntVarField *>(GetFocus())->GetVariableID() ==
             SIP_TABLE) {
-        if ((mask&EPBM_A)&&(mask&EPBM_L)) {
-			UIIntVarField *field=(UIIntVarField *)GetFocus() ;
-			mask&=(0xFFFF-EPBM_A) ;
-			Variable &v=field->GetVariable() ;
-			int current=v.GetInt() ;
-			if (current==-1) return ;
-
-			int next=TableHolder::GetInstance()->Clone(current) ;
-			if (next!=NO_MORE_TABLE) {
-				v.SetInt(next) ;
-				isDirty_=true ;
-			}
-		}
-		mask&=(0xFFFF-(EPBM_A|EPBM_L)) ;
-    };
+        if (keys.Matches(Shortcuts::InstrumentCloneTable, mask, pressed)) {
+            Variable &value =
+                static_cast<UIIntVarField *>(GetFocus())->GetVariable();
+            if (value.GetInt() == VAR_OFF)
+                return;
+            int next = TableHolder::GetInstance()->Clone(value.GetInt());
+            if (next != NO_MORE_TABLE) {
+                value.SetInt(next);
+                isDirty_ = true;
+            }
+        }
+        mask = keys.RemainingButtons(Shortcuts::InstrumentCloneTable, mask);
+    }
 
     if (viewMode_ == VM_SELECTION) {
     } else {
-        viewMode_=VM_NORMAL ;
+        viewMode_ = VM_NORMAL;
     }
 
-    FieldView::ProcessButtonMask(mask);
+    unsigned short edit =
+        engineField ? 0 : instrumentDirections(keys, mask, true);
+    FieldView::ProcessButtonMask(
+        edit ? (EPBM_A | edit) : instrumentDirections(keys, mask, false));
 
-    const Shortcuts &keys = Shortcuts::Get();
     if (keys.Matches(Shortcuts::InstrumentPrevious, mask, pressed))
         warpToNext(-1);
     if (keys.Matches(Shortcuts::InstrumentNext, mask, pressed))
@@ -461,38 +481,23 @@ void InstrumentView::ProcessButtonMask(unsigned short mask,bool pressed) {
     if (keys.Matches(Shortcuts::InstrumentNext16, mask, pressed))
         warpToNext(16);
 
-    if (mask & EPBM_B) {
-        if (mask & EPBM_A) { // Allow cut instrument
-            if (getInstrumentType() == IT_SAMPLE) {
-                if (GetFocus() &&
-                    static_cast<UIIntVarField *>(GetFocus())->GetVariableID() ==
-                        SIP_SAMPLE) {
-                    int i = viewData_->currentInstrument_;
-                    InstrumentBank *bank =
-                        viewData_->project_->GetInstrumentBank();
-                    I_Instrument *instr = bank->GetInstrument(i);
-					instr->Purge() ;
-//                   Variable *v=instr->FindVariable(SIP_SAMPLE) ;
-//                   v->SetInt(-1) ;
-                   isDirty_=true ;
-               }
-           }
-
-		   // Check if on table
-		   if (GetFocus()==T_SimpleList<UIField>::GetLast()) {
-	            int i=viewData_->currentInstrument_ ;
-	            InstrumentBank *bank=viewData_->project_->GetInstrumentBank() ;
-	            I_Instrument *instr=bank->GetInstrument(i) ;
-                Variable *v=instr->FindVariable(SIP_TABLE) ;
-                if (v)
-                    v->SetInt(-1);
-                isDirty_=true ;
-		   } ;
+    if (GetFocus()) {
+        UIIntVarField *field = static_cast<UIIntVarField *>(GetFocus());
+        if (field->GetVariableID() == SIP_SAMPLE &&
+            getInstrumentType() == IT_SAMPLE &&
+            keys.Matches(Shortcuts::InstrumentClearSample, mask, pressed)) {
+            current_->Purge();
+            isDirty_ = true;
+        } else if (field->GetVariableID() == SIP_TABLE &&
+                   keys.Matches(Shortcuts::InstrumentClearTable, mask,
+                                pressed)) {
+            field->GetVariable().SetInt(VAR_OFF);
+            isDirty_ = true;
         }
-        if (mask&EPBM_L) {
-            viewMode_=VM_CLONE ;
-        } ;
-    } else if (mask == EPBM_A) {
+    }
+    if (keys.Matches(Shortcuts::InstrumentBeginClone, mask, pressed)) {
+        viewMode_ = VM_CLONE;
+    } else if (keys.Matches(Shortcuts::InstrumentBeginNew, mask, pressed)) {
         FourCC varID = ((UIIntVarField *)GetFocus())->GetVariableID();
         if ((varID == SIP_TABLE) || (varID == MIP_TABLE) ||
             (varID == SIP_SAMPLE) || (varID == SIP_PRINTFX)) {

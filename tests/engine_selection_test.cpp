@@ -110,6 +110,92 @@ static void CheckInstrumentShortcuts(InstrumentView &view, ViewData &data) {
     assert(data.currentInstrument_ == 0);
 }
 
+static void CheckTableGestures(InstrumentView &view) {
+    UIField *originalFocus = view.GetFocus();
+    view.SetFocus(view.GetLast());
+    Variable &table = Focused(view);
+    assert(table.GetID() == SIP_TABLE);
+    table.SetInt(VAR_OFF);
+    view.ProcessButtonMask(EPBM_A, true);
+    view.ProcessButtonMask(0, false);
+    assert(table.GetInt() == VAR_OFF);
+    view.ProcessButtonMask(EPBM_A, true);
+    int source = table.GetInt();
+    assert(source >= 0 && source < TABLE_COUNT);
+    TableHolder &tables = *TableHolder::GetInstance();
+    tables.GetTable(source).param2_[4] = 0x1234;
+
+    view.ProcessButtonMask(EPBM_L | EPBM_B, true);
+    view.ProcessButtonMask(EPBM_L, false);
+    view.ProcessButtonMask(EPBM_L | EPBM_A, true);
+    int copy = table.GetInt();
+    assert(copy != source && tables.GetTable(copy).param2_[4] == 0x1234);
+
+    TiXmlDocument document;
+    document.Parse(
+        "<SHORTCUTS version='1'>"
+        "<BIND action='instrument.begin_clone' keys='SELECT+B' event='press'/>"
+        "<BIND action='instrument.clone_table' keys='SELECT+START' "
+        "event='press'/>"
+        "</SHORTCUTS>");
+    std::string error;
+    assert(Shortcuts::Get().Load(document.RootElement(), error));
+    view.ProcessButtonMask(EPBM_L | EPBM_B, true);
+    view.ProcessButtonMask(EPBM_L | EPBM_A, true);
+    assert(table.GetInt() == copy);
+    size_t plays = playRequests.size();
+    view.ProcessButtonMask(EPBM_SELECT | EPBM_B, true);
+    view.ProcessButtonMask(EPBM_SELECT, false);
+    view.ProcessButtonMask(EPBM_SELECT | EPBM_START, true);
+    int secondCopy = table.GetInt();
+    assert(secondCopy != copy && secondCopy != source);
+    assert(tables.GetTable(secondCopy).param2_[4] == 0x1234);
+    assert(playRequests.size() == plays);
+    view.SetFocus(originalFocus);
+}
+
+static void CheckFieldBindings(InstrumentView &view, InstrumentBank &bank) {
+    TiXmlDocument config;
+    config.Parse(
+        "<SHORTCUTS version='1'>"
+        "<BIND action='instrument.down' keys='SELECT' event='press'/>"
+        "<BIND action='instrument.edit_right' keys='L+RIGHT' event='press'/>"
+        "<BIND action='instrument.engine_modifier' keys='L' event='press'/>"
+        "<BIND action='instrument.clear_table' keys='R+B' event='press'/>"
+        "<BIND action='instrument.clear_sample' keys='R+B' event='press'/>"
+        "</SHORTCUTS>");
+    std::string error;
+    assert(Shortcuts::Get().Load(config.RootElement(), error));
+    view.ProcessButtonMask(EPBM_A | EPBM_RIGHT, true);
+    assert(bank.GetInstrument(0)->GetType() == IT_SAMPLE);
+    view.ProcessButtonMask(EPBM_L | EPBM_RIGHT, true);
+    assert(bank.GetInstrument(0)->GetType() == IT_PLAITS);
+    view.ProcessButtonMask(EPBM_L | EPBM_LEFT, true);
+    assert(bank.GetInstrument(0)->GetType() == IT_SAMPLE);
+    view.ProcessButtonMask(EPBM_DOWN, true);
+    assert(view.GetFocusIndex() == 0);
+    view.ProcessButtonMask(EPBM_SELECT, true);
+    assert(Focused(view).GetID() == SIP_SAMPLE);
+    UIField *sample = view.GetFocus();
+    view.SetFocus(view.GetLast());
+    Variable &table = Focused(view);
+    table.SetInt(4);
+    view.ProcessButtonMask(EPBM_A | EPBM_RIGHT, true);
+    assert(table.GetInt() == 4);
+    view.ProcessButtonMask(EPBM_L | EPBM_RIGHT, true);
+    assert(table.GetInt() == 5);
+    view.ProcessButtonMask(EPBM_B | EPBM_A, true);
+    view.ProcessButtonMask(EPBM_R | EPBM_B, false);
+    assert(table.GetInt() == 5);
+    view.ProcessButtonMask(EPBM_R | EPBM_B, true);
+    assert(table.GetInt() == VAR_OFF);
+    table.SetInt(5);
+    view.SetFocus(sample);
+    view.ProcessButtonMask(EPBM_A | EPBM_B, true);
+    assert(table.GetInt() == 5);
+    view.ProcessButtonMask(EPBM_R | EPBM_B, true);
+    assert(table.GetInt() == VAR_OFF);
+}
 int main() {
     System::Install(new LINUXSystem);
     UnixFileSystem fs;
@@ -134,6 +220,7 @@ int main() {
         InstrumentView view(window, &data);
         assert(!std::strcmp(Focused(view).GetString(), "Sampler"));
         CheckInstrumentShortcuts(view, data);
+        CheckTableGestures(view);
         int selectorY = view.GetFocus()->GetPosition()._y;
         IteratorPtr<UIField> fields(view.GetIterator());
         int highlighted = 0;
@@ -175,6 +262,7 @@ int main() {
         assert(bank->SetType(0, IT_SAMPLE));
         view.OnFocus();
         assert(!std::strcmp(Focused(view).GetString(), "Sampler"));
+        CheckFieldBindings(view, *bank);
         data.currentInstrument_ = MAX_SAMPLEINSTRUMENT_COUNT;
         view.OnFocus();
         assert(!std::strcmp(Focused(view).GetName(), "channel"));

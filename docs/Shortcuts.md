@@ -1,10 +1,11 @@
-# Editable shortcuts (stage 14)
+# Editable shortcuts (stage 28)
 
 `shortcuts.xml` lives beside the LGPT executable, like `config.xml` and
 `mapping.xml`. For the X64 development build this is `projects/shortcuts.xml`.
 LGPT reads it once when creating the application window. Restart LGPT after
-editing it. When distributing a binary, copy this file beside it; existing
-installations without the file retain the compiled default bindings.
+editing it. Release ZIPs include this file alongside the executable or, on
+macOS, alongside `LittleGPTracker.app`. Installations without the file use the
+compiled default bindings.
 
 ## Coverage
 
@@ -18,12 +19,88 @@ Project settings use `project.*` bindings for navigation, field edits, activatio
 tap tempo (B), tempo nudges (B+Left/Right), playback/render and return to Song.
 Instrument slot changes (B+Left/Right for one slot, B+Down/Up for sixteen),
 view changes (R+Left to Phrase, R+Down to Table) and playback (START or
-R+START from the beginning) use the eight `instrument.*` bindings.
-Instrument field editing, import and cloning still use their existing controls.
-Song, Phrase, and other dialogs still use
-their existing handlers. Their double presses, selection modes, clone/deep-clone
-sequences and short taps have not yet been migrated. The XML is not yet a
-complete catalogue of application shortcuts.
+R+START from the beginning) use `instrument.*` bindings. On the Sample, Table and Print FX rows,
+press A twice to import, allocate a table or print effects. The first press
+uses `begin_new`. The second uses the action for the focused row. The Edit
+Sample row opens the editor with one press of `open_editor`. To clone an
+assigned sampler or MIDI table, focus Table, hold L and press B (`begin_clone`), then
+release B and press A while still holding L (`clone_table`). The instrument
+now points to the copy. The four direction bindings move focus. The four
+`edit_*` bindings adjust the focused parameter (A plus a direction by default).
+On the Engine row, hold `engine_modifier` (A) and use the navigation bindings
+to change engines. `clear_sample` purges the focused sampler instrument on its
+Sample row. `clear_table` clears the table assignment. Both default to B+A.
+Song cursor movement uses `song.down/up/left/right`. B+Down/Up moves the song
+offset by sixteen rows. L+Down/Up jumps to the next/previous section of the
+current track. In a selection the four `song.selection_*` direction bindings
+move the selection endpoint. On X64, a movement binding must explicitly require
+SELECT to work while SELECT is held. The recording shortcut takes priority.
+In Song, A (`song.insert`) recalls the last Chain on an empty step or remembers
+the selected Chain. Press A again (`song.next_unused`) to assign a free Chain.
+To clone the selected Chain, hold L, tap B (`song.begin_clone_selection`), then
+tap A (`song.clone`). Its Phrases are initially shared with the original.
+Keep L held and tap A again (`song.deep_clone`) for independent Phrase copies.
+Repeated references to the same Phrase share one copy within the new Chain.
+Song mute (R+B), solo (R+A) and unmute all (R+L) have separate normal and
+selection bindings. Mute and solo affect every channel in the selected range.
+Release B or A first while holding R to undo the toggle. Release R first to
+latch it. When changing modifiers, set `song.mute_release` or `song.solo_release`
+to the button that stays held for momentary operation.
+B+Left or B+Right toggles Song/Live mode. START sends the usual playback
+request; R+START requests a stop during playback. In Live mode these address
+the current channel or the selected channel range (`song.selection_play` and
+`song.selection_stop`). Outside a selection, B+START requests an immediate
+trigger, L+START launches the current row across all channels in Live mode,
+and L+Left/Right nudges the tempo down/up.
+R+Right opens the Chain under the cursor if the cell contains one. R+Up opens
+Project settings and R+Down opens Mixer. Edit `song.chain`, `song.project`
+and `song.mixer` for normal navigation, or their `song.selection_*` entries
+for navigation while a selection is active.
+In Song, A+Left/Right changes the Chain number by one, and A+Down/Up by
+sixteen. When remapping these, set `song.edit_hold` to their shared modifier
+to reserve only the final Chain number. B+A cuts a cell and L+A inserts the
+clipboard. While selecting, B+L extends the selection, B copies, and A+L cuts.
+Cuts move later rows up within the selected tracks. Pasting inserts rows and
+clips the clipboard at the right and bottom edges of the song.
+In Phrase, the arrows move the cursor. In selection mode the four
+`phrase.selection_*` directions move its endpoint within the current Phrase.
+In normal mode B+Left/Right moves to a neighbouring channel with a Chain on
+the current Song row. B+Up/Down moves to the adjacent Chain row if it holds
+a Phrase, keeping the cursor on the same Phrase step.
+R+Left opens Chain and R+Right opens Instrument. Each has a separate
+`phrase.selection_*` binding while selecting. Instrument uses the instrument
+on the cursor row, then the nearest row with an instrument, then the last
+instrument remembered by the Phrase editor. In normal mode R+Down opens Table
+and R+Up opens Groove. A TABL command on the current row selects the table.
+If both command columns contain TABL, the first one takes precedence.
+In the Song sequencer mode, START in Phrase toggles Phrase playback on the
+current track. R+START toggles Song playback from the current Song and Chain
+position. R+B toggles mute in normal editing. During a selection R+B still
+interpolates. R+A solos the current track, and R+L unmutes all tracks.
+Selection has separate playback, solo and unmute-all bindings. For momentary
+mute/solo, release B/A while R remains held. Release R first to latch.
+In Phrase, `edit_left/right` and `edit_down/up` adjust the current cell. In
+parameter columns Left/Right selects a hex digit and Up/Down changes it. In
+command columns Left/Right cycles commands, and `command_picker_up/down`
+opens the picker. The four `selection_edit_*` bindings adjust selected notes,
+velocities and instruments. All default to A plus the corresponding direction.
+`audition` (A) previews the note or instrument on press while stopped.
+`audition_hold` (A) keeps preview active through subsequent button presses.
+In Phrase, B+A cuts at the cursor. Cutting a note also takes its velocity and
+instrument. Cutting a command also takes its parameter. L+A pastes, wrapping
+from step 0F to 00 within the same Phrase. To select, press B+L and then move
+the cursor. B+L extends the active selection across all columns, then across
+all steps. B copies, A+L cuts, and B+R interpolates between the endpoints of
+a single note, velocity or parameter column. The initial B+L binding
+(`phrase.begin_clone_selection`) also arms the existing clone gesture.
+A (`phrase.insert`) recalls the last note, instrument or command on an empty
+cell, or remembers the value on an occupied cell. In the instrument column,
+press A again (`phrase.next_instrument`) to select a free sampler slot. In
+either TABL parameter column, the second press (`phrase.next_table`) assigns a
+free table. To clone, hold L, tap B, release B and tap A while still holding L.
+In the note, velocity and instrument columns this copies the row's instrument
+(`phrase.clone_instrument`). On a TABL parameter it copies the referenced
+table (`phrase.clone_table`). The current row then references the copy.
 
 The shared matcher handles the currently held buttons and the existing press
 or release event. Chain retains its existing sequence state machine with

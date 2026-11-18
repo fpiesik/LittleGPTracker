@@ -22,7 +22,8 @@ public:
 	unsigned short GetNext() ;
 	unsigned short Clone(unsigned short i) ;
 private:
-	I_Instrument *instrument_[MAX_INSTRUMENT_COUNT] ;
+  unsigned short findFreeSlot(unsigned short excluded);
+  I_Instrument *instrument_[MAX_INSTRUMENT_COUNT];
 } ;
 
 #endif

@@ -141,6 +141,7 @@
     <ClCompile Include="..\sources\Application\Commands\CommandDispatcher.cpp" />
     <ClCompile Include="..\sources\Application\Commands\EventDispatcher.cpp" />
     <ClCompile Include="..\sources\Application\Controllers\ControlRoom.cpp" />
+    <ClCompile Include="..\sources\Application\Controllers\Shortcuts.cpp" />
     <ClCompile Include="..\sources\Application\FX\FxPrinter.cpp" />
     <ClCompile Include="..\sources\Application\Instruments\CommandList.cpp" />
     <ClCompile Include="..\sources\Application\Instruments\Filters.cpp" />
@@ -298,6 +299,7 @@
     <ClInclude Include="..\sources\Application\Commands\EventDispatcher.h" />
     <ClInclude Include="..\sources\Application\Commands\NodeList.h" />
     <ClInclude Include="..\sources\Application\Controllers\ControlRoom.h" />
+    <ClInclude Include="..\sources\Application\Controllers\Shortcuts.h" />
     <ClInclude Include="..\sources\Application\FX\FxPrinter.h" />
     <ClInclude Include="..\sources\Application\Instruments\CommandList.h" />
     <ClInclude Include="..\sources\Application\Instruments\Filters.h" />

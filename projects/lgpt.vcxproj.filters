@@ -461,6 +461,9 @@
     <ClCompile Include="..\sources\Application\Controllers\ControlRoom.cpp">
       <Filter>Source Files\Application\Controllers</Filter>
     </ClCompile>
+    <ClCompile Include="..\sources\Application\Controllers\Shortcuts.cpp">
+      <Filter>Source Files\Application\Controllers</Filter>
+    </ClCompile>
     <ClCompile Include="..\sources\Application\Mixer\MixBus.cpp">
       <Filter>Source Files\Application\Mixer</Filter>
     </ClCompile>
@@ -884,6 +887,9 @@
       <Filter>Source Files\Application\Commands</Filter>
     </ClInclude>
     <ClInclude Include="..\sources\Application\Controllers\ControlRoom.h">
+      <Filter>Source Files\Application\Controllers</Filter>
+    </ClInclude>
+    <ClInclude Include="..\sources\Application\Controllers\Shortcuts.h">
       <Filter>Source Files\Application\Controllers</Filter>
     </ClInclude>
     <ClInclude Include="..\sources\Application\Mixer\MixBus.h">

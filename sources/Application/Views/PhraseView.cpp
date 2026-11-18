@@ -1,4 +1,5 @@
 #include "PhraseView.h"
+#include "Application/Controllers/Shortcuts.h"
 #include "Application/Instruments/CommandList.h"
 #include "Application/Model/Scale.h"
 #include "Application/Model/Table.h"
@@ -269,7 +270,7 @@ void PhraseView::updateCursorValue(ViewUpdateDirection direction, int xOffset,
         if (col_ + xOffset == 0) {
             // Add/remove from offset to match selected scale
             int scale = viewData_->project_->GetScale();
-            while (!scaleSteps[scale][(*c + offset) % 12]) {
+            while (!scaleSteps[scale][((*c + offset) % 12 + 12) % 12]) {
                 offset > 0 ? offset++ : offset--;
             }
         }
@@ -534,10 +535,10 @@ void PhraseView::fillClipboardData() {
     updateCursor(0, 0);
 };
 
-void PhraseView::updateSelectionValue(ViewUpdateDirection direction) { // HERE
+void PhraseView::updateSelectionValue(ViewUpdateDirection direction) {
 
-    saveRow_ = row_;
-    saveCol_ = col_;
+    const int endpointRow = row_;
+    const int endpointCol = col_;
 
     GUIRect r = getSelectionRect();
     col_ = r.Left();
@@ -550,8 +551,8 @@ void PhraseView::updateSelectionValue(ViewUpdateDirection direction) { // HERE
             }
         }
     }
-    row_ = saveRow_;
-    col_ = saveCol_;
+    row_ = endpointRow;
+    col_ = endpointCol;
 }
 
 void PhraseView::extendSelection() {
@@ -660,6 +661,7 @@ void PhraseView::copySelection() {
     row_ = saveRow_;
     col_ = saveCol_;
 
+    updateCursor(0, 0);
     View::SetNotification("Copied selection");
 };
 
@@ -844,126 +846,75 @@ void PhraseView::OnFocus() {
 void PhraseView::ProcessButtonMask(unsigned short mask, bool pressed) {
 
     if (!pressed) {
-        if (viewMode_ == VM_MUTEON) {
-            if (mask & EPBM_R) {
-                toggleMute();
-            }
-        };
-        if (viewMode_ == VM_SOLOON && (mask & EPBM_R)) {
+        const Shortcuts &keys = Shortcuts::Get();
+        if (viewMode_ == VM_MUTEON &&
+            keys.Matches(Shortcuts::PhraseMuteRelease, mask, false))
+            toggleMute();
+        else if (viewMode_ == VM_SOLOON &&
+                 keys.Matches(Shortcuts::PhraseSoloRelease, mask, false))
             switchSoloMode();
-        }
         return;
     };
 
-    if (viewMode_ == VM_NEW) {
-        if (mask == EPBM_A) {
+    if (viewMode_ == VM_NEW || viewMode_ == VM_CLONE) {
+        const bool clone = viewMode_ == VM_CLONE;
+        const bool instrument = col_ < 3;
+        int step = 16 * viewData_->currentPhrase_ + row_;
+        ushort *tableParam = 0;
+        if (col_ == 4 && phrase_->cmd1_[step] == I_CMD_TABL)
+            tableParam = &phrase_->param1_[step];
+        else if (col_ == 6 && phrase_->cmd2_[step] == I_CMD_TABL)
+            tableParam = &phrase_->param2_[step];
 
-            // If note or I, we request a new instr
-
-            if (col_ < 3) {
+        Shortcuts::Action action = Shortcuts::Count;
+        if (instrument)
+            action = clone ? Shortcuts::PhraseCloneInstrument
+                           : Shortcuts::PhraseNextInstrument;
+        else if (clone || tableParam)
+            action = clone ? Shortcuts::PhraseCloneTable
+                           : Shortcuts::PhraseNextTable;
+        const Shortcuts &keys = Shortcuts::Get();
+        if (keys.Matches(action, mask, pressed)) {
+            if (instrument) {
                 InstrumentBank *bank = viewData_->project_->GetInstrumentBank();
-                unsigned short next = bank->GetNext();
-                if (next != NO_MORE_INSTRUMENT) {
-                    unsigned char *c = phrase_->instr_ +
-                                       (16 * viewData_->currentPhrase_ + row_);
-                    *c = (unsigned char)next;
-                    lastInstr_ = next;
-                    isDirty_ = true;
-                }
-                mask &= (0xFFFF - EPBM_A);
-            } else {
-                if ((col_ == 4) &&
-                    (*(phrase_->cmd1_ + (16 * viewData_->currentPhrase_ +
-                                         row_))) == I_CMD_TABL) {
-                    TableHolder *th = TableHolder::GetInstance();
-                    unsigned short next = th->GetNext();
-                    if (next != NO_MORE_TABLE) {
-                        ushort *c = phrase_->param1_ +
-                                    (16 * viewData_->currentPhrase_ + row_);
-                        *c = next;
-                        isDirty_ = true;
-                        mask &= (0xFFFF - EPBM_A);
-                        cmdEdit_.SetInt(next);
-                    }
-                }
-                if ((col_ == 6) &&
-                    (*(phrase_->cmd2_ + (16 * viewData_->currentPhrase_ +
-                                         row_))) == I_CMD_TABL) {
-                    TableHolder *th = TableHolder::GetInstance();
-                    unsigned short next = th->GetNext();
-                    if (next != NO_MORE_TABLE) {
-                        ushort *c = phrase_->param2_ +
-                                    (16 * viewData_->currentPhrase_ + row_);
-                        *c = next;
-                        isDirty_ = true;
-                        mask &= (0xFFFF - EPBM_A);
-                        cmdEdit_.SetInt(next);
-                    }
-                }
-            };
-        }
-    }
-
-    if (viewMode_ == VM_CLONE) {
-        if ((mask & EPBM_A) && (mask & EPBM_L)) {
-            if (col_ < 3) {
-                InstrumentBank *bank = viewData_->project_->GetInstrumentBank();
-                unsigned char *c =
-                    phrase_->instr_ + (16 * viewData_->currentPhrase_ + row_);
-                if (*c != 0xFF) {
-                    unsigned short next = bank->Clone(*c);
+                unsigned char &slot = phrase_->instr_[step];
+                if (!clone || slot < MAX_INSTRUMENT_COUNT) {
+                    unsigned short next =
+                        clone ? bank->Clone(slot) : bank->GetNext();
                     if (next != NO_MORE_INSTRUMENT) {
-                        *c = (unsigned char)next;
+                        slot = next;
                         lastInstr_ = next;
                         isDirty_ = true;
                     } else {
                         View::SetNotification("No more instruments");
                     }
                 }
-            } else {
-                if ((col_ == 4) &&
-                    (*(phrase_->cmd1_ + (16 * viewData_->currentPhrase_ +
-                                         row_))) == I_CMD_TABL) {
-                    TableHolder *th = TableHolder::GetInstance();
-                    int current = *(phrase_->param1_ +
-                                    (16 * viewData_->currentPhrase_ + row_));
-                    if (current != -1) {
-                        unsigned short next = th->Clone(current);
-                        if (next != NO_MORE_TABLE) {
-                            ushort *c = phrase_->param1_ +
-                                        (16 * viewData_->currentPhrase_ + row_);
-                            *c = next;
-                            isDirty_ = true;
-                            cmdEdit_.SetInt(next);
-                        } else {
-                            View::SetNotification("No more tables");
-                        }
-                    }
+            } else if (tableParam) {
+                TableHolder *tables = TableHolder::GetInstance();
+                int next;
+                if (clone) {
+                    int source = *tableParam & 0x7f;
+                    tables->SetUsed(source);
+                    next = tables->Clone(source);
+                } else {
+                    next = tables->GetNext();
                 }
-                if ((col_ == 6) &&
-                    (*(phrase_->cmd2_ + (16 * viewData_->currentPhrase_ +
-                                         row_))) == I_CMD_TABL) {
-                    TableHolder *th = TableHolder::GetInstance();
-                    unsigned short next =
-                        th->Clone(*(phrase_->param2_ +
-                                    (16 * viewData_->currentPhrase_ + row_)));
-                    if (next != NO_MORE_TABLE) {
-                        ushort *c = phrase_->param2_ +
-                                    (16 * viewData_->currentPhrase_ + row_);
-                        *c = next;
-                        isDirty_ = true;
-                        cmdEdit_.SetInt(next);
-                    } else {
-                        View::SetNotification("No more tables");
-                    }
+                if (next != NO_MORE_TABLE) {
+                    *tableParam = next;
+                    cmdEdit_.SetInt(next);
+                    isDirty_ = true;
+                } else {
+                    View::SetNotification("No more tables");
                 }
-            };
-            mask &= (0xFFFF - (EPBM_A | EPBM_L));
-        } else {
+            }
+            mask = keys.RemainingButtons(action, mask);
+        } else if (clone) {
             viewMode_ = VM_SELECTION;
         }
-    };
+    }
 
+    if (clipboard_.active_)
+        viewMode_ = VM_SELECTION;
     if (viewMode_ == VM_SELECTION) {
         if (!clipboard_.active_) {
             clipboard_.active_ = true;
@@ -979,165 +930,157 @@ void PhraseView::ProcessButtonMask(unsigned short mask, bool pressed) {
     };
 }
 
+void PhraseView::processNavigation(unsigned short mask, bool selection) {
+    const Shortcuts &keys = Shortcuts::Get();
+    if (!selection) {
+        if (keys.Matches(Shortcuts::PhrasePreviousChannel, mask, true))
+            warpToNeighbour(-1);
+        if (keys.Matches(Shortcuts::PhraseNextChannel, mask, true))
+            warpToNeighbour(1);
+        if (keys.Matches(Shortcuts::PhrasePreviousInChain, mask, true))
+            warpInChain(-1);
+        if (keys.Matches(Shortcuts::PhraseNextInChain, mask, true))
+            warpInChain(1);
+    }
+    if (keys.Matches(selection ? Shortcuts::PhraseSelectionDown
+                               : Shortcuts::PhraseDown,
+                     mask, true))
+        updateCursor(0, 1);
+    if (keys.Matches(selection ? Shortcuts::PhraseSelectionUp
+                               : Shortcuts::PhraseUp,
+                     mask, true))
+        updateCursor(0, -1);
+    if (keys.Matches(selection ? Shortcuts::PhraseSelectionLeft
+                               : Shortcuts::PhraseLeft,
+                     mask, true))
+        updateCursor(-1, 0);
+    if (keys.Matches(selection ? Shortcuts::PhraseSelectionRight
+                               : Shortcuts::PhraseRight,
+                     mask, true))
+        updateCursor(1, 0);
+}
+
+void PhraseView::switchView(ViewType destination) {
+    ViewEvent event(VET_SWITCH_VIEW, &destination);
+    SetChanged();
+    NotifyObservers(&event);
+}
+
+void PhraseView::processViewSwitches(unsigned short mask, bool selection) {
+    const Shortcuts &keys = Shortcuts::Get();
+    if (keys.Matches(selection ? Shortcuts::PhraseSelectionChain
+                               : Shortcuts::PhraseChain,
+                     mask, true))
+        switchView(VT_CHAIN);
+
+    if (keys.Matches(selection ? Shortcuts::PhraseSelectionInstrument
+                               : Shortcuts::PhraseInstrument,
+                     mask, true)) {
+        int nearest = findClosestInstrumentFor(row_);
+        viewData_->currentInstrument_ = nearest >= 0 ? nearest : lastInstr_;
+        if (selection || viewData_->currentInstrument_ != 0xff)
+            switchView(VT_INSTRUMENT);
+    }
+    if (selection)
+        return;
+    if (keys.Matches(Shortcuts::PhraseTable, mask, true)) {
+        int step = 16 * viewData_->currentPhrase_ + row_;
+        if (phrase_->cmd1_[step] == I_CMD_TABL)
+            viewData_->currentTable_ = phrase_->param1_[step] & 0x7f;
+        else if (phrase_->cmd2_[step] == I_CMD_TABL)
+            viewData_->currentTable_ = phrase_->param2_[step] & 0x7f;
+        switchView(VT_TABLE);
+    }
+    if (keys.Matches(Shortcuts::PhraseGroove, mask, true))
+        switchView(VT_GROOVE);
+}
+
+void PhraseView::processPlayback(unsigned short mask, bool selection) {
+    const Shortcuts &keys = Shortcuts::Get();
+    if (!selection && keys.Matches(Shortcuts::PhraseMute, mask, true))
+        toggleMute();
+    if (keys.Matches(selection ? Shortcuts::PhraseSelectionSolo
+                               : Shortcuts::PhraseSolo,
+                     mask, true))
+        switchSoloMode();
+
+    bool playSong = keys.Matches(selection ? Shortcuts::PhraseSelectionPlaySong
+                                           : Shortcuts::PhrasePlaySong,
+                                 mask, true);
+    if (playSong || keys.Matches(selection ? Shortcuts::PhraseSelectionPlay
+                                           : Shortcuts::PhrasePlay,
+                                 mask, true))
+        Player::GetInstance()->OnStartButton(PM_PHRASE, viewData_->songX_,
+                                             playSong, viewData_->chainRow_);
+
+    if (keys.Matches(selection ? Shortcuts::PhraseSelectionUnmuteAll
+                               : Shortcuts::PhraseUnmuteAll,
+                     mask, true))
+        unMuteAll();
+}
+
+void PhraseView::processValueEdits(unsigned short mask, bool selection) {
+    const Shortcuts &keys = Shortcuts::Get();
+    bool command = !selection && isCommandColumn();
+    if (command &&
+        (keys.Matches(Shortcuts::PhraseCommandPickerDown, mask, true) ||
+         keys.Matches(Shortcuts::PhraseCommandPickerUp, mask, true)))
+        enterCommandSelector();
+
+    static const struct {
+        Shortcuts::Action single, selected;
+        ViewUpdateDirection direction;
+    } edits[] = {
+        {Shortcuts::PhraseEditDown, Shortcuts::PhraseSelectionEditDown,
+         VUD_DOWN},
+        {Shortcuts::PhraseEditUp, Shortcuts::PhraseSelectionEditUp, VUD_UP},
+        {Shortcuts::PhraseEditLeft, Shortcuts::PhraseSelectionEditLeft,
+         VUD_LEFT},
+        {Shortcuts::PhraseEditRight, Shortcuts::PhraseSelectionEditRight,
+         VUD_RIGHT},
+    };
+    for (unsigned i = 0; i < sizeof(edits) / sizeof(edits[0]); ++i) {
+        ViewUpdateDirection direction = edits[i].direction;
+        if (command && (direction == VUD_DOWN || direction == VUD_UP))
+            continue;
+        if (keys.Matches(selection ? edits[i].selected : edits[i].single, mask,
+                         true)) {
+            if (selection)
+                updateSelectionValue(direction);
+            else
+                updateCursorValue(direction);
+        }
+    }
+}
+
 void PhraseView::processNormalButtonMask(unsigned short mask) {
-    // Stop audition when pressing any button except A
-    if (!(mask & EPBM_A)) {
+    const Shortcuts &keys = Shortcuts::Get();
+    if (!keys.Matches(Shortcuts::PhraseAuditionHold, mask, true)) {
         stopAudition();
     }
-    // B Modifier
+    processNavigation(mask, false);
+    processViewSwitches(mask, false);
 
-    Player *player = Player::GetInstance();
-
-    if (mask & EPBM_B) {
-        if (mask & EPBM_LEFT)
-            warpToNeighbour(-1);
-        if (mask & EPBM_RIGHT)
-            warpToNeighbour(1);
-        if (mask & EPBM_UP)
-            warpInChain(-1);
-        if (mask & EPBM_DOWN)
-            warpInChain(1);
-        if (mask & EPBM_A) {
-            cutPosition();
-        }
-        if (mask & EPBM_L) {
-            viewMode_ = VM_CLONE;
-        };
-        if (mask & EPBM_R)
-            toggleMute();
-    } else {
-
-        // A Modifer
-
-        if (mask & EPBM_A) {
-            if ((col_ == 0) || (col_ == 2)) { // Preview when pressing A
-                Player *player = Player::GetInstance();
-                if (!player->IsRunning()) {
-                    player->OnStartButton(PM_AUDITION, viewData_->songX_, false,
-                                          viewData_->chainRow_);
-                }
-            }
-
-            if (mask & EPBM_DOWN) {
-                if (isCommandColumn())
-                    enterCommandSelector();
-                else
-                    updateCursorValue(VUD_DOWN);
-            }
-            if (mask & EPBM_UP) {
-                if (isCommandColumn())
-                    enterCommandSelector();
-                else
-                    updateCursorValue(VUD_UP);
-            }
-            if (mask & EPBM_LEFT)
-                updateCursorValue(VUD_LEFT);
-            if (mask & EPBM_RIGHT)
-                updateCursorValue(VUD_RIGHT);
-            if (mask & EPBM_L)
-                pasteClipboard();
-            if (mask & EPBM_R)
-                switchSoloMode();
-            if (mask == EPBM_A) {
-                pasteLast();
-                if ((col_ == 2) || (col_ == 4) || (col_ == 6))
-                    viewMode_ = VM_NEW;
-            }
-
-        } else {
-
-            // R Modifier
-
-            if (mask & EPBM_R) {
-                if (mask & EPBM_LEFT) {
-                    ViewType vt = VT_CHAIN;
-                    ViewEvent ve(VET_SWITCH_VIEW, &vt);
-                    SetChanged();
-                    NotifyObservers(&ve);
-                }
-                if (mask & EPBM_RIGHT) {
-                    unsigned char *c = phrase_->instr_ +
-                                       (16 * viewData_->currentPhrase_ + row_);
-                    if (*c != 0xFF) {
-                        viewData_->currentInstrument_ = *c;
-                    } else {
-                        int nearest = findClosestInstrumentFor(row_);
-                        if (nearest >= 0) {
-                            viewData_->currentInstrument_ = nearest;
-                        } else viewData_->currentInstrument_= lastInstr_;
-                    }
-                    if (viewData_->currentInstrument_ != 0xFF) {
-                        ViewType vt = VT_INSTRUMENT;
-                        ViewEvent ve(VET_SWITCH_VIEW, &vt);
-                        SetChanged();
-                        NotifyObservers(&ve);
-                    }
-                }
-                if (mask & EPBM_DOWN) {
-
-                    // Go to table view
-
-                    ViewType vt = VT_TABLE;
-
-                    FourCC *cmd = phrase_->cmd1_ +
-                                  (16 * viewData_->currentPhrase_ + row_);
-                    ushort *param = phrase_->param1_ +
-                                    (16 * viewData_->currentPhrase_ + row_);
-
-                    if (*cmd != I_CMD_TABL) {
-                        cmd = phrase_->cmd2_ +
-                              (16 * viewData_->currentPhrase_ + row_);
-                        param = phrase_->param2_ +
-                                (16 * viewData_->currentPhrase_ + row_);
-                    }
-                    if (*cmd == I_CMD_TABL) {
-                        viewData_->currentTable_ = (*param) & 0x7F;
-                    }
-                    ViewEvent ve(VET_SWITCH_VIEW, &vt);
-                    SetChanged();
-                    NotifyObservers(&ve);
-                }
-
-                if (mask & EPBM_UP) {
-
-                    // Go to groove view
-
-                    ViewType vt = VT_GROOVE;
-                    ViewEvent ve(VET_SWITCH_VIEW, &vt);
-                    SetChanged();
-                    NotifyObservers(&ve);
-                }
-
-                if (mask & EPBM_START) {
-                    player->OnStartButton(PM_PHRASE, viewData_->songX_, true,
-                                          viewData_->chainRow_);
-                }
-                if (mask & EPBM_L)
-                    unMuteAll();
-
-            } else {
-                // L Modifier
-                if (mask & EPBM_L) {
-
-                } else {
-                    // No modifier
-
-                    if (mask & EPBM_DOWN)
-                        updateCursor(0, 1);
-                    if (mask & EPBM_UP)
-                        updateCursor(0, -1);
-                    if (mask & EPBM_LEFT)
-                        updateCursor(-1, 0);
-                    if (mask & EPBM_RIGHT)
-                        updateCursor(1, 0);
-                    if (mask & EPBM_START) {
-                        player->OnStartButton(PM_PHRASE, viewData_->songX_,
-                                              false, viewData_->chainRow_);
-                    }
-                }
-            }
-        }
+    if (keys.Matches(Shortcuts::PhraseCut, mask, true))
+        cutPosition();
+    if (keys.Matches(Shortcuts::PhraseBeginCloneSelection, mask, true))
+        viewMode_ = VM_CLONE;
+    if ((col_ == 0 || col_ == 2) &&
+        keys.Matches(Shortcuts::PhraseAudition, mask, true)) {
+        Player *player = Player::GetInstance();
+        if (!player->IsRunning())
+            player->OnStartButton(PM_AUDITION, viewData_->songX_, false,
+                                  viewData_->chainRow_);
     }
+    processValueEdits(mask, false);
+    if (keys.Matches(Shortcuts::PhrasePaste, mask, true))
+        pasteClipboard();
+    if (keys.Matches(Shortcuts::PhraseInsert, mask, true)) {
+        pasteLast();
+        if ((col_ == 2) || (col_ == 4) || (col_ == 6))
+            viewMode_ = VM_NEW;
+    }
+    processPlayback(mask, false);
 };
 
 /*
@@ -1156,95 +1099,21 @@ int PhraseView::findClosestInstrumentFor(int row) {
 }
 
 void PhraseView::processSelectionButtonMask(unsigned short mask) {
+    processNavigation(mask, true);
+    processViewSwitches(mask, true);
 
-    Player *player = Player::GetInstance();
+    const Shortcuts &keys = Shortcuts::Get();
+    if (keys.Matches(Shortcuts::PhraseSelectionExtend, mask, true))
+        extendSelection();
+    else if (keys.Matches(Shortcuts::PhraseSelectionInterpolate, mask, true))
+        interpolateSelection();
+    else if (keys.Matches(Shortcuts::PhraseSelectionCopy, mask, true))
+        copySelection();
 
-    // B modifier
-
-    if (mask & EPBM_B) {
-        if (mask & EPBM_L) {
-            extendSelection();
-        } else if (mask & EPBM_R) {
-            interpolateSelection();
-        } else {
-            copySelection();
-        }
-    } else {
-
-        // A Modifer
-
-        if (mask & EPBM_A) {
-
-            if (mask & EPBM_DOWN)
-                updateSelectionValue(VUD_DOWN);
-            if (mask & EPBM_UP)
-                updateSelectionValue(VUD_UP);
-            if (mask & EPBM_LEFT)
-                updateSelectionValue(VUD_LEFT);
-            if (mask & EPBM_RIGHT)
-                updateSelectionValue(VUD_RIGHT);
-
-            if (mask & EPBM_L)
-                cutSelection();
-            if (mask & EPBM_R)
-                switchSoloMode();
-        } else {
-
-            // R Modifier
-
-            if (mask & EPBM_R) {
-                if (mask & EPBM_LEFT) {
-                    ViewType vt = VT_CHAIN;
-                    ViewEvent ve(VET_SWITCH_VIEW, &vt);
-                    SetChanged();
-                    NotifyObservers(&ve);
-                }
-                if (mask & EPBM_RIGHT) {
-                    unsigned char *c = phrase_->instr_ +
-                                       (16 * viewData_->currentPhrase_ + row_);
-                    if (*c != 0xFF) {
-                        viewData_->currentInstrument_ = *c;
-                    } else {
-                        int nearest = findClosestInstrumentFor(row_);
-                        if (nearest >= 0) {
-                            viewData_->currentInstrument_ = nearest;
-                        } else viewData_->currentInstrument_= lastInstr_;
-                    }
-                    ViewType vt = VT_INSTRUMENT;
-                    ViewEvent ve(VET_SWITCH_VIEW, &vt);
-                    SetChanged();
-                    NotifyObservers(&ve);
-                }
-                if (mask & EPBM_START) {
-                    player->OnStartButton(PM_PHRASE, viewData_->songX_, true,
-                                          viewData_->chainRow_);
-                }
-                if (mask & EPBM_L)
-                    unMuteAll();
-
-            } else {
-                // L Modifier
-                if (mask & EPBM_L) {
-
-                } else {
-                    // No modifier
-
-                    if (mask & EPBM_DOWN)
-                        updateCursor(0, 1);
-                    if (mask & EPBM_UP)
-                        updateCursor(0, -1);
-                    if (mask & EPBM_LEFT)
-                        updateCursor(-1, 0);
-                    if (mask & EPBM_RIGHT)
-                        updateCursor(1, 0);
-                    if (mask & EPBM_START) {
-                        player->OnStartButton(PM_PHRASE, viewData_->songX_,
-                                              false, viewData_->chainRow_);
-                    }
-                }
-            }
-        }
-    }
+    processValueEdits(mask, true);
+    if (keys.Matches(Shortcuts::PhraseSelectionCut, mask, true))
+        cutSelection();
+    processPlayback(mask, true);
 };
 
 void PhraseView::setTextProps(GUITextProperties &props, int row, int col,

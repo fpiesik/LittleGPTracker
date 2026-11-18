@@ -107,6 +107,7 @@
 		73A4F1210DAB7511006B1114 /* CommandDispatcher.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 73A4F11C0DAB7511006B1114 /* CommandDispatcher.cpp */; };
 		73A4F1230DAB7511006B1114 /* EventDispatcher.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 73A4F11E0DAB7511006B1114 /* EventDispatcher.cpp */; };
 		73A4F1350DAB7539006B1114 /* ControlRoom.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 73A4F1330DAB7539006B1114 /* ControlRoom.cpp */; };
+		639743CE032F4C5899275B8D /* Shortcuts.cpp in Sources */ = {isa = PBXBuildFile; fileRef = FC56B8B61E31474998CC3311 /* Shortcuts.cpp */; };
 		73A4F14B0DAB7591006B1114 /* ButtonControllerSource.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 73A4F1390DAB7591006B1114 /* ButtonControllerSource.cpp */; };
 		73A4F14D0DAB7591006B1114 /* Channel.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 73A4F13B0DAB7591006B1114 /* Channel.cpp */; };
 		73A4F14F0DAB7591006B1114 /* ControllableVariable.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 73A4F13D0DAB7591006B1114 /* ControllableVariable.cpp */; };
@@ -399,7 +400,9 @@
 		73A4F11F0DAB7511006B1114 /* EventDispatcher.h */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.c.h; path = EventDispatcher.h; sourceTree = "<group>"; };
 		73A4F1200DAB7511006B1114 /* NodeList.h */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.c.h; path = NodeList.h; sourceTree = "<group>"; };
 		73A4F1330DAB7539006B1114 /* ControlRoom.cpp */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.cpp.cpp; path = ControlRoom.cpp; sourceTree = "<group>"; };
+		FC56B8B61E31474998CC3311 /* Shortcuts.cpp */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.cpp.cpp; path = Shortcuts.cpp; sourceTree = "<group>"; };
 		73A4F1340DAB7539006B1114 /* ControlRoom.h */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.c.h; path = ControlRoom.h; sourceTree = "<group>"; };
+		9D7B8C4F03D9461381446609 /* Shortcuts.h */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.c.h; path = Shortcuts.h; sourceTree = "<group>"; };
 		73A4F1390DAB7591006B1114 /* ButtonControllerSource.cpp */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.cpp.cpp; path = ButtonControllerSource.cpp; sourceTree = "<group>"; };
 		73A4F13A0DAB7591006B1114 /* ButtonControllerSource.h */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.c.h; path = ButtonControllerSource.h; sourceTree = "<group>"; };
 		73A4F13B0DAB7591006B1114 /* Channel.cpp */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.cpp.cpp; path = Channel.cpp; sourceTree = "<group>"; };
@@ -1244,7 +1247,9 @@
 			isa = PBXGroup;
 			children = (
 				73A4F1330DAB7539006B1114 /* ControlRoom.cpp */,
+				FC56B8B61E31474998CC3311 /* Shortcuts.cpp */,
 				73A4F1340DAB7539006B1114 /* ControlRoom.h */,
+				9D7B8C4F03D9461381446609 /* Shortcuts.h */,
 			);
 			path = Controllers;
 			sourceTree = "<group>";
@@ -1582,6 +1587,7 @@
 				73A4F1210DAB7511006B1114 /* CommandDispatcher.cpp in Sources */,
 				73A4F1230DAB7511006B1114 /* EventDispatcher.cpp in Sources */,
 				73A4F1350DAB7539006B1114 /* ControlRoom.cpp in Sources */,
+				639743CE032F4C5899275B8D /* Shortcuts.cpp in Sources */,
 				73A4F14B0DAB7591006B1114 /* ButtonControllerSource.cpp in Sources */,
 				73A4F14D0DAB7591006B1114 /* Channel.cpp in Sources */,
 				73A4F14F0DAB7591006B1114 /* ControllableVariable.cpp in Sources */,

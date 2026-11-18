@@ -242,4 +242,140 @@
     <BIND action="instrument.table" keys="R+DOWN" exclude="B" event="press" />
     <BIND action="instrument.play_from_start" keys="R+START" exclude="B" event="press" />
     <BIND action="instrument.play" keys="START" exclude="B+R" event="press" />
+    <!-- Instrument field actions. On the sampler Table row: L+B, keep L held, then A to clone. -->
+    <BIND action="instrument.open_editor" keys="A" exclude="LEFT+DOWN+RIGHT+UP+L+B+R+START+SELECT" event="press" />
+    <BIND action="instrument.begin_new" keys="A" exclude="LEFT+DOWN+RIGHT+UP+L+B+R+START+SELECT" event="press" />
+    <BIND action="instrument.import_sample" keys="A" exclude="LEFT+DOWN+RIGHT+UP+L+B+R+START+SELECT" event="press" />
+    <BIND action="instrument.new_table" keys="A" exclude="LEFT+DOWN+RIGHT+UP+L+B+R+START+SELECT" event="press" />
+    <BIND action="instrument.print_fx" keys="A" exclude="LEFT+DOWN+RIGHT+UP+L+B+R+START+SELECT" event="press" />
+    <BIND action="instrument.begin_clone" keys="L+B" exclude="" event="press" />
+    <BIND action="instrument.clone_table" keys="L+A" exclude="" event="press" />
+    <!-- Engine selector: hold engine_modifier and use the navigation bindings. -->
+    <BIND action="instrument.down" keys="DOWN" exclude="A+B+L+R+START+SELECT" event="press" />
+    <BIND action="instrument.up" keys="UP" exclude="A+B+L+R+START+SELECT" event="press" />
+    <BIND action="instrument.left" keys="LEFT" exclude="A+B+L+R+START+SELECT" event="press" />
+    <BIND action="instrument.right" keys="RIGHT" exclude="A+B+L+R+START+SELECT" event="press" />
+    <BIND action="instrument.edit_down" keys="A+DOWN" exclude="" event="press" />
+    <BIND action="instrument.edit_up" keys="A+UP" exclude="" event="press" />
+    <BIND action="instrument.edit_left" keys="A+LEFT" exclude="" event="press" />
+    <BIND action="instrument.edit_right" keys="A+RIGHT" exclude="" event="press" />
+    <BIND action="instrument.engine_modifier" keys="A" exclude="" event="press" />
+    <BIND action="instrument.clear_sample" keys="B+A" exclude="" event="press" />
+    <BIND action="instrument.clear_table" keys="B+A" exclude="" event="press" />
+    <!-- Song cursor, page and section navigation; selection has its own cursor bindings. -->
+    <BIND action="song.down" keys="DOWN" exclude="A+B+R+L" event="press" />
+    <BIND action="song.up" keys="UP" exclude="A+B+R+L" event="press" />
+    <BIND action="song.left" keys="LEFT" exclude="A+B+R+L" event="press" />
+    <BIND action="song.right" keys="RIGHT" exclude="A+B+R+L" event="press" />
+    <BIND action="song.page_down" keys="B+DOWN" exclude="" event="press" />
+    <BIND action="song.page_up" keys="B+UP" exclude="" event="press" />
+    <BIND action="song.next_section" keys="L+DOWN" exclude="A+B+R" event="press" />
+    <BIND action="song.previous_section" keys="L+UP" exclude="A+B+R" event="press" />
+    <BIND action="song.selection_down" keys="DOWN" exclude="A+B+R" event="press" />
+    <BIND action="song.selection_up" keys="UP" exclude="A+B+R" event="press" />
+    <BIND action="song.selection_left" keys="LEFT" exclude="A+B+R" event="press" />
+    <BIND action="song.selection_right" keys="RIGHT" exclude="A+B+R" event="press" />
+    <!-- Song: A then A allocates a Chain. Hold L, tap B, then tap A once or twice to clone. -->
+    <BIND action="song.insert" keys="A" exclude="LEFT+DOWN+RIGHT+UP+L+B+R+START+SELECT" event="press" />
+    <BIND action="song.next_unused" keys="A" exclude="LEFT+DOWN+RIGHT+UP+L+B+R+START+SELECT" event="press" />
+    <BIND action="song.begin_clone_selection" keys="L+B" exclude="" event="press" />
+    <BIND action="song.clone" keys="L+A" exclude="" event="press" />
+    <BIND action="song.deep_clone" keys="L+A" exclude="" event="press" />
+    <!-- Song channel controls. Release bindings match the buttons still held. -->
+    <BIND action="song.mute" keys="B+R" exclude="" event="press" />
+    <BIND action="song.solo" keys="A+R" exclude="B" event="press" />
+    <BIND action="song.unmute_all" keys="R+L" exclude="A+B" event="press" />
+    <BIND action="song.selection_mute" keys="B+R" exclude="" event="press" />
+    <BIND action="song.selection_solo" keys="A+R" exclude="B" event="press" />
+    <BIND action="song.selection_unmute_all" keys="R+L" exclude="A+B" event="press" />
+    <BIND action="song.mute_release" keys="R" exclude="" event="release" />
+    <BIND action="song.solo_release" keys="R" exclude="" event="release" />
+    <!-- Song and Live playback. The selection bindings address the selected channels. -->
+    <BIND action="song.toggle_mode_left" keys="B+LEFT" exclude="" event="press" />
+    <BIND action="song.toggle_mode_right" keys="B+RIGHT" exclude="" event="press" />
+    <BIND action="song.play" keys="START" exclude="A+B+R+L" event="press" />
+    <BIND action="song.stop" keys="R+START" exclude="A+B" event="press" />
+    <BIND action="song.start_row" keys="L+START" exclude="A+B+R" event="press" />
+    <BIND action="song.immediate" keys="B+START" exclude="" event="press" />
+    <BIND action="song.nudge_down" keys="L+LEFT" exclude="A+B+R" event="press" />
+    <BIND action="song.nudge_up" keys="L+RIGHT" exclude="A+B+R" event="press" />
+    <BIND action="song.selection_play" keys="START" exclude="A+B+R" event="press" />
+    <BIND action="song.selection_stop" keys="R+START" exclude="A+B" event="press" />
+    <!-- Song view switches, with separate bindings while selecting. -->
+    <BIND action="song.chain" keys="R+RIGHT" exclude="A+B" event="press" />
+    <BIND action="song.project" keys="R+UP" exclude="A+B" event="press" />
+    <BIND action="song.mixer" keys="R+DOWN" exclude="A+B" event="press" />
+    <BIND action="song.selection_chain" keys="R+RIGHT" exclude="A+B" event="press" />
+    <BIND action="song.selection_project" keys="R+UP" exclude="A+B" event="press" />
+    <BIND action="song.selection_mixer" keys="R+DOWN" exclude="A+B" event="press" />
+    <!-- Song Chain numbers and clipboard. Keep edit_hold aligned with the edit modifier. -->
+    <BIND action="song.cut" keys="B+A" exclude="R" event="press" />
+    <BIND action="song.paste" keys="L+A" exclude="B" event="press" />
+    <BIND action="song.decrease_coarse" keys="A+DOWN" exclude="B" event="press" />
+    <BIND action="song.increase_coarse" keys="A+UP" exclude="B" event="press" />
+    <BIND action="song.decrease_fine" keys="A+LEFT" exclude="B" event="press" />
+    <BIND action="song.increase_fine" keys="A+RIGHT" exclude="B" event="press" />
+    <BIND action="song.edit_hold" keys="A" exclude="" event="press" />
+    <BIND action="song.selection_extend" keys="B+L" exclude="" event="press" />
+    <BIND action="song.selection_copy" keys="B" exclude="LEFT+DOWN+RIGHT+UP+L+A+R+START+SELECT" event="press" />
+    <BIND action="song.selection_cut" keys="A+L" exclude="B" event="press" />
+    <!-- Phrase cursor, selection endpoint, channel and Chain navigation. -->
+    <BIND action="phrase.down" keys="DOWN" exclude="A+B+L+R" event="press" />
+    <BIND action="phrase.up" keys="UP" exclude="A+B+L+R" event="press" />
+    <BIND action="phrase.left" keys="LEFT" exclude="A+B+L+R" event="press" />
+    <BIND action="phrase.right" keys="RIGHT" exclude="A+B+L+R" event="press" />
+    <BIND action="phrase.selection_down" keys="DOWN" exclude="A+B+L+R" event="press" />
+    <BIND action="phrase.selection_up" keys="UP" exclude="A+B+L+R" event="press" />
+    <BIND action="phrase.selection_left" keys="LEFT" exclude="A+B+L+R" event="press" />
+    <BIND action="phrase.selection_right" keys="RIGHT" exclude="A+B+L+R" event="press" />
+    <BIND action="phrase.previous_channel" keys="B+LEFT" exclude="" event="press" />
+    <BIND action="phrase.next_channel" keys="B+RIGHT" exclude="" event="press" />
+    <BIND action="phrase.previous_in_chain" keys="B+UP" exclude="" event="press" />
+    <BIND action="phrase.next_in_chain" keys="B+DOWN" exclude="" event="press" />
+    <!-- Phrase view switches. In selection mode Chain and Instrument have separate bindings. -->
+    <BIND action="phrase.chain" keys="R+LEFT" exclude="A+B" event="press" />
+    <BIND action="phrase.instrument" keys="R+RIGHT" exclude="A+B" event="press" />
+    <BIND action="phrase.table" keys="R+DOWN" exclude="A+B" event="press" />
+    <BIND action="phrase.groove" keys="R+UP" exclude="A+B" event="press" />
+    <BIND action="phrase.selection_chain" keys="R+LEFT" exclude="A+B" event="press" />
+    <BIND action="phrase.selection_instrument" keys="R+RIGHT" exclude="A+B" event="press" />
+    <!-- Phrase playback and channel controls. Release matches buttons still held. -->
+    <BIND action="phrase.mute" keys="R+B" exclude="" event="press" />
+    <BIND action="phrase.solo" keys="R+A" exclude="B" event="press" />
+    <BIND action="phrase.unmute_all" keys="R+L" exclude="A+B" event="press" />
+    <BIND action="phrase.play" keys="START" exclude="A+B+L+R" event="press" />
+    <BIND action="phrase.play_song" keys="R+START" exclude="A+B" event="press" />
+    <BIND action="phrase.selection_solo" keys="R+A" exclude="B" event="press" />
+    <BIND action="phrase.selection_unmute_all" keys="R+L" exclude="A+B" event="press" />
+    <BIND action="phrase.selection_play" keys="START" exclude="A+B+L+R" event="press" />
+    <BIND action="phrase.selection_play_song" keys="R+START" exclude="A+B" event="press" />
+    <BIND action="phrase.mute_release" keys="R" exclude="" event="release" />
+    <BIND action="phrase.solo_release" keys="R" exclude="" event="release" />
+    <!-- Phrase value editing, command picker and note/instrument audition. -->
+    <BIND action="phrase.edit_down" keys="A+DOWN" exclude="B" event="press" />
+    <BIND action="phrase.edit_up" keys="A+UP" exclude="B" event="press" />
+    <BIND action="phrase.edit_left" keys="A+LEFT" exclude="B" event="press" />
+    <BIND action="phrase.edit_right" keys="A+RIGHT" exclude="B" event="press" />
+    <BIND action="phrase.selection_edit_down" keys="A+DOWN" exclude="B" event="press" />
+    <BIND action="phrase.selection_edit_up" keys="A+UP" exclude="B" event="press" />
+    <BIND action="phrase.selection_edit_left" keys="A+LEFT" exclude="B" event="press" />
+    <BIND action="phrase.selection_edit_right" keys="A+RIGHT" exclude="B" event="press" />
+    <BIND action="phrase.command_picker_down" keys="A+DOWN" exclude="B" event="press" />
+    <BIND action="phrase.command_picker_up" keys="A+UP" exclude="B" event="press" />
+    <BIND action="phrase.audition" keys="A" exclude="B" event="press" />
+    <BIND action="phrase.audition_hold" keys="A" exclude="" event="press" />
+    <!-- Phrase clipboard and selection. Begin selection, then move its endpoint. -->
+    <BIND action="phrase.cut" keys="B+A" exclude="" event="press" />
+    <BIND action="phrase.paste" keys="L+A" exclude="B" event="press" />
+    <BIND action="phrase.begin_clone_selection" keys="B+L" exclude="" event="press" />
+    <BIND action="phrase.selection_extend" keys="B+L" exclude="" event="press" />
+    <BIND action="phrase.selection_interpolate" keys="B+R" exclude="L" event="press" />
+    <BIND action="phrase.selection_copy" keys="B" exclude="L+R" event="press" />
+    <BIND action="phrase.selection_cut" keys="A+L" exclude="B" event="press" />
+    <!-- Phrase: insert twice for a free slot. Hold L, tap B, then tap A to clone. -->
+    <BIND action="phrase.insert" keys="A" exclude="LEFT+DOWN+RIGHT+UP+L+B+R+START+SELECT" event="press" />
+    <BIND action="phrase.next_instrument" keys="A" exclude="LEFT+DOWN+RIGHT+UP+L+B+R+START+SELECT" event="press" />
+    <BIND action="phrase.next_table" keys="A" exclude="LEFT+DOWN+RIGHT+UP+L+B+R+START+SELECT" event="press" />
+    <BIND action="phrase.clone_instrument" keys="L+A" exclude="" event="press" />
+    <BIND action="phrase.clone_table" keys="L+A" exclude="" event="press" />
 </SHORTCUTS>

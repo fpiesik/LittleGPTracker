@@ -28,12 +28,13 @@ class SongView : public View {
     void updateChain(int offset);
     void updateSongOffset(int offset);
     void updateCursor(int dx, int dy);
+    void processMovement(unsigned int movements);
     void setChain(unsigned char);
     void cutPosition();
-    void clonePosition();
+    bool clonePosition();
     void deepClonePosition();
     void pasteLast();
-    void fillClipboardData();
+    bool fillClipboardData();
     GUIRect getSelectionRect();
     void copySelection();
     void pasteClipboard();
@@ -43,6 +44,8 @@ class SongView : public View {
     void toggleMute();
     void switchSoloMode();
 
+    void processViewSwitch(unsigned int switches);
+    void processPlayback(unsigned int transport);
     void onStart();
     void startCurrentRow();
     void startImmediate();
@@ -55,13 +58,8 @@ class SongView : public View {
     RecordDialog *recordDialog_;
     static void RecordClosed(View &view, ModalView &dialog);
 #endif
-    bool updatingChain_; // .Flag that tells we're updating chain
-                         //  so we don't allocate chains while
-                         //  doing multiple A+ARROWS
-
-    int updateX_; // . Position where update is happening
-    int updateY_; //
-
+    unsigned short
+        pendingChain_;        // Reserve the final Chain number after editing.
     unsigned char lastChain_; // .Last chain clipboard
 
     int lastPlayedPosition_[SONG_CHANNEL_COUNT]; // .Last position played for
@@ -88,7 +86,7 @@ class SongView : public View {
     std::string songname_;
     bool invertBatt_;
     bool needClear_;
-    bool canDeepClone_;
+    unsigned short deepCloneChain_;
     void nudgeTempo(int direction);
     void DrawVuBars();   // Draw VU bars - called from both DrawView and
                          // AnimationUpdate
