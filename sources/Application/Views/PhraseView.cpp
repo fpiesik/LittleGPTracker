@@ -100,14 +100,14 @@ void PhraseView::updateCursor(int dx, int dy) {
     GUIPoint p(anchor);
     switch (col_) {
     case 4:
-        p._x += 17;
+        p._x += 16;
         p._y += row_;
         cmdEditField_->SetPosition(p);
         cmdEdit_.SetInt(
             *(phrase_->param1_ + (16 * viewData_->currentPhrase_ + row_)));
         break;
     case 6:
-        p._x += 27;
+        p._x += 26;
         p._y += row_;
         cmdEditField_->SetPosition(p);
         cmdEdit_.SetInt(
@@ -1183,10 +1183,10 @@ void PhraseView::DrawView() {
     DrawString(pos._x, pos._y, "Nt", props);
     DrawString(pos._x + 5, pos._y, "Vl", props);
     DrawString(pos._x + 8, pos._y, "I", props);
-    DrawString(pos._x + 12, pos._y, "Cmd1", props);
-    DrawString(pos._x + 17, pos._y, "", props);
-    DrawString(pos._x + 22, pos._y, "Cmd2", props);
-    DrawString(pos._x + 27, pos._y, "", props);
+    DrawString(pos._x + 11, pos._y, "Cmd1", props);
+    DrawString(pos._x + 16, pos._y, "", props);
+    DrawString(pos._x + 21, pos._y, "Cmd2", props);
+    DrawString(pos._x + 26, pos._y, "", props);
 
     SetColor(CD_NORMAL);
 
@@ -1234,8 +1234,6 @@ void PhraseView::DrawView() {
     pos._x += 8;
 
     data = phrase_->instr_ + (16 * viewData_->currentPhrase_);
-    buffer[0] = 'I';
-    buffer[3] = 0;
 
     for (int j = 0; j < 16; j++) {
         unsigned char d = *data++;
@@ -1244,10 +1242,9 @@ void PhraseView::DrawView() {
                                                 : SetColor(CD_NORMAL);
         if (d == 0xFF) {
             SetColor(CD_NORMAL);
-            DrawString(pos._x, pos._y, "I", props);
-            DrawString(pos._x + 1, pos._y, "--", props);
+            DrawString(pos._x, pos._y, "--", props);
         } else {
-            hex2char(d, buffer + 1);
+            hex2char(d, buffer);
             DrawString(pos._x, pos._y, buffer, props);
             if (j == row_ && (col_ == 0 || col_ == 2)) {
                 SetColor(CD_NORMAL);
@@ -1269,7 +1266,7 @@ void PhraseView::DrawView() {
     // Draw command 1
 
     pos = anchor;
-    pos._x += 12;
+    pos._x += 11;
 
     FourCC *f = phrase_->cmd1_ + (16 * viewData_->currentPhrase_);
 
@@ -1292,7 +1289,7 @@ void PhraseView::DrawView() {
     // Draw commands params 1
 
     pos = anchor;
-    pos._x += 17;
+    pos._x += 16;
 
     ushort *param = phrase_->param1_ + (16 * viewData_->currentPhrase_);
     buffer[5] = 0;
@@ -1316,7 +1313,7 @@ void PhraseView::DrawView() {
     // Draw commands 2
 
     pos = anchor;
-    pos._x += 22;
+    pos._x += 21;
 
     f = phrase_->cmd2_ + (16 * viewData_->currentPhrase_);
 
@@ -1339,7 +1336,7 @@ void PhraseView::DrawView() {
     // Draw commands params
 
     pos = anchor;
-    pos._x += 27;
+    pos._x += 26;
 
     param = phrase_->param2_ + (16 * viewData_->currentPhrase_);
     buffer[5] = 0;

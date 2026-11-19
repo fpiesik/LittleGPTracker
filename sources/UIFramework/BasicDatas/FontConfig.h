@@ -9,5 +9,9 @@ extern unsigned char font[8*8*128];
 extern const unsigned char embeddedFontBank[FONT_TYPE_COUNT][8*8*128];
 
 void FontConfig();
+#if defined(PLATFORM_X64)
+const char *CurrentFontLabel();
+bool CycleFont(int direction);
+#endif
 
 #endif

@@ -39,7 +39,11 @@ public: // I_GUIWindowImp implementation
 	virtual void PushEvent(GUIEvent &event) ;
 
 public: // Added functionality
-	void ProcessExpose() ;
+  void RefreshFontCache() {
+      if (cacheFonts_)
+          prepareFullFonts();
+  }
+    void ProcessExpose() ;
 	void ProcessQuit() ;
 	void ProcessUserEvent(SDL_Event &event) ;
 protected:

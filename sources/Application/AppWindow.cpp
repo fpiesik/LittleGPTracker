@@ -19,6 +19,13 @@
 #include "Views/UIController.h"
 #include <string.h>
 
+#if defined(PLATFORM_X64)
+#include "Application/Views/RecordOptionsView.h"
+#include "Application/Views/SettingsView.h"
+#include "Adapters/SDL2/GUI/SDLGUIWindowImp.h"
+#include "UIFramework/BasicDatas/FontConfig.h"
+#endif
+
 AppWindow *instance = 0;
 
 GUIColor AppWindow::backgroundColor_(0x1D, 0x0A, 0x1F);
@@ -84,6 +91,10 @@ AppWindow::AppWindow(I_GUIWindowImp &imp) : GUIWindow(imp) {
     _chainView = 0;
     _phraseView = 0;
     _projectView = 0;
+#if defined(PLATFORM_X64)
+    _recordOptionsView = 0;
+    _settingsView = 0;
+#endif
     _instrumentView = 0;
     _tableView = 0;
     _nullView = 0;
@@ -182,6 +193,18 @@ void AppWindow::Clear(bool all) {
         memset(_preScreenProp, 0, SCREEN_CELLS);
     };
 };
+
+#if defined(PLATFORM_X64)
+void AppWindow::ChangeFont(int direction) {
+    SysMutexLocker locker(drawMutex_);
+    if (!CycleFont(direction)) {
+        _currentView->SetNotification("Could not save font");
+        return;
+    }
+    static_cast<SDLGUIWindowImp *>(GetImpWindow())->RefreshFontCache();
+    memset(_preScreen, 0xff, sizeof(_preScreen));
+}
+#endif
 
 bool AppWindow::SupportsPixelRects() {
     return GetImpWindow()->SupportsPixelRects();
@@ -421,6 +444,12 @@ void AppWindow::LoadProject(const Path &p) {
 
     _projectView = new ProjectView((*this), _viewData);
     _projectView->AddObserver((*this));
+#if defined(PLATFORM_X64)
+    _recordOptionsView = new RecordOptionsView(*this, _viewData);
+    _recordOptionsView->AddObserver(*this);
+    _settingsView = new SettingsView(*this, _viewData);
+    _settingsView->AddObserver(*this);
+#endif
 
     _instrumentView = new InstrumentView((*this), _viewData);
     _instrumentView->AddObserver((*this));
@@ -484,6 +513,10 @@ void AppWindow::CloseProject() {
     SAFE_DELETE(_chainView);
     SAFE_DELETE(_phraseView);
     SAFE_DELETE(_projectView);
+#if defined(PLATFORM_X64)
+    SAFE_DELETE(_recordOptionsView);
+    SAFE_DELETE(_settingsView);
+#endif
     SAFE_DELETE(_instrumentView);
     SAFE_DELETE(_tableView);
     SAFE_DELETE(_mixerView);
@@ -622,6 +655,14 @@ void AppWindow::Update(Observable &o, I_ObservableData *d) {
         case VT_PHRASE:
             _currentView = _phraseView;
             break;
+#if defined(PLATFORM_X64)
+        case VT_SETTINGS:
+            _currentView = _settingsView;
+            break;
+        case VT_RECORD_OPTIONS:
+            _currentView = _recordOptionsView;
+            break;
+#endif
         case VT_PROJECT:
             _currentView = _projectView;
             break;

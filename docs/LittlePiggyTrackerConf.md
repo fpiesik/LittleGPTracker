@@ -101,7 +101,9 @@ builds: the wider canvas is mandatory so all twelve tracks remain visible.
 Other display backends retain eight tracks.
 
 Fullscreen uses the native desktop resolution and scales the canvas
-proportionally to fit, centered with equal margins on opposite sides.
+to fit. The widescreen layout scales all 30 text rows into the 16:9 display
+area and centers it horizontally. Two logical pixels separate the track
+indicators from the bottom edge in both windowed and fullscreen mode.
 `SCREENMULT` applies to windowed mode.
 The navigation map sits beside the playing-note indicators at the bottom.
 

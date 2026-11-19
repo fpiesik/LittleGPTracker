@@ -1,4 +1,8 @@
 Unreleased
+    Scale the widescreen display so track indicators end near the bottom edge.
+    Add a Settings page for switching and remembering the Linux X64 display font.
+    Show Record Options as a full-page view with P in the navigator; use
+    A+LEFT/RIGHT to change values and R+LEFT to return to Project.
     Add Metronome volume (0-100%) to Record Options, applying to count-in and playback.
     Add Metronome (off, record, play and rec) and Count in (off, 1-8 beats) to Linux X64 Record Options.
     Include shortcuts.xml in release ZIPs and build the shortcut loader in the Windows and macOS release projects.

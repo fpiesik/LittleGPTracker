@@ -115,11 +115,15 @@ void View::drawMap() {
 			pos._y+=1;
 	        DrawString(pos._x,pos._y,"P",props) ;
 			break;
-		case VT_PROJECT:
-	        DrawString(pos._x,pos._y,"P",props) ;
-			break;
-		case VT_INSTRUMENT:
-			pos._x+=3;
+        case VT_PROJECT:
+#if defined(PLATFORM_X64)
+        case VT_SETTINGS:
+        case VT_RECORD_OPTIONS:
+#endif
+            DrawString(pos._x, pos._y, "P", props);
+            break;
+        case VT_INSTRUMENT:
+            pos._x+=3;
 			pos._y+=1;
 	        DrawString(pos._x,pos._y,"I",props) ;
 			break;

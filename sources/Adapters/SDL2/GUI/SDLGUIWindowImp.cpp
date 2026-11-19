@@ -71,7 +71,9 @@ SDLGUIWindowImp::SDLGUIWindowImp(GUICreateWindowParams &p) {
         SONG_CHANNEL_COUNT > 8 ||
         (widescreenValue && !strcmp(widescreenValue, "YES"));
     appWidth = widescreen ? 480 : 320;
-    appHeight = widescreen ? 270 : 240;
+    // The 30 eight-pixel rows end with the track indicators and navigator.
+    appHeight = widescreen ? 242 : 240;
+    const int windowHeight = widescreen ? 270 : appHeight;
 
     bool fullscreen = false;
 
@@ -88,7 +90,7 @@ SDLGUIWindowImp::SDLGUIWindowImp(GUICreateWindowParams &p) {
 #ifdef PLATFORM_PSP
     mult_ = 1;
 #else
-    int multFromSize = MIN(screenHeight / appHeight, screenWidth / appWidth);
+    int multFromSize = MIN(screenHeight / windowHeight, screenWidth / appWidth);
     const char *mult = Config::GetInstance()->GetValue("SCREENMULT");
     if (mult) {
         mult_ = atoi(mult);
@@ -102,8 +104,8 @@ SDLGUIWindowImp::SDLGUIWindowImp(GUICreateWindowParams &p) {
 #endif
     // Keep square pixels and fit the canvas inside the native desktop.
     if (fullscreen) {
-        mult_ =
-            MIN(mult_, MIN(screenWidth / appWidth, screenHeight / appHeight));
+        mult_ = MIN(mult_,
+                    MIN(screenWidth / appWidth, screenHeight / windowHeight));
     }
     if (mult_ < 1) {
         mult_ = 1;
@@ -115,7 +117,7 @@ SDLGUIWindowImp::SDLGUIWindowImp(GUICreateWindowParams &p) {
     screenRect_._bottomRight._x =
         (windowed_ && !fullscreen) ? appWidth * mult_ : screenWidth;
     screenRect_._bottomRight._y =
-        (windowed_ && !fullscreen) ? appHeight * mult_ : screenHeight;
+        (windowed_ && !fullscreen) ? windowHeight * mult_ : screenHeight;
 
     Trace::Log("DISPLAY", "Creating SDL Window (%d,%d)", screenRect_.Width(),
                screenRect_.Height());
@@ -128,16 +130,17 @@ SDLGUIWindowImp::SDLGUIWindowImp(GUICreateWindowParams &p) {
     // Compute the x & y offset to locate our app window
 
     appAnchorX_ = (screenRect_.Width() - appWidth * mult_) / 2;
-    appAnchorY_ = (screenRect_.Height() - appHeight * mult_) / 2;
+    appAnchorY_ = screenRect_.Height() - appHeight * mult_;
+    if (!widescreen)
+        appAnchorY_ /= 2;
 
     SDL_SetWindowIcon(window_, SDL_LoadBMP("lgpt_icon.bmp"));
     surface_ = SDL_GetWindowSurface(window_);
 
     NAssert(surface_);
-    scaleToHeight_ = fullscreen;
+    scaleToHeight_ = fullscreen || (widescreen && windowed_);
     if (scaleToHeight_) {
-        // Render at logical resolution, then scale both axes by the same
-        // factor.
+        // Scale the complete logical surface, including pixel overlays.
         surface_ = SDL_CreateRGBSurfaceWithFormat(0, appWidth, appHeight, 32,
                                                   SDL_PIXELFORMAT_ARGB8888);
         NAssert(surface_);
@@ -518,14 +521,17 @@ void SDLGUIWindowImp::Flush() {
             SDL_Surface *windowSurface = SDL_GetWindowSurface(window_);
             if (windowSurface) {
                 SDL_Rect destination;
+                const int displayHeight = appWidth == 480 ? 270 : surface_->h;
                 destination.h = windowSurface->h;
-                destination.w = surface_->w * destination.h / surface_->h;
+                destination.w = surface_->w * destination.h / displayHeight;
                 if (destination.w > windowSurface->w) {
                     destination.w = windowSurface->w;
-                    destination.h = surface_->h * destination.w / surface_->w;
+                    destination.h = displayHeight * destination.w / surface_->w;
                 }
                 destination.x = (windowSurface->w - destination.w) / 2;
-                destination.y = (windowSurface->h - destination.h) / 2;
+                destination.y = windowSurface->h - destination.h;
+                if (appWidth != 480)
+                    destination.y /= 2;
                 Uint8 r, g, b;
                 SDL_GetRGB(backgroundColor_, surface_->format, &r, &g, &b);
                 SDL_FillRect(windowSurface, NULL,

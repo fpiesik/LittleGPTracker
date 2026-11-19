@@ -45,7 +45,11 @@ enum ViewType {
     VT_TABLE2, // Table screen under instrument
     VT_GROOVE,
     VT_MIXER,
-    VT_FX
+    VT_FX,
+#if defined(PLATFORM_X64)
+    VT_RECORD_OPTIONS,
+    VT_SETTINGS
+#endif
 };
 
 enum ViewMode {

@@ -23,6 +23,11 @@
 
 #define PROP_INVERT 0x80
 
+#if defined(PLATFORM_X64)
+class RecordOptionsView;
+class SettingsView;
+#endif
+
 class AppWindow : public GUIWindow, I_Observer, Status {
   protected:
     AppWindow(I_GUIWindowImp &imp);
@@ -37,6 +42,9 @@ class AppWindow : public GUIWindow, I_Observer, Status {
     virtual void Clear(bool all = false);
     virtual void ClearRect(GUIRect &rect);
     virtual void SetColor(ColorDefinition cd);
+#if defined(PLATFORM_X64)
+    void ChangeFont(int direction);
+#endif
     void SetDirty();
     bool SupportsPixelRects();
     static int GetCharWidth() { return charWidth_; }
@@ -80,6 +88,10 @@ class AppWindow : public GUIWindow, I_Observer, Status {
     ChainView *_chainView;
     PhraseView *_phraseView;
     ProjectView *_projectView;
+#if defined(PLATFORM_X64)
+    RecordOptionsView *_recordOptionsView;
+    SettingsView *_settingsView;
+#endif
     InstrumentView *_instrumentView;
     TableView *_tableView;
     GrooveView *_grooveView;

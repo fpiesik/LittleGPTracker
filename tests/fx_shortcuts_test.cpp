@@ -1,10 +1,12 @@
 #include "Adapters/LINUX/System/LINUXSystem.h"
+#include "Adapters/SDL2/Audio/SDLAudioDriver.h"
 #include "Adapters/Unix/FileSystem/UnixFileSystem.h"
 #include "Application/Controllers/Shortcuts.h"
 #include "Application/Model/Mixer.h"
 #include "Application/Views/BaseClasses/UIIntVarField.h"
 #include "Application/Views/FxView.h"
 #include "Application/Views/ProjectView.h"
+#include "Application/Views/RecordOptionsView.h"
 #include "Services/Audio/Audio.h"
 #include "Services/Midi/MidiService.h"
 #include "UIFramework/Interfaces/I_GUIWindowImp.h"
@@ -102,6 +104,24 @@ class SwitchObserver : public I_Observer {
         assert(*static_cast<ViewType *>(event->GetData()) == destination);
         ++calls;
     }
+};
+class TestRecordOptionsView : public RecordOptionsView {
+  public:
+    bool projectHighlighted;
+    ColorDefinition color;
+    TestRecordOptionsView(GUIWindow &window, ViewData *data)
+        : RecordOptionsView(window, data), projectHighlighted(false),
+          color(CD_NORMAL) {}
+    void SetColor(ColorDefinition value) { color = value; }
+    void DrawString(int x, int y, const char *text, GUITextProperties &props) {
+        if (color == CD_HILITE2) {
+            GUIPoint anchor = GetAnchor();
+            assert(x == anchor._x + SONG_CHANNEL_COUNT * 3 + 1 && y == 26);
+            assert(std::string(text) == "P" && props.invert_);
+            projectHighlighted = true;
+        }
+    }
+    void DrawMap() { drawMap(); }
 };
 static std::vector<UIField *> Fields(FxView &view) {
     std::vector<UIField *> result;
@@ -235,5 +255,70 @@ int main() {
     project.ProcessButtonMask(EPBM_START, true);
     assert(playCalls == 1 && !playFromStart);
     project.RemoveObserver(songSwitch);
+
+    // Record Options is a separate view: ordinary A/B and bare arrows no
+    // longer edit or exit. Exercise shipped XML and compiled defaults.
+    for (int configuration = 0; configuration < 2; ++configuration) {
+        if (configuration == 0) {
+            TiXmlDocument document("projects/shortcuts.xml");
+            assert(document.LoadFile());
+            std::string error;
+            assert(shortcuts.Load(document.RootElement(), error));
+        } else {
+            assert(Load(shortcuts, "<SHORTCUTS version='1'/>"));
+        }
+        TestRecordOptionsView record(window, &data);
+        record.SetFocus(VT_RECORD_OPTIONS);
+        record.DrawMap();
+        assert(record.projectHighlighted);
+        SwitchObserver back(VT_PROJECT);
+        record.AddObserver(back);
+        SDLAudioDriver::RecordChannels = 1;
+        const unsigned short inactive[] = {EPBM_A, EPBM_B, EPBM_LEFT,
+                                           EPBM_RIGHT};
+        for (unsigned i = 0; i < sizeof(inactive) / sizeof(inactive[0]); ++i)
+            record.ProcessButtonMask(inactive[i], true);
+        assert(SDLAudioDriver::RecordChannels == 1 && back.calls == 0);
+        record.ProcessButtonMask(EPBM_A | EPBM_RIGHT, false);
+        assert(SDLAudioDriver::RecordChannels == 1);
+        record.ProcessButtonMask(EPBM_A | EPBM_RIGHT, true);
+        assert(SDLAudioDriver::RecordChannels == 2);
+        record.ProcessButtonMask(EPBM_A | EPBM_LEFT, true);
+        assert(SDLAudioDriver::RecordChannels == 1);
+        record.ProcessButtonMask(EPBM_DOWN, true);
+        SDLAudioDriver::RecordMetronome = 0;
+        record.ProcessButtonMask(EPBM_A | EPBM_LEFT, true);
+        assert(SDLAudioDriver::RecordMetronome == 2);
+        record.ProcessButtonMask(EPBM_A | EPBM_RIGHT, true);
+        assert(SDLAudioDriver::RecordMetronome == 0);
+        record.ProcessButtonMask(EPBM_DOWN, true);
+        SDLAudioDriver::RecordMetronomeVolume = 100;
+        record.ProcessButtonMask(EPBM_A | EPBM_RIGHT, true);
+        assert(SDLAudioDriver::RecordMetronomeVolume == 100);
+        record.ProcessButtonMask(EPBM_A | EPBM_LEFT, true);
+        assert(SDLAudioDriver::RecordMetronomeVolume == 90);
+        SDLAudioDriver::RecordMetronomeVolume = 0;
+        record.ProcessButtonMask(EPBM_A | EPBM_LEFT, true);
+        assert(SDLAudioDriver::RecordMetronomeVolume == 0);
+        record.ProcessButtonMask(EPBM_DOWN, true);
+        SDLAudioDriver::RecordCountIn = 8;
+        record.ProcessButtonMask(EPBM_A | EPBM_RIGHT, true);
+        assert(SDLAudioDriver::RecordCountIn == 0);
+        record.ProcessButtonMask(EPBM_A | EPBM_LEFT, true);
+        assert(SDLAudioDriver::RecordCountIn == 8);
+        record.ProcessButtonMask(EPBM_R | EPBM_LEFT, false);
+        assert(back.calls == 0);
+        record.ProcessButtonMask(EPBM_R | EPBM_LEFT, true);
+        assert(back.calls == 1 && SDLAudioDriver::RecordCountIn == 8);
+        assert(Load(shortcuts,
+                    "<SHORTCUTS version='1'>"
+                    "<BIND action='record_options.back' keys='SELECT+LEFT' "
+                    "event='press'/></SHORTCUTS>"));
+        record.ProcessButtonMask(EPBM_R | EPBM_LEFT, true);
+        assert(back.calls == 1);
+        record.ProcessButtonMask(EPBM_SELECT | EPBM_LEFT, true);
+        assert(back.calls == 2);
+        record.RemoveObserver(back);
+    }
     return 0;
 }

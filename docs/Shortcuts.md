@@ -470,9 +470,17 @@ All entries use press events.
 ## Recording on Linux X64
 
 In Song, `song.record` (SELECT+A) starts capture on an empty slot with playback
-stopped and rendering disabled. The Record Options dialog uses UP/DOWN to select Channels, Metronome,
-Metronome volume or Count in,
-LEFT/RIGHT or A to change the selected value, and B to return (`record_options.*`).
+stopped and rendering disabled. Record Options opens from Project as a full-page
+view and keeps P highlighted in the navigator. UP/DOWN select Channels,
+Metronome, Metronome volume or Count in. A+LEFT/RIGHT change the selected value;
+R+LEFT returns to Project (`record_options.*`). The former `record_options.toggle`
+entry is still accepted in older shortcut files but no longer changes a value.
+
+On Linux X64, open Settings from Project and use A+LEFT/RIGHT on Font to cycle
+through Original, Digital and Monster. A custom startup font is also available
+in the cycle. The choice applies immediately and is restored on restart from
+`font_selection` beside the executable. R+LEFT returns
+to Project. Settings shares these bindings with Record Options.
 
 During count-in, START cancels. During capture, START stops and opens the take
 decision. These are separate bindings (`record.cancel_count_in`, `record.stop`).

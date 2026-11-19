@@ -196,10 +196,9 @@
     <BIND action="song.record" keys="SELECT+A" exclude="LEFT+DOWN+RIGHT+UP+L+B+R+START" event="press" />
     <BIND action="record_options.up" keys="UP" exclude="LEFT+DOWN+RIGHT+L+B+A+R+START+SELECT" event="press" />
     <BIND action="record_options.down" keys="DOWN" exclude="LEFT+RIGHT+UP+L+B+A+R+START+SELECT" event="press" />
-    <BIND action="record_options.left" keys="LEFT" exclude="DOWN+RIGHT+UP+L+B+A+R+START+SELECT" event="press" />
-    <BIND action="record_options.right" keys="RIGHT" exclude="LEFT+DOWN+UP+L+B+A+R+START+SELECT" event="press" />
-    <BIND action="record_options.toggle" keys="A" exclude="LEFT+DOWN+RIGHT+UP+L+B+R+START+SELECT" event="press" />
-    <BIND action="record_options.back" keys="B" exclude="LEFT+DOWN+RIGHT+UP+L+A+R+START+SELECT" event="press" />
+    <BIND action="record_options.left" keys="A+LEFT" exclude="DOWN+RIGHT+UP+L+B+R+START+SELECT" event="press" />
+    <BIND action="record_options.right" keys="A+RIGHT" exclude="LEFT+DOWN+UP+L+B+R+START+SELECT" event="press" />
+    <BIND action="record_options.back" keys="R+LEFT" exclude="DOWN+RIGHT+UP+L+B+A+START+SELECT" event="press" />
     <BIND action="record.cancel_count_in" keys="START" exclude="LEFT+DOWN+RIGHT+UP+L+B+A+R+SELECT" event="press" />
     <BIND action="record.stop" keys="START" exclude="LEFT+DOWN+RIGHT+UP+L+B+A+R+SELECT" event="press" />
     <BIND action="record.close" keys="A" exclude="LEFT+DOWN+RIGHT+UP+L+B+R+START+SELECT" event="press" />
