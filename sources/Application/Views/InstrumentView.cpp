@@ -3,7 +3,6 @@
 #ifdef LGPT_PLAITS
 #include "Application/Instruments/PlaitsInstrument.h"
 #endif
-#include "ModalDialogs/SampleEditorDialog.h"
 
 #define SIP_EDIT MAKE_FOURCC('E', 'D', 'I', 'T')
 #define SIP_ENGINE MAKE_FOURCC('E', 'N', 'G', 'N')
@@ -407,7 +406,11 @@ void InstrumentView::ProcessButtonMask(unsigned short mask, bool pressed) {
         GetFocus() &&
         ((UIIntVarField *)GetFocus())->GetVariableID() == SIP_EDIT) {
         viewMode_ = VM_NORMAL;
-        DoModal(new SampleEditorDialog(*this), ImportSampleDialogCallback);
+        lastFocusID_ = SIP_EDIT;
+        ViewType type = VT_SAMPLE_EDITOR;
+        ViewEvent event(VET_SWITCH_VIEW, &type);
+        SetChanged();
+        NotifyObservers(&event);
         return;
     }
 

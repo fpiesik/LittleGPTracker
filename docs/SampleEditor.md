@@ -3,20 +3,27 @@
 These are the default controls. Edit the `sample_editor.*` entries in `shortcuts.xml` and restart LGPT to change them.
 
 
-In the instrument view, select **Edit** below **sample:** and press A.
+In the instrument view, select **Edit** below **sample:** and press A to open
+the full-page Sample Editor. The navigator keeps **I** highlighted.
 The editor works on a private copy of the loaded mono/stereo WAV sample.
 SoundFont instruments are not supported.
 
-- Arrows select Start, End, Process, Undo, Name, Save As, Overwrite, or Exit.
+- Arrows select Start and End in each selection row, then Process, Undo, Name, Save As, Overwrite, or Exit.
 - On Start/End, hold A and use Left/Right to choose a hexadecimal digit;
   A+Up/Down changes that digit's value. The rightmost digit moves exactly one
   sample frame (both channels together for stereo).
+- **Select by Beats** shows both boundaries in decimal beats at the current
+  tracker tempo. At 120 BPM, `0001.5000` is 0.75 seconds from the sample start.
+  A+Left/Right selects a digit, skipping the decimal point. A+Up/Down changes
+  its value by one step. The smallest possible movement is one source frame.
 - Start is inclusive; End is exclusive. The initial selection is the full sample.
 - L toggles between the full waveform and the selected region. This first version
   uses a min/max envelope per native display pixel on SDL/SDL2; stereo channels
   share the envelope. Older display backends retain the character-grid fallback. The numerical selection is exact even when smaller than a column.
-- START plays the selection, including unsaved edits. START stops the preview;
-  press it again to replay. Preview uses the existing prelisten volume setting.
+- START plays the selection, including unsaved edits. A vertical play cursor
+  follows the preview in both waveform views and disappears when it stops.
+  START stops an active preview or starts it again after it ends.
+  Preview uses the existing prelisten volume setting.
 - On Process, A+Left/Right chooses a command; a separate short A press and release executes it.
   Holding A or changing a value/function with A held never executes an action.
 - Undo is selectable to the right of Process. A press and release restores the
@@ -29,7 +36,7 @@ SoundFont instruments are not supported.
 - A on Overwrite asks for confirmation, replaces the source file, and refreshes
   every instrument using it. Saving stops song playback and resets the affected
   instruments' start/loop boundaries to the new full sample.
-- B or Exit closes the editor, asking before discarding unsaved edits.
+- B or Exit returns to the instrument view, asking before discarding unsaved edits.
 
 Crop keeps the selection. Delete removes it and joins the remaining audio;
 removing the entire sample is refused (use Silence instead). Normalize scales

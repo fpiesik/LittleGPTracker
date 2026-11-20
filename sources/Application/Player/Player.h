@@ -77,8 +77,9 @@ public:
 
 	void StartStreaming(const Path &path) ;
 	void StopStreaming() ;
+    double GetStreamingProgress();
 
-	// Channel data
+    // Channel data
 
     bool IsChannelPlaying(int channel);
     void SetChannelMute(int channel,bool mute) ;

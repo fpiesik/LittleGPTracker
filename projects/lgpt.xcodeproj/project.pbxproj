@@ -169,6 +169,7 @@
 		8D0C4E920486CD37000505A6 /* Carbon.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 20286C33FDCF999611CA2CEA /* Carbon.framework */; };
 		C10D51000000000000000000 /* ReverbBus.cpp in Sources */ = {isa = PBXBuildFile; fileRef = C10D50000000000000000000 /* ReverbBus.cpp */; };
 		C10D51000000000000000001 /* FxView.cpp in Sources */ = {isa = PBXBuildFile; fileRef = C10D50000000000000000001 /* FxView.cpp */; };
+		C10D51000000000000000005 /* SampleEditorView.cpp in Sources */ = {isa = PBXBuildFile; fileRef = C10D50000000000000000005 /* SampleEditorView.cpp */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -516,8 +517,10 @@
 		8D0C4E960486CD37000505A6 /* Info.plist */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
 		C10D50000000000000000000 /* ReverbBus.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = ../sources/Application/Mixer/ReverbBus.cpp; sourceTree = SOURCE_ROOT; };
 		C10D50000000000000000001 /* FxView.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = ../sources/Application/Views/FxView.cpp; sourceTree = SOURCE_ROOT; };
+		C10D50000000000000000005 /* SampleEditorView.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = ../sources/Application/Views/SampleEditorView.cpp; sourceTree = SOURCE_ROOT; };
 		C10D50000000000000000002 /* ReverbBus.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = ../sources/Application/Mixer/ReverbBus.h; sourceTree = SOURCE_ROOT; };
 		C10D50000000000000000003 /* FxView.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = ../sources/Application/Views/FxView.h; sourceTree = SOURCE_ROOT; };
+		C10D50000000000000000006 /* SampleEditorView.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = ../sources/Application/Views/SampleEditorView.h; sourceTree = SOURCE_ROOT; };
 		C10D50000000000000000004 /* AudioSendEffect.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = ../sources/Services/Audio/AudioSendEffect.h; sourceTree = SOURCE_ROOT; };
 /* End PBXFileReference section */
 
@@ -543,8 +546,10 @@
 			children = (
 				C10D50000000000000000004 /* AudioSendEffect.h */,
 				C10D50000000000000000003 /* FxView.h */,
+				C10D50000000000000000006 /* SampleEditorView.h */,
 				C10D50000000000000000002 /* ReverbBus.h */,
 				C10D50000000000000000001 /* FxView.cpp */,
+				C10D50000000000000000005 /* SampleEditorView.cpp */,
 				C10D50000000000000000000 /* ReverbBus.cpp */,
 				508344B209E5C41E0093A071 /* LittleGPTracker_d.app */,
 			);
@@ -1466,6 +1471,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				C10D51000000000000000001 /* FxView.cpp in Sources */,
+				C10D51000000000000000005 /* SampleEditorView.cpp in Sources */,
 				C10D51000000000000000000 /* ReverbBus.cpp in Sources */,
 				737D125B0BCE66F000099CB3 /* Application.cpp in Sources */,
 				737D125C0BCE66F000099CB3 /* AppWindow.cpp in Sources */,

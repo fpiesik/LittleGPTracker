@@ -10,6 +10,7 @@
 #include "Application/Utils/char.h"
 #include "Application/Views/ModalDialogs/MessageBox.h"
 #include "Application/Views/ModalDialogs/SelectProjectDialog.h"
+#include "Application/Views/SampleEditorView.h"
 #include "Foundation/Variables/WatchedVariable.h"
 #include "Player/Player.h"
 #include "Services/Midi/MidiService.h"
@@ -96,6 +97,7 @@ AppWindow::AppWindow(I_GUIWindowImp &imp) : GUIWindow(imp) {
     _settingsView = 0;
 #endif
     _instrumentView = 0;
+    _sampleEditorView = 0;
     _tableView = 0;
     _nullView = 0;
     _mixerView = 0;
@@ -210,8 +212,11 @@ bool AppWindow::SupportsPixelRects() {
     return GetImpWindow()->SupportsPixelRects();
 }
 
-void AppWindow::AddPixelRect(const GUIRect &rect, bool selected) {
-    pixelRects_.push_back(PixelRect(rect, selected));
+void AppWindow::AddPixelRect(const GUIRect &rect, ColorDefinition color) {
+    const GUIColor &pixelColor = color == CD_PLAY      ? playColor_
+                                 : color == CD_HILITE2 ? highlight2Color_
+                                                       : highlightColor_;
+    pixelRects_.push_back(PixelRect(rect, pixelColor));
 }
 
 void AppWindow::ClearRect(GUIRect &r) {
@@ -358,9 +363,7 @@ void AppWindow::Flush() {
         pos._x = 0;
     }
     for (size_t i = 0; i < pixelRects_.size(); ++i) {
-        GUIColor color =
-            pixelRects_[i].selected ? highlight2Color_ : highlightColor_;
-        GUIWindow::SetColor(color);
+        GUIWindow::SetColor(pixelRects_[i].color);
         GetImpWindow()->DrawRect(pixelRects_[i].rect);
     }
     long flushEnd = System::GetInstance()->GetClock();
@@ -453,6 +456,8 @@ void AppWindow::LoadProject(const Path &p) {
 
     _instrumentView = new InstrumentView((*this), _viewData);
     _instrumentView->AddObserver((*this));
+    _sampleEditorView = new SampleEditorView(*this, _viewData);
+    _sampleEditorView->AddObserver(*this);
 
     _tableView = new TableView((*this), _viewData);
     _tableView->AddObserver((*this));
@@ -518,6 +523,7 @@ void AppWindow::CloseProject() {
     SAFE_DELETE(_settingsView);
 #endif
     SAFE_DELETE(_instrumentView);
+    SAFE_DELETE(_sampleEditorView);
     SAFE_DELETE(_tableView);
     SAFE_DELETE(_mixerView);
     SAFE_DELETE(_fxView);
@@ -669,6 +675,9 @@ void AppWindow::Update(Observable &o, I_ObservableData *d) {
         case VT_INSTRUMENT:
             _currentView = _instrumentView;
             break;
+        case VT_SAMPLE_EDITOR:
+            _currentView = _sampleEditorView;
+            break;
         case VT_TABLE:
             _currentView = _tableView;
             break;
@@ -738,6 +747,9 @@ void AppWindow::onQuitApp() {
     player->RemoveObserver(*this);
 
     player->Reset();
+    if (_currentView == _sampleEditorView)
+        _currentView = 0;
+    SAFE_DELETE(_sampleEditorView);
     System::GetInstance()->PostQuitMessage();
 }
 void AppWindow::Print(char *line) {

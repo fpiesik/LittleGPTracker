@@ -140,6 +140,7 @@
   <ItemGroup>
     <ClCompile Include="..\sources\Application\Mixer\ReverbBus.cpp" />
     <ClCompile Include="..\sources\Application\Views\FxView.cpp" />
+    <ClCompile Include="..\sources\Application\Views\SampleEditorView.cpp" />
     <ClCompile Include="..\sources\Adapters\W32FileSystem\W32FileSystem.cpp">
       <Filter>Source Files\Adapters</Filter>
     </ClCompile>
@@ -603,6 +604,7 @@
   <ItemGroup>
     <ClInclude Include="..\sources\Application\Mixer\ReverbBus.h" />
     <ClInclude Include="..\sources\Application\Views\FxView.h" />
+    <ClInclude Include="..\sources\Application\Views\SampleEditorView.h" />
     <ClInclude Include="..\sources\Services\Audio\AudioSendEffect.h" />
     <ClInclude Include="..\sources\Adapters\W32FileSystem\W32FileSystem.h">
       <Filter>Source Files\Adapters</Filter>

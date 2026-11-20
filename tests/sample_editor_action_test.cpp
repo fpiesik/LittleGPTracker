@@ -1,4 +1,4 @@
-#include "Application/Views/ModalDialogs/SampleEditorAction.h"
+#include "Application/Views/SampleEditorAction.h"
 #include <cassert>
 #include <cstdio>
 

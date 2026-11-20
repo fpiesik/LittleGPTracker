@@ -1,10 +1,11 @@
-#include "SampleEditorDialog.h"
+#include "SampleEditorView.h"
 #include "Application/AppWindow.h"
 #include "Application/Controllers/Shortcuts.h"
 #include "Application/Instruments/SampleInstrument.h"
 #include "Application/Instruments/SamplePool.h"
-#include "Application/Player/PlayerMixer.h"
-#include "MessageBox.h"
+#include "Application/Mixer/MixerService.h"
+#include "Application/Player/SyncMaster.h"
+#include "ModalDialogs/MessageBox.h"
 #include "Services/Audio/Audio.h"
 #include <cstring>
 #include <memory>
@@ -25,13 +26,32 @@
 static const char *operations[] = {"Crop",    "Delete",  "Normalize",
                                    "Silence", "Fade In", "Fade Out"};
 
-SampleEditorDialog::SampleEditorDialog(View &parent)
-    : ModalView(parent),
-      action_(Config::GetInstance()->GetValue("SHORT_PRESS_MS")),
-      undoFirst_(0), undoLast_(0), undoAvailable_(false), undoDirty_(false),
-      undoZoom_(false), first_(0), last_(0), row_(0), digit_(0), operation_(0),
-      nameCursor_(0), sampleIndex_(-1), dirty_(false), playing_(false),
-      zoom_(false) {
+// Beat positions are displayed and edited in ten-thousandths of a beat.
+static long long beatUnits(int frame, int rate, int bpm) {
+    return static_cast<long long>(
+        frame * (double(bpm) * 10000 / (60.0 * rate)) + 0.5);
+}
+
+static int wholeBeatDigits(long long units) {
+    int digits = 4;
+    for (long long whole = units / 10000; whole >= 10000; whole /= 10)
+        ++digits;
+    return digits;
+}
+
+SampleEditorView::SampleEditorView(GUIWindow &window, ViewData *data)
+    : View(window, data), previewProgress_(-1) {}
+
+void SampleEditorView::OnFocus() {
+    waveform_.clear();
+    beatDigit_ = 4; // Start on whole beats.
+    displayedBpm_ = 0;
+    action_ =
+        SampleEditorAction(Config::GetInstance()->GetValue("SHORT_PRESS_MS"));
+    first_ = last_ = row_ = digit_ = operation_ = nameCursor_ = 0;
+    undoAvailable_ = dirty_ = zoom_ = false;
+    status_.clear();
+
     SampleInstrument *instrument = static_cast<SampleInstrument *>(
         viewData_->project_->GetInstrumentBank()->GetInstrument(
             viewData_->currentInstrument_));
@@ -69,104 +89,195 @@ SampleEditorDialog::SampleEditorDialog(View &parent)
     }
 }
 
-SampleEditorDialog::~SampleEditorDialog() { stopPreview(); }
+SampleEditorView::~SampleEditorView() {
+    if (!previewPath_.empty())
+        stopPreview();
+}
 
-void SampleEditorDialog::text(int x, int y, const char *s, bool selected) {
+void SampleEditorView::text(int x, int y, const char *s, bool selected) {
     GUITextProperties p;
     p.invert_ = selected;
     SetColor(selected ? CD_HILITE2 : CD_NORMAL);
     DrawString(x, y, s, p);
 }
 
-void SampleEditorDialog::DrawView() {
-    SetWindow(36, 23);
-    text(0, 0, dirty_ ? "SAMPLE EDIT *" : "SAMPLE EDIT");
-    text(0, 1, original_.substr(0, 35).c_str());
+void SampleEditorView::DrawView() {
+    Clear();
+    AppWindow &window = static_cast<AppWindow &>(w_);
+    const GUIRect screen = window.GetRect();
+    const int charWidth = AppWindow::GetCharWidth();
+    const int charHeight = AppWindow::GetCharHeight();
+    const int columns =
+        std::min(screen.Width() / charWidth, int(AppWindow::SCREEN_COLUMNS));
+    const int rows =
+        std::min(screen.Height() / charHeight, int(AppWindow::SCREEN_ROWS));
+    const GUIPoint title = GetTitlePosition();
+    const int waveformY = title._y + 3;
+    const int controlsY = rows - 12;
+    const bool wide = columns >= 52;
+    const int samplesY = controlsY - (wide ? 2 : 4);
+    const int waveformRows = samplesY - waveformY - 1;
+    text(title._x, title._y, dirty_ ? "SAMPLE EDIT *" : "SAMPLE EDIT");
+    text(0, title._y + 1, original_.substr(0, columns).c_str());
+
     int size = buffer_.GetSize(-1);
     int from = zoom_ ? first_ : 0, to = zoom_ ? last_ : size;
-    AppWindow &window = static_cast<AppWindow &>(w_);
     const bool pixels = window.SupportsPixelRects();
-    const int width = pixels ? 36 * AppWindow::GetCharWidth() : 36;
-    const int height = pixels ? 7 * AppWindow::GetCharHeight() : 7;
+    const int width = pixels ? columns * charWidth : columns;
+    const int height = pixels ? waveformRows * charHeight : waveformRows;
+    const bool updateWaveform = static_cast<int>(waveform_.size()) != width;
+    if (updateWaveform && size && height > 0)
+        waveform_.resize(width);
     // Partition the displayed frame interval into native pixel columns. Scan
-    // every frame in each bin, so narrow transients are never subsampled away.
-    for (int x = 0; size && x < width; ++x) {
+    // each bin once per waveform change to preserve narrow transients.
+    for (int x = 0; size && height > 0 && x < width; ++x) {
         int a = from + static_cast<long long>(to - from) * x / width;
         int b = from + static_cast<long long>(to - from) * (x + 1) / width;
         b = std::min(to, std::max(a + 1, b));
-        int low = 32767, high = -32768;
-        for (int f = a; f < b; ++f)
-            for (int c = 0; c < buffer_.channels; ++c) {
-                int v = buffer_.pcm[size_t(f) * buffer_.channels + c];
-                low = std::min(low, v);
-                high = std::max(high, v);
-            }
+        WaveformColumn &column = waveform_[x];
+        if (updateWaveform) {
+            column.low = 32767;
+            column.high = -32768;
+            for (int f = a; f < b; ++f)
+                for (int c = 0; c < buffer_.channels; ++c) {
+                    int v = buffer_.pcm[size_t(f) * buffer_.channels + c];
+                    column.low = std::min(column.low, v);
+                    column.high = std::max(column.high, v);
+                }
+        }
         bool selected = a < last_ && b > first_;
-        int top = static_cast<long long>(32767 - high) * (height - 1) / 65535;
-        int bottom = static_cast<long long>(32767 - low) * (height - 1) / 65535;
+        ColorDefinition color = selected ? CD_HILITE2 : CD_HILITE1;
+        int top =
+            static_cast<long long>(32767 - column.high) * (height - 1) / 65535;
+        int bottom =
+            static_cast<long long>(32767 - column.low) * (height - 1) / 65535;
         if (pixels) {
-            // SetWindow(36, 23) places this modal at character (2, 2).
-            int px = 2 * AppWindow::GetCharWidth() + x;
-            int py = 5 * AppWindow::GetCharHeight();
-            window.AddPixelRect(GUIRect(px, py + top, px + 1, py + bottom + 1),
-                                selected);
+            int py = waveformY * charHeight;
+            window.AddPixelRect(GUIRect(x, py + top, x + 1, py + bottom + 1),
+                                color);
         } else {
-            SetColor(selected ? CD_HILITE2 : CD_HILITE1);
+            SetColor(color);
             GUITextProperties p;
             p.invert_ = true;
             for (int y = top; y <= bottom; ++y)
-                DrawString(x, 3 + y, " ", p);
+                DrawString(x, waveformY + y, " ", p);
+        }
+    }
+    if (previewProgress_ >= 0 && to > from && height > 0 && width > 0) {
+        const double frame = first_ + (last_ - first_) * previewProgress_;
+        const int x =
+            std::min(width - 1, int((frame - from) * width / (to - from)));
+        if (pixels) {
+            const int y = waveformY * charHeight;
+            window.AddPixelRect(GUIRect(x, y, x + 1, y + height), CD_PLAY);
+        } else {
+            SetColor(CD_PLAY);
+            GUITextProperties props;
+            for (int y = 0; y < height; ++y)
+                DrawString(x, waveformY + y, "|", props);
         }
     }
     char line[64];
-    sprintf(line, "Start %08X", first_);
-    text(0, 11, line, row_ == 0);
-    sprintf(line, "End   %08X", last_);
-    text(19, 11, line, row_ == 1);
-    if (row_ < 2)
-        text((row_ ? 19 : 0) + 13 - digit_, 12, "^");
-    text(0, 14, "Process");
-    text(10, 14, operations[operation_], row_ == 2);
-    text(26, 14, undoAvailable_ ? "Undo" : "----", row_ == 3);
-    text(0, 16, "Name");
-    text(10, 16, name_.c_str(), row_ == 4);
-    if (row_ == 4)
-        text(10 + nameCursor_, 17, "^");
-    text(0, 18, "Save As", row_ == 5);
-    text(12, 18, "Overwrite", row_ == 6);
-    text(27, 18, "Exit", row_ == 7);
-    text(0, 20, status_.substr(0, 36).c_str());
+    displayedBpm_ = std::max(1, SyncMaster::GetInstance()->GetTempo());
+    const int wholeDigits =
+        wholeBeatDigits(beatUnits(size, buffer_.rate, displayedBpm_));
+    beatDigit_ = std::min(beatDigit_, wholeDigits + 3);
+    const int startX = wide ? 18 : 0;
+    const int endX = wide ? 36 : columns / 2;
+    for (int mode = 0; mode < 2; ++mode) {
+        const int labelY = samplesY + mode * (wide ? 2 : 3);
+        const int y = labelY + (wide ? 0 : 1);
+        text(0, labelY, mode ? "Select by Beats" : "Select by Samples");
+        for (int boundary = 0; boundary < 2; ++boundary) {
+            const int frame = boundary ? last_ : first_;
+            const int x = boundary ? endX : startX;
+            const char *label = boundary ? "End  " : "Start";
+            const bool selected = row_ == mode * 2 + boundary;
+            if (mode) {
+                const long long beat =
+                    beatUnits(frame, buffer_.rate, displayedBpm_);
+                sprintf(line, "%s %0*lld.%04lld", label, wholeDigits,
+                        beat / 10000, beat % 10000);
+            } else {
+                sprintf(line, "%s %08X", label, frame);
+            }
+            text(x, y, line, selected);
+            if (selected) {
+                int offset = 13 - digit_;
+                if (mode)
+                    offset = 6 + wholeDigits + 4 - beatDigit_ -
+                             (beatDigit_ >= 4 ? 1 : 0);
+                text(x + offset, y + 1, "^");
+            }
+        }
+    }
+    text(0, controlsY + 3, "Process");
+    text(10, controlsY + 3, operations[operation_], row_ == 4);
+    text(std::min(26, columns - 4), controlsY + 3,
+         undoAvailable_ ? "Undo" : "----", row_ == 5);
+    text(0, controlsY + 5, "Name");
+    text(10, controlsY + 5, name_.c_str(), row_ == 6);
+    if (row_ == 6)
+        text(10 + nameCursor_, controlsY + 6, "^");
+    text(0, controlsY + 7, "Save As", row_ == 7);
+    text(12, controlsY + 7, "Overwrite", row_ == 8);
+    text(std::min(27, columns - 4), controlsY + 7, "Exit", row_ == 9);
+    const int footerColumns = std::min(columns, 40);
+    text(0, rows - 3, status_.substr(0, footerColumns).c_str());
     const Shortcuts &keys = Shortcuts::Get();
-    text(0, 21,
+    text(0, rows - 2,
          ("Tap " + keys.KeyNames(Shortcuts::EditorTap) + ": execute")
-             .substr(0, 36)
+             .substr(0, footerColumns)
              .c_str());
-    text(0, 22,
+    text(0, rows - 1,
          (keys.KeyNames(Shortcuts::EditorPreview) + ": listen   " +
-          keys.KeyNames(Shortcuts::EditorZoom) + ": zoom selection")
-             .substr(0, 36)
+          keys.KeyNames(Shortcuts::EditorZoom) + ": zoom")
+             .substr(0, footerColumns)
              .c_str());
+    drawMap();
 }
 
-void SampleEditorDialog::stopPreview() {
-    PlayerMixer *mixer = PlayerMixer::GetInstance();
+void SampleEditorView::AnimationUpdate() {
+    if (displayedBpm_ != std::max(1, SyncMaster::GetInstance()->GetTempo())) {
+        isDirty_ = true;
+        Redraw();
+    }
+    if (previewProgress_ < 0)
+        return;
+    const double progress = Player::GetInstance()->GetStreamingProgress();
+    if (progress == previewProgress_)
+        return;
+    if (progress < 0)
+        stopPreview();
+    else
+        previewProgress_ = progress;
+    isDirty_ = true;
+    Redraw();
+}
+
+void SampleEditorView::stopPreview() {
+    MixerService *mixer = MixerService::GetInstance();
     mixer->Lock();
     Player::GetInstance()->StopStreaming();
     mixer->Unlock();
-    playing_ = false;
+    if (previewProgress_ >= 0)
+        status_.clear();
+    previewProgress_ = -1;
     if (!previewPath_.empty()) {
         std::remove(previewPath_.c_str());
         previewPath_.clear();
     }
 }
 
-void SampleEditorDialog::preview() {
-    if (playing_) {
+void SampleEditorView::preview() {
+    Player *player = Player::GetInstance();
+    if (previewProgress_ >= 0) {
+        const bool playing = player->GetStreamingProgress() >= 0;
         stopPreview();
-        return;
+        if (playing)
+            return;
     }
-    // Use a new path each time: the streaming reader may still hold the old
-    // file.
+    // Keep each preview in its own temporary file.
     static unsigned int serial = 0;
     do {
         char leaf[64];
@@ -183,16 +294,17 @@ void SampleEditorDialog::preview() {
         status_ = "Could not create preview";
         return;
     }
-    PlayerMixer *mixer = PlayerMixer::GetInstance();
+    MixerService *mixer = MixerService::GetInstance();
+    const Path path(previewPath_);
     mixer->Lock();
-    Player::GetInstance()->StartStreaming(Path(previewPath_));
+    player->StartStreaming(path);
     mixer->Unlock();
-    playing_ = true;
+    previewProgress_ = 0;
     status_ = "Playing selection";
 }
 
-void SampleEditorDialog::ConfirmOverwrite(View &v, ModalView &d) {
-    SampleEditorDialog &editor = static_cast<SampleEditorDialog &>(v);
+void SampleEditorView::ConfirmOverwrite(View &v, ModalView &d) {
+    SampleEditorView &editor = static_cast<SampleEditorView &>(v);
     if (d.GetReturnCode() == MBL_YES) {
         try {
             editor.save(true);
@@ -201,12 +313,21 @@ void SampleEditorDialog::ConfirmOverwrite(View &v, ModalView &d) {
         }
     }
 }
-void SampleEditorDialog::ConfirmExit(View &v, ModalView &d) {
+void SampleEditorView::ConfirmExit(View &v, ModalView &d) {
     if (d.GetReturnCode() == MBL_YES)
-        static_cast<SampleEditorDialog &>(v).EndModal(0);
+        static_cast<SampleEditorView &>(v).closeEditor();
 }
 
-void SampleEditorDialog::save(bool overwrite) {
+void SampleEditorView::closeEditor() {
+    std::vector<short>().swap(buffer_.pcm);
+    std::vector<short>().swap(undoBuffer_.pcm);
+    ViewType type = VT_INSTRUMENT;
+    ViewEvent event(VET_SWITCH_VIEW, &type);
+    SetChanged();
+    NotifyObservers(&event);
+}
+
+void SampleEditorView::save(bool overwrite) {
     stopPreview();
     std::string name = name_;
     name.erase(name.find_last_not_of(' ') + 1);
@@ -259,7 +380,7 @@ void SampleEditorDialog::save(bool overwrite) {
         return;
     }
     Player::GetInstance()->Stop();
-    PlayerMixer *mixer = PlayerMixer::GetInstance();
+    MixerService *mixer = MixerService::GetInstance();
     mixer->Lock();
     int index = overwrite ? sampleIndex_ : pool->GetNameListSize();
     pool->InstallEditedSample(index, savedName, saved.release());
@@ -282,7 +403,7 @@ void SampleEditorDialog::save(bool overwrite) {
     status_ = "Saved (16-bit PCM WAV)";
 }
 
-void SampleEditorDialog::ProcessButtonMask(unsigned short mask, bool pressed) {
+void SampleEditorView::ProcessButtonMask(unsigned short mask, bool pressed) {
     const Shortcuts &keys = Shortcuts::Get();
     const bool up = keys.Matches(Shortcuts::EditorEditUp, mask, pressed);
     const bool down = keys.Matches(Shortcuts::EditorEditDown, mask, pressed);
@@ -302,14 +423,14 @@ void SampleEditorDialog::ProcessButtonMask(unsigned short mask, bool pressed) {
         return;
     isDirty_ = true;
     try {
-        if (exitEditor || (click && row_ == 7)) {
+        if (exitEditor || (click && row_ == 9)) {
             stopPreview();
             if (dirty_)
                 DoModal(new MessageBox(*this, "Discard unsaved edits?",
                                        MBBF_YES | MBBF_NO),
                         ConfirmExit);
             else
-                EndModal(0);
+                closeEditor();
             return;
         }
         if (buffer_.pcm.empty())
@@ -320,26 +441,55 @@ void SampleEditorDialog::ProcessButtonMask(unsigned short mask, bool pressed) {
         }
         if (zoom) {
             zoom_ = !zoom_;
+            waveform_.clear();
             return;
         }
         if (editing || tapHeld || click) {
             int direction = up ? 1 : down ? -1 : 0;
-            if (row_ < 2) {
-                if (left)
-                    digit_ = std::min(7, digit_ + 1);
+            if (row_ < 4) {
+                const bool musical = row_ >= 2;
+                const bool end = row_ % 2;
+                int &digit = musical ? beatDigit_ : digit_;
+                if (left) {
+                    const int limit =
+                        musical ? wholeBeatDigits(beatUnits(buffer_.GetSize(-1),
+                                                            buffer_.rate,
+                                                            displayedBpm_)) +
+                                      3
+                                : 7;
+                    digit = std::min(limit, digit + 1);
+                }
                 if (right)
-                    digit_ = std::max(0, digit_ - 1);
+                    digit = std::max(0, digit - 1);
                 if (direction) {
                     stopPreview();
-                    long long value = (row_ ? last_ : first_) +
-                                      direction * (1LL << (4 * digit_));
-                    int minimum = row_ ? first_ + 1 : 0;
-                    int maximum = row_ ? buffer_.GetSize(-1) : last_ - 1;
-                    (row_ ? last_ : first_) = std::max(
+                    const int frame = end ? last_ : first_;
+                    long long value = frame + direction * (1LL << (4 * digit_));
+                    if (musical) {
+                        const int bpm =
+                            std::max(1, SyncMaster::GetInstance()->GetTempo());
+                        long long step = 1;
+                        for (int i = 0; i < beatDigit_; ++i)
+                            step *= 10;
+                        const long long target =
+                            std::max(0LL, beatUnits(frame, buffer_.rate, bpm) +
+                                              direction * step);
+                        value = static_cast<long long>(
+                            target * (60.0 * buffer_.rate / (10000.0 * bpm)) +
+                            0.5);
+                        // A beat fraction can be shorter than one source frame.
+                        if (value == frame)
+                            value += direction;
+                    }
+                    int minimum = end ? first_ + 1 : 0;
+                    int maximum = end ? buffer_.GetSize(-1) : last_ - 1;
+                    (end ? last_ : first_) = std::max(
                         static_cast<long long>(minimum),
                         std::min(static_cast<long long>(maximum), value));
+                    if (zoom_)
+                        waveform_.clear();
                 }
-            } else if (row_ == 2) {
+            } else if (row_ == 4) {
                 if (left)
                     operation_ = (operation_ + 5) % 6;
                 if (right)
@@ -354,6 +504,7 @@ void SampleEditorDialog::ProcessButtonMask(unsigned short mask, bool pressed) {
                         undoBuffer_.rate = buffer_.rate;
                         undoBuffer_.pcm.swap(buffer_.pcm);
                         buffer_.pcm.swap(edited.pcm);
+                        waveform_.clear();
                         undoFirst_ = first_;
                         undoLast_ = last_;
                         undoDirty_ = dirty_;
@@ -368,10 +519,11 @@ void SampleEditorDialog::ProcessButtonMask(unsigned short mask, bool pressed) {
                     } else
                         status_ = "Cannot delete the entire sample";
                 }
-            } else if (row_ == 3 && click) {
+            } else if (row_ == 5 && click) {
                 if (undoAvailable_) {
                     stopPreview();
                     buffer_.pcm.swap(undoBuffer_.pcm);
+                    waveform_.clear();
                     std::vector<short>().swap(undoBuffer_.pcm);
                     first_ = undoFirst_;
                     last_ = undoLast_;
@@ -380,7 +532,7 @@ void SampleEditorDialog::ProcessButtonMask(unsigned short mask, bool pressed) {
                     undoAvailable_ = false;
                     status_ = "Last process undone";
                 }
-            } else if (row_ == 4) {
+            } else if (row_ == 6) {
                 if (left)
                     nameCursor_ = std::max(0, nameCursor_ - 1);
                 if (right)
@@ -393,19 +545,19 @@ void SampleEditorDialog::ProcessButtonMask(unsigned short mask, bool pressed) {
                     name_[nameCursor_] =
                         alphabet[(n + direction + strlen(alphabet)) %
                                  strlen(alphabet)];
-            } else if (click && row_ == 5)
+            } else if (click && row_ == 7)
                 save(false);
-            else if (click && row_ == 6)
+            else if (click && row_ == 8)
                 DoModal(new MessageBox(*this, "Overwrite sample file?",
                                        MBBF_YES | MBBF_NO),
                         ConfirmOverwrite);
         } else {
             if (keys.Matches(Shortcuts::EditorDown, mask, pressed) ||
                 keys.Matches(Shortcuts::EditorRight, mask, pressed))
-                row_ = (row_ + 1) % 8;
+                row_ = (row_ + 1) % 10;
             if (keys.Matches(Shortcuts::EditorUp, mask, pressed) ||
                 keys.Matches(Shortcuts::EditorLeft, mask, pressed))
-                row_ = (row_ + 7) % 8;
+                row_ = (row_ + 9) % 10;
         }
     } catch (const std::bad_alloc &) {
         status_ = "Not enough memory";

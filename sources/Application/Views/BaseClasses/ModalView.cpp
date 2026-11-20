@@ -36,7 +36,7 @@ void ModalView::SetWindow(int width, int height) {
     if (top_ < 2) {
         top_ = 2;
     }
-    ClearRect(-1, -1, width + 2, height + 2);
+    ClearRect(-2, -2, width + 4, height + 4);
 
     SetColor(CD_BORDER);
     GUITextProperties props;

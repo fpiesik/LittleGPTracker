@@ -46,6 +46,7 @@ enum ViewType {
     VT_GROOVE,
     VT_MIXER,
     VT_FX,
+    VT_SAMPLE_EDITOR,
 #if defined(PLATFORM_X64)
     VT_RECORD_OPTIONS,
     VT_SETTINGS

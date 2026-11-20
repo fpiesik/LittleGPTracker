@@ -14,6 +14,8 @@ class AudioFileStreamer : public AudioModule {
     virtual bool Render(fixed *buffer, int samplecount);
     bool Start(const Path &);
     void Stop();
+    // Fraction of the stream rendered, or -1 when idle.
+    double GetProgress() const;
 
   protected:
     AudioFileStreamerMode mode_;

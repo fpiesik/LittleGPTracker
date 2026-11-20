@@ -247,7 +247,7 @@ COMMONFILES := \
 	I_GUIWindowImp.o \
 	Application.o AppWindow.o SelectProjectDialog.o \
 	NewProjectDialog.o \
-	ImportSampleDialog.o SampleEditorDialog.o \
+	ImportSampleDialog.o SampleEditorView.o \
 	MixerView.o FxView.o NullView.o \
 	SongView.o ChainView.o PhraseView.o ViewData.o ConsoleView.o ProjectView.o InstrumentView.o UIController.o \
 	View.o ModalView.o FieldView.o UIField.o UIIntField.o \

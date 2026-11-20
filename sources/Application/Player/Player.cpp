@@ -1189,6 +1189,7 @@ unsigned int PlayerEvent::GetTickCount() { return tickCount_; }
 
 void Player::StartStreaming(const Path &path) { mixer_->StartStreaming(path); }
 void Player::StopStreaming() { mixer_->StopStreaming(); }
+double Player::GetStreamingProgress() { return mixer_->GetStreamingProgress(); }
 
 std::string Player::GetAudioAPI() {
     AudioOut *out = mixer_->GetAudioOut();

@@ -22,7 +22,7 @@ view changes (R+Left to Phrase, R+Down to Table) and playback (START or
 R+START from the beginning) use `instrument.*` bindings. On the Sample, Table and Print FX rows,
 press A twice to import, allocate a table or print effects. The first press
 uses `begin_new`. The second uses the action for the focused row. The Edit
-Sample row opens the editor with one press of `open_editor`. To clone an
+Sample row opens the full-page editor with one press of `open_editor`. To clone an
 assigned sampler or MIDI table, focus Table, hold L and press B (`begin_clone`), then
 release B and press A while still holding L (`clone_table`). The instrument
 now points to the copy. The four direction bindings move focus. The four
@@ -491,7 +491,7 @@ When changing a chord, remove its new required buttons from `exclude`.
 ## Sample editor
 
 The twelve `sample_editor.*` bindings apply inside the waveform editor.
-B exits, START previews or stops, and L toggles zoom. DOWN/RIGHT and UP/LEFT
+B returns to Instrument, START previews or stops, and L toggles zoom. DOWN/RIGHT and UP/LEFT
 move between rows. The four `edit_*` bindings (A plus a direction) adjust the
 selection digits, operation or filename according to the current row.
 

@@ -46,11 +46,12 @@ public:
 	
 	void StartStreaming(const Path &) ;
 	void StopStreaming()  ;
+    double GetStreamingProgress();
 
-	bool Clipped() ;
+    bool Clipped();
 
-	void Update(Observable &o,I_ObservableData *d) ;
-	int GetPlayedBufferPercentage() ;   
+    void Update(Observable &o, I_ObservableData *d);
+    int GetPlayedBufferPercentage() ;   
 
 	void SetChannelMute(int channel,bool mute) ;
     bool IsChannelMuted(int channel);

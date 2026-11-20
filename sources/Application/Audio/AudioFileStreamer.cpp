@@ -28,8 +28,17 @@ bool AudioFileStreamer::Start(const Path &path) {
 
 void AudioFileStreamer::Stop() {
     mode_ = AFSM_STOPPED;
+    SAFE_DELETE(wav_);
     Trace::Debug("Streaming stopped");
 };
+
+double AudioFileStreamer::GetProgress() const {
+    if (mode_ == AFSM_STOPPED)
+        return -1;
+    if (newPath_ || !wav_)
+        return 0;
+    return position_ / wav_->GetSize(-1);
+}
 
 bool AudioFileStreamer::Render(fixed *buffer, int samplecount) {
 

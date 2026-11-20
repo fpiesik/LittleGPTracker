@@ -427,8 +427,10 @@
 	<Files>
 		<File RelativePath="..\sources\Application\Mixer\ReverbBus.cpp" />
 		<File RelativePath="..\sources\Application\Views\FxView.cpp" />
+		<File RelativePath="..\sources\Application\Views\SampleEditorView.cpp" />
 		<File RelativePath="..\sources\Application\Mixer\ReverbBus.h" />
 		<File RelativePath="..\sources\Application\Views\FxView.h" />
+		<File RelativePath="..\sources\Application\Views\SampleEditorView.h" />
 		<File RelativePath="..\sources\Services\Audio\AudioSendEffect.h" />
 		<Filter
 			Name="Source Files"

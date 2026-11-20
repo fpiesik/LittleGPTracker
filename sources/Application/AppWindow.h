@@ -23,6 +23,8 @@
 
 #define PROP_INVERT 0x80
 
+class SampleEditorView;
+
 #if defined(PLATFORM_X64)
 class RecordOptionsView;
 class SettingsView;
@@ -34,6 +36,11 @@ class AppWindow : public GUIWindow, I_Observer, Status {
     virtual ~AppWindow();
 
   public:
+    enum {
+        SCREEN_COLUMNS = SONG_CHANNEL_COUNT > 8 ? 60 : 40,
+        SCREEN_ROWS = 30
+    };
+
     static AppWindow *Create(GUICreateWindowParams &);
     void LoadProject(const Path &path);
     void SaveLastProject(const Path &p);
@@ -49,7 +56,7 @@ class AppWindow : public GUIWindow, I_Observer, Status {
     bool SupportsPixelRects();
     static int GetCharWidth() { return charWidth_; }
     static int GetCharHeight() { return charHeight_; }
-    void AddPixelRect(const GUIRect &rect, bool selected);
+    void AddPixelRect(const GUIRect &rect, ColorDefinition color);
 
   protected: // GUIWindow implementation
     virtual bool onEvent(GUIEvent &event);
@@ -78,8 +85,8 @@ class AppWindow : public GUIWindow, I_Observer, Status {
   private:
     struct PixelRect {
         GUIRect rect;
-        bool selected;
-        PixelRect(const GUIRect &r, bool s) : rect(r), selected(s) {}
+        GUIColor color;
+        PixelRect(const GUIRect &r, const GUIColor &c) : rect(r), color(c) {}
     };
     std::vector<PixelRect> pixelRects_;
     View *_currentView;
@@ -93,6 +100,7 @@ class AppWindow : public GUIWindow, I_Observer, Status {
     SettingsView *_settingsView;
 #endif
     InstrumentView *_instrumentView;
+    SampleEditorView *_sampleEditorView;
     TableView *_tableView;
     GrooveView *_grooveView;
     NullView *_nullView;
@@ -111,11 +119,7 @@ class AppWindow : public GUIWindow, I_Observer, Status {
     unsigned long _lastB;
     char _statusLine[80];
     std::string _newProjectToLoad;
-    enum {
-        SCREEN_COLUMNS = SONG_CHANNEL_COUNT > 8 ? 60 : 40,
-        SCREEN_ROWS = 30,
-        SCREEN_CELLS = SCREEN_COLUMNS * SCREEN_ROWS
-    };
+    enum { SCREEN_CELLS = SCREEN_COLUMNS * SCREEN_ROWS };
     unsigned char _charScreen[SCREEN_CELLS];
     unsigned char _charScreenProp[SCREEN_CELLS];
     unsigned char _preScreen[SCREEN_CELLS];

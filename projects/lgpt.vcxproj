@@ -119,6 +119,7 @@
   <ItemGroup>
     <ClCompile Include="..\sources\Application\Mixer\ReverbBus.cpp" />
     <ClCompile Include="..\sources\Application\Views\FxView.cpp" />
+    <ClCompile Include="..\sources\Application\Views\SampleEditorView.cpp" />
     <ClCompile Include="..\sources\Adapters\RTMidi\RTMidiInDevice.cpp" />
     <ClCompile Include="..\sources\Adapters\RTMidi\RTMidiOutDevice.cpp" />
     <ClCompile Include="..\sources\Adapters\RTMidi\RTMidiService.cpp" />
@@ -277,6 +278,7 @@
   <ItemGroup>
     <ClInclude Include="..\sources\Application\Mixer\ReverbBus.h" />
     <ClInclude Include="..\sources\Application\Views\FxView.h" />
+    <ClInclude Include="..\sources\Application\Views\SampleEditorView.h" />
     <ClInclude Include="..\sources\Services\Audio\AudioSendEffect.h" />
     <ClInclude Include="..\sources\Adapters\RTMidi\RTMidiInDevice.h" />
     <ClInclude Include="..\sources\Adapters\RTMidi\RTMidiOutDevice.h" />

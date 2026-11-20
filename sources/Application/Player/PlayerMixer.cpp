@@ -182,6 +182,13 @@ void PlayerMixer::StopStreaming() {
 	fileStreamer_.Stop() ;
 } ;
 
+double PlayerMixer::GetStreamingProgress() {
+    Lock();
+    const double progress = fileStreamer_.GetProgress();
+    Unlock();
+    return progress;
+}
+
 void PlayerMixer::OnPlayerStart() {
 	MixerService *ms=MixerService::GetInstance() ;
 	ms->OnPlayerStart();

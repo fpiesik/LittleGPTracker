@@ -123,6 +123,7 @@ void View::drawMap() {
             DrawString(pos._x, pos._y, "P", props);
             break;
         case VT_INSTRUMENT:
+        case VT_SAMPLE_EDITOR:
             pos._x+=3;
 			pos._y+=1;
 	        DrawString(pos._x,pos._y,"I",props) ;
