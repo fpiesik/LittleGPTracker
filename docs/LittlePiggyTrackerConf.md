@@ -100,10 +100,10 @@ SDL2 builds always use the wider canvas so all twelve tracks remain visible.
 Other display backends retain eight tracks.
 
 Fullscreen uses the native desktop resolution and centers the 16:9 canvas.
-In the widescreen layout, Song, Chain, Phrase, both Table views, and Mixer use
-larger text across 48 columns. Song, Chain, Phrase, and Table show 16 grid rows
-with a blank row above the track indicators. In Mixer, that blank row is below
-the level meters.
+In the widescreen layout, Song, Chain, Phrase, both Table views, Groove, and
+Mixer use larger text across 48 columns. Song, Chain, Phrase, Table, and Groove
+show 16 grid rows with a blank row above the track indicators. In Mixer, that
+blank row is below the level meters.
 Other screens use the usual 60-column text scale.
 `SCREENMULT` applies to windowed mode.
 Each indicator starts directly below its track column. Phrase notes and sample root notes range from C0 to C9. The default note is C4 (MIDI 60).

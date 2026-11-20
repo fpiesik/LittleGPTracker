@@ -3,7 +3,7 @@ Unreleased
     Use C4 for MIDI note 60, allow C0 through C9 in note fields, and match the track indicator font to the grid.
     Show note and octave together above the instrument number in two-line track indicators.
     Enlarge Song and Phrase text on widescreen displays and show 16 Song rows at a time.
-    Use the same larger widescreen text in Chain, both Table views, and Mixer.
+    Use the same larger widescreen text in Chain, both Table views, Groove, and Mixer.
     Allow Groove steps from 01 to FF ticks and edit the high digit with A+UP/DOWN.
     Edit Sample Editor selections in decimal beats at the current tempo.
     Show a moving play cursor during Sample Editor preview.
