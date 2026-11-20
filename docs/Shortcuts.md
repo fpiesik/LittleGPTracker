@@ -476,8 +476,8 @@ R+LEFT returns to Project (`record_options.*`). The former `record_options.toggl
 entry is still accepted in older shortcut files but no longer changes a value.
 
 On Linux X64, open Settings from Project and use A+LEFT/RIGHT on Font to cycle
-through Original, Digital and Monster. A custom startup font is also available
-in the cycle. The choice applies immediately and is restored on restart from
+through Original, Digital, Monster and Pixel. A custom startup font is also
+available in the cycle. The choice applies immediately and is restored from
 `font_selection` beside the executable. R+LEFT returns
 to Project. Settings shares these bindings with Record Options.
 

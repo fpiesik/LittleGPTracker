@@ -612,7 +612,7 @@ void MixerView::DrawVuBars() {
     Player *player = Player::GetInstance();
 
     GUIPoint vuPos = GetAnchor();
-    vuPos._y += 16; // Position below the row labels (bus, vol, hpf, lpf)
+    vuPos._y = UsesLargeText() ? GetTrackIndicatorRow() - 2 : vuPos._y + 16;
 
     GUITextProperties vuProps;
     vuProps.invert_ = true;

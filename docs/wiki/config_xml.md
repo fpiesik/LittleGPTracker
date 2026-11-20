@@ -146,13 +146,12 @@ And if you want to configure a USB joypad, you'll have to use the [mapping.xml]
 
 ### Built-in Fonts:
 
-You can select one of the three fonts provided with this application.
-
-Set the value of FONTTYPE in the config file to '0', '1', or '2' to apply the corresponding font.
+Set `FONTTYPE` in the config file to `0` for Original, `1` for Digital,
+`2` for Monster, or `3` for Pixel.
 
 ```xml
 <CONFIG>
-    <FONTTYPE value='1' />
+    <FONTTYPE value='3' />
 </CONFIG>
 ```
 

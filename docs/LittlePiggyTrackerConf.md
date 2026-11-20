@@ -100,8 +100,10 @@ SDL2 builds always use the wider canvas so all twelve tracks remain visible.
 Other display backends retain eight tracks.
 
 Fullscreen uses the native desktop resolution and centers the 16:9 canvas.
-In the widescreen layout, Song and Phrase use larger text across 48 columns.
-Both show 16 rows with a blank row between the grid and the track indicators.
+In the widescreen layout, Song, Chain, Phrase, both Table views, and Mixer use
+larger text across 48 columns. Song, Chain, Phrase, and Table show 16 grid rows
+with a blank row above the track indicators. In Mixer, that blank row is below
+the level meters.
 Other screens use the usual 60-column text scale.
 `SCREENMULT` applies to windowed mode.
 Each indicator starts directly below its track column. Phrase notes and sample root notes range from C0 to C9. The default note is C4 (MIDI 60).
@@ -225,13 +227,12 @@ And if you want to configure a USB joypad, you'll have to use the [`mapping.xml`
 
 ### Built-in Fonts:
 
-You can select one of the three fonts provided with this application.
-
-Set the value of `FONTTYPE` in the config file to '0', '1', or '2' to apply the corresponding font.
+Set `FONTTYPE` in the config file to `0` for Original, `1` for Digital,
+`2` for Monster, or `3` for Pixel.
 
 ```xml
 <CONFIG>
-    <FONTTYPE value='1' />
+    <FONTTYPE value='3' />
 </CONFIG>
 ```
 

@@ -7,17 +7,22 @@ unsigned char font[8*8*128]= {
 	#include "Resources/font.h"
 };
 
-const unsigned char embeddedFontBank[FONT_TYPE_COUNT][8*8*128]= {
-	{//0 original
-		#include "Resources/original.txt"
-	},
-	{//1 digital
-		#include "Resources/digital.txt"
-	},
-	{//2 monster
-		#include "Resources/monster.txt"
-	}
-};
+const unsigned char embeddedFontBank[FONT_TYPE_COUNT][8 * 8 * 128] = {{
+// 0 original
+#include "Resources/original.txt"
+                                                                      },
+                                                                      {
+        // 1 digital
+#include "Resources/digital.txt"
+                                                                      },
+                                                                      {
+        // 2 monster
+#include "Resources/monster.txt"
+                                                                      },
+                                                                      {
+        // 3 pixel
+#include "Resources/pixel.txt"
+                                                                      }};
 
 #if defined(PLATFORM_X64)
 #include <fcntl.h>
@@ -87,6 +92,8 @@ namespace {
 int activeFont = -1;
 unsigned char customFont[sizeof(font)];
 bool hasCustomFont = false;
+// Keep '3' as the saved ID for Custom from older builds.
+const char fontSelectionIds[FONT_TYPE_COUNT + 1] = {'0', '1', '2', '4', '3'};
 
 void IdentifyFont() {
     if (activeFont >= 0)
@@ -113,11 +120,12 @@ void RestoreFontSelection() {
     close(fd);
     if (length != 1)
         return;
-    int index = bytes[0] - '0';
-    if (index >= 0 && index < FONT_TYPE_COUNT) {
-        activeFont = index;
-        memcpy(font, embeddedFontBank[index], sizeof(font));
-    }
+    const char *id = static_cast<const char *>(
+        memchr(fontSelectionIds, bytes[0], FONT_TYPE_COUNT));
+    if (!id)
+        return;
+    activeFont = id - fontSelectionIds;
+    memcpy(font, embeddedFontBank[activeFont], sizeof(font));
 }
 
 bool SaveFontSelection(int index) {
@@ -127,8 +135,7 @@ bool SaveFontSelection(int index) {
     int fd = mkstemp(&temp[0]);
     if (fd < 0)
         return false;
-    char digit = '0' + index;
-    bool written = write(fd, &digit, 1) == 1;
+    bool written = write(fd, &fontSelectionIds[index], 1) == 1;
     if (close(fd) == 0 && written && rename(temp.c_str(), name.c_str()) == 0)
         return true;
     unlink(temp.c_str());
@@ -139,7 +146,8 @@ bool SaveFontSelection(int index) {
 const char *CurrentFontLabel() {
     IdentifyFont();
     static const char *labels[] = {"Font: Original", "Font: Digital",
-                                   "Font: Monster", "Font: Custom"};
+                                   "Font: Monster", "Font: Pixel",
+                                   "Font: Custom"};
     return labels[activeFont];
 }
 

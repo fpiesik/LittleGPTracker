@@ -48,7 +48,10 @@ GUIPoint View::GetAnchor() {
 }
 
 bool View::UsesLargeText() const {
-    return hasFocus_ && (viewType_ == VT_SONG || viewType_ == VT_PHRASE) &&
+    return hasFocus_ &&
+           (viewType_ == VT_SONG || viewType_ == VT_CHAIN ||
+            viewType_ == VT_PHRASE || viewType_ == VT_TABLE ||
+            viewType_ == VT_TABLE2 || viewType_ == VT_MIXER) &&
            w_.GetRect().Width() == 480;
 }
 
