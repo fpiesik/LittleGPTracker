@@ -1,15 +1,16 @@
 #include "SampleInstrument.h"
-#include "SamplePool.h"
-#include "System/Console/Trace.h"
-#include "System/io/Status.h"
-#include "CommandList.h"
-#include <assert.h>
-#include "Application/Player/PlayerMixer.h" // For MIX_BUFFER_SIZE.. kick out pls
-#include "Application/Player/SyncMaster.h"
 #include "Application/Instruments/Filters.h"
 #include "Application/Model/Table.h"
-#include "Services/Audio/Audio.h"
+#include "Application/Player/PlayerMixer.h" // For MIX_BUFFER_SIZE.. kick out pls
+#include "Application/Player/SyncMaster.h"
+#include "Application/Utils/char.h"
+#include "CommandList.h"
+#include "SamplePool.h"
 #include "SampleVariable.h"
+#include "Services/Audio/Audio.h"
+#include "System/Console/Trace.h"
+#include "System/io/Status.h"
+#include <assert.h>
 
 #include <stdio.h>
 #include <string.h>
@@ -108,9 +109,11 @@ SampleInstrument::SampleInstrument() {
 
 	 slices_=new Variable("slices",SIP_SLICES,1) ;
 	 Insert(slices_) ;
+     sliceBase_ = new Variable("slice base", SIP_SLICEBASE, int(NOTE_C0));
+     Insert(sliceBase_);
 
-	 loopStart_=new WatchedVariable("loopstart",SIP_LOOPSTART,0) ;
-	 Insert(loopStart_) ;
+     loopStart_ = new WatchedVariable("loopstart", SIP_LOOPSTART, 0);
+     Insert(loopStart_) ;
 	 loopStart_->AddObserver(*this) ;
 
 	 loopEnd_=new WatchedVariable("end",SIP_END,0) ;
@@ -246,11 +249,13 @@ bool SampleInstrument::Start(int channel, unsigned char midinote, int flags) {
      float driverRate = float(Audio::GetInstance()->GetSampleRate());
      int isSliced = slices_->GetInt() > 1;
      if (isSliced) {
-		 if (rp->midiNote_ > slices_->GetInt() - 1) return false; // No sound outside of slice range
-		 int slice = rp->rendLoopEnd_ / slices_->GetInt();
-		 rp->rendLoopStart_ = rp->midiNote_ * slice;
-		 rp->rendLoopEnd_ = (rp->midiNote_ + 1) * slice;
-	 }
+         const int sliceIndex = int(rp->midiNote_) - sliceBase_->GetInt();
+         if (sliceIndex < 0 || sliceIndex >= slices_->GetInt())
+             return false;
+         int slice = rp->rendLoopEnd_ / slices_->GetInt();
+         rp->rendLoopStart_ = sliceIndex * slice;
+         rp->rendLoopEnd_ = (sliceIndex + 1) * slice;
+     }
 
 	 switch (loopmode) {
 		 case SILM_ONESHOT:

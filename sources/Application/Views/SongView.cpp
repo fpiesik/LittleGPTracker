@@ -1153,7 +1153,7 @@ void SongView::DrawView() {
     }
     SetColor(CD_NORMAL);
 
-    drawMap();
+    drawMap(true);
     drawNotes();
 
     if (player->IsRunning()) {

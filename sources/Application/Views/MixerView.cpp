@@ -530,8 +530,8 @@ void MixerView::DrawView() {
         pos._x += dx;
     }
 
-    drawMap() ;
-	drawNotes() ;
+    drawMap(true);
+    drawNotes();
     EnableNotification();
 
     if (player->IsRunning()) {

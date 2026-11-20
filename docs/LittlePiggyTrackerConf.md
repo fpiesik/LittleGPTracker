@@ -101,10 +101,13 @@ Other display backends retain eight tracks.
 
 Fullscreen uses the native desktop resolution and centers the 16:9 canvas.
 In the widescreen layout, Song and Phrase use larger text across 48 columns.
-Both show 16 rows, with the track indicators directly below the grid. Other
-screens use the usual 60-column text scale.
+Both show 16 rows with a blank row between the grid and the track indicators.
+Other screens use the usual 60-column text scale.
 `SCREENMULT` applies to windowed mode.
-The navigation map sits beside the playing-note indicators at the bottom.
+Each indicator starts directly below its track column. Phrase notes and sample root notes range from C0 to C9. The default note is C4 (MIDI 60).
+A minus sign in the indicator marks octave −1 during playback of older notes.
+Each track indicator shows the note and octave on its first line and the
+instrument number on its second line. The navigation map sits above the indicators.
 
 Existing eight-track projects load with four empty additional tracks and default
 mixer settings. Saved projects contain the full twelve-track song and mixer data
@@ -641,7 +644,7 @@ Up/Down and confirm with A:
 
 - **Yes** saves `record-XXXXXX.wav` in the current project's `samples` folder,
   assigns a free sample instrument, and creates a new chain and phrase in the
-  chosen slot. Phrase step 00 plays the default root note (60, displayed as C 3) with that instrument.
+  chosen slot. Phrase step 00 plays the default root note (60, displayed as C4) with that instrument.
 - **No, abort** discards the temporary take and closes recording mode.
 - **No, rec again** discards the take and repeats the selected count-in at
   the same slot and song row.

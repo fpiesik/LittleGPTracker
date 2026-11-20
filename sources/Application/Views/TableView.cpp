@@ -943,7 +943,7 @@ void TableView::DrawView() {
         cmdEditField_->Draw(w_);
     };
 
-    drawMap();
+    drawMap(true);
     drawNotes();
 
     Player *player = Player::GetInstance();

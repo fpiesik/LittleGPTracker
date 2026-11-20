@@ -1,5 +1,6 @@
 #include "InstrumentView.h"
 #include "Application/Controllers/Shortcuts.h"
+#include "Application/Utils/char.h"
 #ifdef LGPT_PLAITS
 #include "Application/Instruments/PlaitsInstrument.h"
 #endif
@@ -173,8 +174,9 @@ void InstrumentView::fillSampleParameters() {
 
 	position._y+=1 ;
 	v=instrument->FindVariable(SIP_ROOTNOTE) ;
-	f1=new UINoteVarField(position,*v,"root note: %s",0,0x7F,1,0x0C) ;
-	T_SimpleList<UIField>::Insert(f1) ;
+    f1 = new UINoteVarField(position, *v, "root note: %s", NOTE_C0, NOTE_C9, 1,
+                            0x0C);
+    T_SimpleList<UIField>::Insert(f1) ;
 
 	position._y+=1 ;
 	v=instrument->FindVariable(SIP_FINETUNE) ;

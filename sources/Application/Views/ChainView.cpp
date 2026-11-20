@@ -724,7 +724,7 @@ void ChainView::DrawView() {
     }
     Player *player = Player::GetInstance();
 
-    drawMap();
+    drawMap(true);
     drawNotes();
 
     if (player->IsRunning()) {

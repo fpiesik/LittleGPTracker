@@ -433,9 +433,11 @@ static void CheckPhraseEdits(TestWindow &window, ViewData &data,
     assert(stopCalls == 1);
     data.playMode_ = PM_PHRASE;
 
-    phrase.note_[0] = 0;
+    phrase.note_[0] = 12; // C0
     view.ProcessButtonMask(modifier | EPBM_LEFT, true);
-    assert(phrase.note_[0] == 119);
+    assert(phrase.note_[0] == 120); // C9
+    view.ProcessButtonMask(EPBM_A | EPBM_RIGHT, true);
+    assert(phrase.note_[0] == 12);
     view.ProcessButtonMask(EPBM_RIGHT, true);
     phrase.velocity_[0] = 100;
     if (remapped)

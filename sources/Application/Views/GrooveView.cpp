@@ -169,8 +169,8 @@ void GrooveView::DrawView() {
 		pos._y++ ;
 	}
 
-	drawMap() ;
-	drawNotes() ;
+    drawMap(true);
+    drawNotes();
 };
 
 void GrooveView::OnPlayerUpdate(PlayerEventType ,unsigned int tick) {

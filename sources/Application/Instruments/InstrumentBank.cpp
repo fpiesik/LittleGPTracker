@@ -184,7 +184,10 @@ void InstrumentBank::RestoreContent(TiXmlElement *element) {
 					instrument_[id]=instr ;
 				} ;
 
-        TiXmlElement *param=current->FirstChildElement() ;
+                Variable *sliceBase = instr->FindVariable(SIP_SLICEBASE);
+                if (sliceBase)
+                    sliceBase->SetInt(-1);
+                TiXmlElement *param = current->FirstChildElement();
 				while (param) {
 					const char *name=param->Attribute("NAME") ;
 					const char *value=param->Attribute("VALUE") ;
@@ -213,8 +216,13 @@ void InstrumentBank::RestoreContent(TiXmlElement *element) {
 					}
 					param=param->NextSiblingElement() ;
 				}
-				if (doc->version_<38) {
-					Variable *cvl=instr->FindVariable(SIP_CRUSHVOL) ;
+                if (sliceBase && sliceBase->GetInt() < 0)
+                    sliceBase->SetInt(
+                        instr->FindVariable(SIP_SLICES)->GetInt() > 1
+                            ? 0
+                            : NOTE_C0);
+                if (doc->version_ < 38) {
+                    Variable *cvl=instr->FindVariable(SIP_CRUSHVOL) ;
 					Variable *vol=instr->FindVariable(SIP_VOLUME);
 					Variable *crs=instr->FindVariable(SIP_CRUSH) ;
 					if ((vol)&&(cvl)&&(crs)) {
@@ -224,8 +232,8 @@ void InstrumentBank::RestoreContent(TiXmlElement *element) {
 							cvl->SetInt(temp) ;
 						}
 					} ;
-				}
-			}
+                }
+            }
 		}
 		current=current->NextSiblingElement() ;
 	} ;

@@ -32,9 +32,11 @@ inline void char2hex(const char *s,unsigned char *c) {
 	*c=b1+b2 ;
 }
 
+enum { NOTE_C0 = 12, NOTE_C9 = 120 };
+
 inline void note2char(unsigned char d,char *s) {
-	int oct=d/12-2 ;
-	int note=d%12 ;
+    int oct = d / 12 - 1;
+    int note=d%12 ;
 	strcpy(s,notes__[note]) ;
 	if (oct<0) {
 		s[2]='-' ;
@@ -53,8 +55,8 @@ inline void note2visualizer(unsigned char d,char *s) {
 } ;
 
 inline void oct2visualizer(unsigned char d,char *s) {
-	int oct=d/12-2 ;
-	if (oct<0) {
+    int oct = d / 12 - 1;
+    if (oct<0) {
 		s[0]='-' ;
         oct=-oct ;
     } else {		

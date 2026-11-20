@@ -79,14 +79,21 @@ void View::Unlock() {
 	locked_=false ;
 }
 
-void View::drawMap() {
+int View::GetTrackIndicatorRow() const {
+    return UsesLargeText() ? largeTextRows_ - trackIndicatorRows_
+                           : AppWindow::SCREEN_ROWS - trackIndicatorRows_;
+}
+
+void View::drawMap(bool withTrackIndicators) {
     if (!miniLayout_) {
         GUIPoint anchor=GetAnchor() ;
         const bool largeText = UsesLargeText();
-        // Leave room for the Song meter beside the last visible row.
+        // Leave a blank row under the four-row map and room beside the Song
+        // meter.
+        const int mapTop =
+            withTrackIndicators ? GetTrackIndicatorRow() - 5 : 26;
         GUIPoint pos(anchor._x + SONG_CHANNEL_COUNT * 3 + (largeText ? 3 : 1),
-                     largeText ? largeTextRows_ - 4 : 26);
-        const int mapTop = pos._y;
+                     mapTop);
         GUITextProperties props;
 
         // draw entire map
@@ -168,50 +175,38 @@ void View::drawMap() {
 }
 
 void View::drawNotes() {
+    if (miniLayout_)
+        return;
 
-    if (!miniLayout_) {
-
-		GUIPoint anchor=GetAnchor() ;
-        int initialX = anchor._x;
-        int initialY = UsesLargeText() ? largeTextRows_ - 3 : anchor._y + 23;
-        GUIPoint pos(initialX, initialY);
-        GUITextProperties props;
-
-        Player *player=Player::GetInstance() ;
-		
-		//column banger refactor
-		props.invert_= true;
-        for (int i=0;i<SONG_CHANNEL_COUNT;i++) {
-			if (i==viewData_->songX_) {
-				SetColor(CD_HILITE2) ;
-			} else {
-				SetColor(CD_HILITE1) ;
-			}
-			if (player->IsRunning() && viewData_->playMode_ != PM_AUDITION) {
-				DrawString(pos._x,pos._y,player->GetPlayedNote(i),props) ; //row for the note values
-				pos._y++ ;
-				DrawString(pos._x,pos._y,player->GetPlayedOctive(i),props) ; //row for the octive values
-				pos._y++ ;
-				DrawString(pos._x,pos._y,player->GetPlayedInstrument(i),props) ; //draw instrument number
-			} else {
-				DrawString(pos._x,pos._y,"  ",props) ; //row for the note values
-				pos._y++ ;
-				DrawString(pos._x,pos._y,"  ",props) ; //row for the octive values
-				pos._y++ ;
-				DrawString(pos._x,pos._y,"  ",props) ; //draw instrument number
-			}
-			pos._y = initialY ;
-			pos._x+= 3;
-		}
-     }
+    const int row = GetTrackIndicatorRow();
+    Player *player = Player::GetInstance();
+    const bool playing =
+        player->IsRunning() && viewData_->playMode_ != PM_AUDITION;
+    GUITextProperties props;
+    const int firstTrack = GetAnchor()._x;
+    for (int i = 0; i < SONG_CHANNEL_COUNT; ++i) {
+        const int column = firstTrack + i * 3;
+        SetColor(i == viewData_->songX_ ? CD_HILITE2 : CD_HILITE1);
+        props.invert_ = true;
+        DrawString(column, row, playing ? player->GetPlayedNote(i) : "  ",
+                   props);
+        const char *octave = playing ? player->GetPlayedOctive(i) : "  ";
+        // A minus sign identifies the only legacy octave below C0.
+        char digit[] = {octave[0] == '-' ? '-' : octave[1], 0};
+        props.invert_ = false;
+        DrawString(column + 2, row, digit, props);
+        props.invert_ = true;
+        DrawString(column, row + 1,
+                   playing ? player->GetPlayedInstrument(i) : "  ", props);
+    }
 }
 
-void View::DoModal(ModalView *view,ModalViewCallback cb) {
-	modalView_=view ;
-	modalView_->OnFocus() ;
-	modalViewCallback_=cb ;
-	isDirty_=true ;
-} ;
+void View::DoModal(ModalView *view, ModalViewCallback cb) {
+    modalView_ = view;
+    modalView_->OnFocus();
+    modalViewCallback_ = cb;
+    isDirty_=true ;
+};
 
 void View::Redraw() {
 	if (modalView_) {

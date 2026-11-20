@@ -67,13 +67,13 @@ int main() {
         instrument.FindVariable(SIP_SLICES)->SetInt(2);
         previous[0] = out[254];
         previous[1] = out[255];
-        channel.StartInstrument(&instrument, 1, false);
+        channel.StartInstrument(&instrument, 13, false);
         assert(channel.Render(out, 128));
         assert(out[0] == previous[0] && out[1] == previous[1]);
         assert(out[254] * static_cast<long long>(previous[0]) < 0);
         channel.StopInstrument();
         assert(!channel.Render(out, 128));
-        channel.StartInstrument(&instrument, 0, true);
+        channel.StartInstrument(&instrument, 12, true);
         assert(channel.Render(out, 128));
         assert(out[0] == 0 && out[1] == 0); // No stale audio after silence.
     }

@@ -122,7 +122,7 @@ Here's a nice example, courtesy of jonbro, chopping drums he had recorded previo
 
 ### Slices (sample chopping)
 Set the **slices** parameter in the instrument to divide a sample into equal parts,
-mapped chromatically from C-2 (the lowest note, not C2) upward. The **loop mode** parameter then applies
+mapped chromatically from C0 upward. The **loop mode** parameter then applies
 independently within each slice — set it to "loop" or "ping pong" to get looped
 slices, great for amen breaks and timed loops. Set to Oscillator for very grainy rhythmic noises
 

@@ -36,6 +36,7 @@ enum SampleInstrumentLoopMode {
 #define SIP_LOOPLEN 		MAKE_FOURCC('L','L','E','N')
 #define SIP_INTERPOLATION   MAKE_FOURCC('I','N','T','P')
 #define SIP_SAMPLE 		    MAKE_FOURCC('S','M','P','L')
+#define SIP_SLICEBASE MAKE_FOURCC('S', 'L', 'B', 'S')
 #define SIP_SLICES 		    MAKE_FOURCC('S','L','C','S')
 #define SIP_FILTMODE		MAKE_FOURCC('F','I','M','O') 
 #define SIP_ATTENUATE		MAKE_FOURCC('F','I','A','T')
@@ -132,7 +133,8 @@ private:
 	   Variable *pan_ ;
 	   Variable *loopMode_ ;
 	   Variable *slices_ ;
-	   Variable *interpolation_ ;
+       Variable *sliceBase_;
+       Variable *interpolation_;
        Variable *printFx_;
        Variable *irPad_;
        Variable *irWet_;

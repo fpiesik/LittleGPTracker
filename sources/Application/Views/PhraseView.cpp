@@ -9,6 +9,7 @@
 #include "Application/Views/ModalDialogs/CommandSelectorModal.h"
 #include "System/Console/Trace.h"
 #include "UIController.h"
+#include <algorithm>
 #include <stdlib.h>
 #include <string.h>
 
@@ -181,8 +182,6 @@ void PhraseView::updateCursorValue(ViewUpdateDirection direction, int xOffset,
         break;
     case 0:
         c = phrase_->note_ + (16 * viewData_->currentPhrase_ + row_ + yOffset);
-        limit = 119;
-        wrap = true;
         break;
     case 2:
         c = phrase_->instr_ + (16 * viewData_->currentPhrase_ + row_ + yOffset);
@@ -268,13 +267,26 @@ void PhraseView::updateCursorValue(ViewUpdateDirection direction, int xOffset,
         int offset = offsets_[col_ + xOffset][direction];
         // if note column apply the set scale
         if (col_ + xOffset == 0) {
-            // Add/remove from offset to match selected scale
-            int scale = viewData_->project_->GetScale();
-            while (!scaleSteps[scale][((*c + offset) % 12 + 12) % 12]) {
-                offset > 0 ? offset++ : offset--;
+            const int scale = viewData_->project_->GetScale();
+            const int start =
+                std::max(int(NOTE_C0), std::min(int(NOTE_C9), int(*c)));
+            int note = start + offset;
+            if (note > NOTE_C9)
+                note = NOTE_C0 + (offset == 12 ? start % 12 : 0);
+            if (note < NOTE_C0)
+                note = offset == -12 ? start + (NOTE_C9 - start) / 12 * 12
+                                     : NOTE_C9;
+            while (!scaleSteps[scale][note % 12]) {
+                note += offset > 0 ? 1 : -1;
+                if (note > NOTE_C9)
+                    note = NOTE_C0;
+                if (note < NOTE_C0)
+                    note = NOTE_C9;
             }
+            *c = note;
+        } else {
+            updateData(c, offset, limit, wrap);
         }
-        updateData(c, offset, limit, wrap);
         int index = 16 * viewData_->currentPhrase_ + row_ + yOffset;
         if (col_ + xOffset <= 2 && phrase_->note_[index] != 0xFF)
             lastVelocity_ = phrase_->velocity_[index];
@@ -317,7 +329,7 @@ void PhraseView::pasteLast() {
     case 0:
         c = phrase_->note_ + (16 * viewData_->currentPhrase_ + row_);
         if ((*c == 0xFF)) {
-            *c = lastNote_;
+            *c = std::max(int(NOTE_C0), std::min(int(NOTE_C9), lastNote_));
             phrase_->velocity_[16 * viewData_->currentPhrase_ + row_] =
                 lastVelocity_;
             c = phrase_->instr_ + (16 * viewData_->currentPhrase_ + row_);
@@ -1357,7 +1369,7 @@ void PhraseView::DrawView() {
         pos._y++;
     }
 
-    drawMap();
+    drawMap(true);
     drawNotes();
 
     Player *player = Player::GetInstance();

@@ -156,7 +156,8 @@ class View : public Observable {
     GUIPoint GetAnchor();
     GUIPoint GetTitlePosition();
 
-    void drawMap();
+    int GetTrackIndicatorRow() const;
+    void drawMap(bool withTrackIndicators = false);
     void drawNotes();
     void drawVUMeter(uint8_t leftBars, uint8_t rightBars, GUIPoint pos,
                      GUITextProperties props, int vuIndex,
@@ -188,7 +189,12 @@ class View : public Observable {
 
   public:
     static int margin_;
-    enum { songRowCount_ = 16, largeTextColumns_ = 48, largeTextRows_ = 23 };
+    enum {
+        songRowCount_ = 16,
+        largeTextColumns_ = 48,
+        largeTextRows_ = 23,
+        trackIndicatorRows_ = 2
+    };
     static bool miniLayout_;
     static int altRowNumber_;
 };
