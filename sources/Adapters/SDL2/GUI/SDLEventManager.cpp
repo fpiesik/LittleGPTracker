@@ -76,6 +76,16 @@ int SDLEventManager::MainLoop()
 		SDL_Event event;
 		if (SDL_WaitEvent(&event)) 
     {
+            const bool fullscreenShortcut =
+                (event.type == SDL_KEYDOWN || event.type == SDL_KEYUP) &&
+                (event.key.keysym.sym == SDLK_RETURN ||
+                 event.key.keysym.sym == SDLK_KP_ENTER) &&
+                (event.key.keysym.mod & KMOD_ALT);
+            if (fullscreenShortcut) {
+				if (event.type == SDL_KEYDOWN && !event.key.repeat)
+					sdlWindow->ToggleFullscreen();
+				continue;
+			}
 			switch (event.type) {
 				case SDL_KEYDOWN:
 					if (dumpEvent_) 

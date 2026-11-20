@@ -40,6 +40,7 @@ public: // I_GUIWindowImp implementation
 
 public: // Added functionality
   void SetRenderSize(int width, int height);
+  void ToggleFullscreen();
   void RefreshFontCache() {
       if (cacheFonts_)
           prepareFullFonts();

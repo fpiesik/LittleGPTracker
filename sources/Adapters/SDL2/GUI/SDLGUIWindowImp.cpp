@@ -13,8 +13,9 @@
 
 SDLGUIWindowImp *instance_;
 
-unsigned short appWidth = 320;
-unsigned short appHeight = 240;
+unsigned short appWidth = 480;
+unsigned short appHeight = 242;
+static const int windowHeight = 270;
 
 SDLGUIWindowImp::SDLGUIWindowImp(GUICreateWindowParams &p) {
 
@@ -66,14 +67,11 @@ SDLGUIWindowImp::SDLGUIWindowImp(GUICreateWindowParams &p) {
     Trace::Log("DISPLAY", "Using driver %s. Screen (%d,%d) Bpp:%d", driverName,
                screenWidth, screenHeight, bitDepth_);
 
-    const char *widescreenValue = Config::GetInstance()->GetValue("WIDESCREEN");
-    const bool widescreen =
-        SONG_CHANNEL_COUNT > 8 ||
-        (widescreenValue && !strcmp(widescreenValue, "YES"));
-    appWidth = widescreen ? 480 : 320;
+    // SDL2 uses the current twelve-track layout exclusively. The former
+    // 320x240 desktop layout no longer matches the enlarged views.
+    appWidth = 480;
     // The 30 eight-pixel rows end with the track indicators and navigator.
-    appHeight = widescreen ? 242 : 240;
-    const int windowHeight = widescreen ? 270 : appHeight;
+    appHeight = 242;
     renderArea_.x = renderArea_.y = 0;
     renderArea_.w = appWidth;
     renderArea_.h = appHeight;
@@ -117,10 +115,9 @@ SDLGUIWindowImp::SDLGUIWindowImp(GUICreateWindowParams &p) {
 
     screenRect_._topLeft._x = 0;
     screenRect_._topLeft._y = 0;
-    screenRect_._bottomRight._x =
-        (windowed_ && !fullscreen) ? appWidth * mult_ : screenWidth;
-    screenRect_._bottomRight._y =
-        (windowed_ && !fullscreen) ? windowHeight * mult_ : screenHeight;
+    // SDL restores the creation size when leaving desktop fullscreen.
+    screenRect_._bottomRight._x = windowed_ ? appWidth : screenWidth;
+    screenRect_._bottomRight._y = windowed_ ? windowHeight : screenHeight;
 
     Trace::Log("DISPLAY", "Creating SDL Window (%d,%d)", screenRect_.Width(),
                screenRect_.Height());
@@ -134,14 +131,14 @@ SDLGUIWindowImp::SDLGUIWindowImp(GUICreateWindowParams &p) {
 
     appAnchorX_ = (screenRect_.Width() - appWidth * mult_) / 2;
     appAnchorY_ = screenRect_.Height() - appHeight * mult_;
-    if (!widescreen)
-        appAnchorY_ /= 2;
 
     SDL_SetWindowIcon(window_, SDL_LoadBMP("lgpt_icon.bmp"));
     surface_ = SDL_GetWindowSurface(window_);
 
     NAssert(surface_);
-    scaleToHeight_ = fullscreen || widescreen;
+    // Keep a logical canvas in desktop builds so switching between windowed
+    // and fullscreen never requires replacing the drawing surface.
+    scaleToHeight_ = true;
     if (scaleToHeight_) {
         // Scale the complete logical surface, including pixel overlays.
         surface_ = SDL_CreateRGBSurfaceWithFormat(0, appWidth, appHeight, 32,
@@ -562,13 +559,29 @@ void SDLGUIWindowImp::SetRenderSize(int width, int height) {
     }
 }
 
+void SDLGUIWindowImp::ToggleFullscreen() {
+    if (!windowed_)
+        return;
+
+    const Uint32 flags = SDL_GetWindowFlags(window_);
+    const bool fullscreen = (flags & SDL_WINDOW_FULLSCREEN) != 0;
+    if (SDL_SetWindowFullscreen(
+            window_, fullscreen ? 0 : SDL_WINDOW_FULLSCREEN_DESKTOP) == 0) {
+        if (fullscreen)
+            SDL_SetWindowSize(window_, appWidth, windowHeight);
+        updateCount_ = MAX_OVERLAYS;
+        ProcessExpose();
+    }
+}
+
 void SDLGUIWindowImp::Flush() {
     if (scaleToHeight_) {
         if (updateCount_) {
             SDL_Surface *windowSurface = SDL_GetWindowSurface(window_);
             if (windowSurface) {
                 SDL_Rect destination;
-                const int displayHeight = appWidth == 480 ? 270 : surface_->h;
+                const int displayHeight =
+                    appWidth == 480 ? windowHeight : surface_->h;
                 destination.h = windowSurface->h;
                 destination.w = surface_->w * destination.h / displayHeight;
                 if (destination.w > windowSurface->w) {
