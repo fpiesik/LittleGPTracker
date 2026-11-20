@@ -22,6 +22,10 @@
 #include <vector>
 
 #define PROP_INVERT 0x80
+#define PROP_INDICATOR_EDGE_MASK 0x60
+#define PROP_INDICATOR_EDGE_SHIFT 5
+#define PROP_EXTEND_BACKGROUND_TOP_1 0x10
+#define PROP_COLOR_MASK 0x0F
 
 class SampleEditorView;
 

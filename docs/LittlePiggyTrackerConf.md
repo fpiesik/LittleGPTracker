@@ -107,7 +107,7 @@ Other screens use the usual 60-column text scale.
 Each indicator starts directly below its track column. Phrase notes and sample root notes range from C0 to C9. The default note is C4 (MIDI 60).
 A minus sign in the indicator marks octave −1 during playback of older notes.
 Each track indicator shows the note and octave on its first line and the
-instrument number on its second line. The navigation map sits above the indicators.
+instrument number on its second line. A one-pixel gap separates neighboring indicators. The navigation map sits above the indicators.
 
 Existing eight-track projects load with four empty additional tracks and default
 mixer settings. Saved projects contain the full twelve-track song and mixer data

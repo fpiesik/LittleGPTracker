@@ -184,7 +184,10 @@ void AppWindow::DrawString(const char *string, GUIPoint &pos,
     len = MIN(len - offset, SCREEN_COLUMNS - x);
     int index = x + SCREEN_COLUMNS * pos._y;
     memcpy(_charScreen + index, string + offset, len);
-    unsigned char prop = colorIndex_ + (props.invert_ ? PROP_INVERT : 0);
+    unsigned char prop =
+        colorIndex_ | (props.invert_ ? PROP_INVERT : 0) |
+        (props.indicatorEdge_ << PROP_INDICATOR_EDGE_SHIFT) |
+        (props.extendBackgroundTop1_ ? PROP_EXTEND_BACKGROUND_TOP_1 : 0);
     memset(_charScreenProp + index, prop, len);
 };
 
@@ -300,14 +303,24 @@ void AppWindow::Flush() {
     unsigned char *previous = _preScreen;
     unsigned char *currentProp = _charScreenProp;
     unsigned char *previousProp = _preScreenProp;
+    const int indicatorRow =
+#ifdef SDL2
+        largeText ? View::largeTextRows_ - View::trackIndicatorRows_ :
+#endif
+                  SCREEN_ROWS - View::trackIndicatorRows_;
     for (int y = 0; y < 30; y++) {
         for (int x = 0; x < SCREEN_COLUMNS; x++) {
 #ifndef _LGPT_NO_SCREEN_CACHE_
             if ((*current != *previous) || (*currentProp != *previousProp)) {
 #endif
                 props.invert_ = (*currentProp & PROP_INVERT) != 0;
-                if (((*currentProp) & 0x7F) != color) {
-                    color = (ColorDefinition)((*currentProp) & 0x7F);
+                props.indicatorEdge_ = (GUITextProperties::IndicatorEdge)(
+                    (*currentProp & PROP_INDICATOR_EDGE_MASK) >>
+                    PROP_INDICATOR_EDGE_SHIFT);
+                props.extendBackgroundTop1_ =
+                    (*currentProp & PROP_EXTEND_BACKGROUND_TOP_1) != 0;
+                if (((*currentProp) & PROP_COLOR_MASK) != color) {
+                    color = (ColorDefinition)((*currentProp) & PROP_COLOR_MASK);
                     GUIColor gcolor = normalColor_;
                     switch (color) {
                     case CD_BACKGROUND:
@@ -360,7 +373,25 @@ void AppWindow::Flush() {
                     }
                     GUIWindow::SetColor(gcolor);
                 }
-                GUIWindow::DrawChar(*current, pos, props);
+                GUIPoint drawPos = pos;
+                if (y >= indicatorRow &&
+                    y < indicatorRow + View::trackIndicatorRows_ && x >= 5 &&
+                    x < 5 + SONG_CHANNEL_COUNT * 3) {
+                    drawPos._x -= charWidth_ / 2;
+                }
+                GUIWindow::DrawChar(*current, drawPos, props);
+                if (props.indicatorEdge_ !=
+                    GUITextProperties::INDICATOR_EDGE_NONE) {
+                    const bool left = props.indicatorEdge_ ==
+                                      GUITextProperties::INDICATOR_EDGE_LEFT;
+                    const int right = drawPos._x + charWidth_;
+                    const int top =
+                        drawPos._y - (props.extendBackgroundTop1_ ? 1 : 0);
+                    const int gapX = left ? drawPos._x : right - 1;
+                    GUIRect gap(gapX, top, gapX + 1,
+                                drawPos._y + charHeight_);
+                    GUIWindow::ClearRect(gap);
+                }
                 count++;
 #ifndef _LGPT_NO_SCREEN_CACHE_
             }
@@ -493,17 +524,21 @@ void AppWindow::LoadProject(const Path &p) {
 
     // Report on sample & SoundFont load fails
     if (load_result) {
-      const char *err_str = (load_result == SLOAD_ERR_MAX_SAMPLES) ? "Maximum number of samples exceeded"
-	: (load_result == SLOAD_ERR_MAX_SOUNDFONTS) ? "Maximum number of SoundFonts exceeded"
-	: (load_result == SLOAD_ERR_MAX_SAMPLES | SLOAD_ERR_MAX_SOUNDFONTS) ? "Maximum number of samples and SoundFonts exceeded"	
-	: (load_result == SLOAD_ERR_INVALID_DIR) ? "Sample directory could not be opened"
-	: "Unknown error loading sample pool";
-      Trace::Error(err_str) ;
-      MessageBox *mb =
-            new MessageBox(*_currentView, err_str);	  
-    _currentView->DoModal(mb);
+        const char *err_str =
+            (load_result == SLOAD_ERR_MAX_SAMPLES)
+                ? "Maximum number of samples exceeded"
+            : (load_result == SLOAD_ERR_MAX_SOUNDFONTS)
+                ? "Maximum number of SoundFonts exceeded"
+            : (load_result == SLOAD_ERR_MAX_SAMPLES | SLOAD_ERR_MAX_SOUNDFONTS)
+                ? "Maximum number of samples and SoundFonts exceeded"
+            : (load_result == SLOAD_ERR_INVALID_DIR)
+                ? "Sample directory could not be opened"
+                : "Unknown error loading sample pool";
+        Trace::Error(err_str);
+        MessageBox *mb = new MessageBox(*_currentView, err_str);
+        _currentView->DoModal(mb);
     }
-    
+
     Redraw();
 }
 
@@ -642,7 +677,8 @@ void AppWindow::onUpdate() {
 
     // Call AnimationUpdate periodically (~10-25Hz depending on frame rate)
     static unsigned int animTick = 0;
-    if ((animTick++ % 2) == 0) {  // every 2nd call, roughly 25Hz at 50Hz main loop
+    if ((animTick++ % 2) ==
+        0) { // every 2nd call, roughly 25Hz at 50Hz main loop
         if (_currentView) {
             _currentView->AnimationUpdate();
         }
@@ -650,7 +686,7 @@ void AppWindow::onUpdate() {
     Flush();
 }
 
-void AppWindow::LayoutChildren() {};
+void AppWindow::LayoutChildren(){};
 
 void AppWindow::Update(Observable &o, I_ObservableData *d) {
 
@@ -801,7 +837,7 @@ Path AppWindow::GetLastProjectPath() {
     // Get file size
     file->Seek(0, SEEK_END);
     int length = file->Tell();
-    
+
     if (length <= 0) {
         file->Close();
         delete file;
@@ -812,7 +848,7 @@ Path AppWindow::GetLastProjectPath() {
     char *buffer = (char *)SYS_MALLOC(length + 1);
     memset(buffer, 0, length + 1);
 
-    file->Seek(0, SEEK_SET); // Seek back to start
+    file->Seek(0, SEEK_SET);                   // Seek back to start
     int bytes = file->Read(buffer, 1, length); // Read full length
     file->Close();
     delete file;
@@ -827,8 +863,8 @@ Path AppWindow::GetLastProjectPath() {
 
     // Remove newline if present
     int len = strlen(buffer);
-    if (len > 0 && buffer[len-1] == '\n') {
-        buffer[len-1] = 0;
+    if (len > 0 && buffer[len - 1] == '\n') {
+        buffer[len - 1] = 0;
     }
 
     Path result;
@@ -841,7 +877,8 @@ Path AppWindow::GetLastProjectPath() {
         }
     }
     if (!result.IsDirectory()) {
-        Trace::Error("GetLastProject: path does not exist: %s", result.GetPath().c_str());
+        Trace::Error("GetLastProject: path does not exist: %s",
+                     result.GetPath().c_str());
     }
 
     SYS_FREE(buffer);

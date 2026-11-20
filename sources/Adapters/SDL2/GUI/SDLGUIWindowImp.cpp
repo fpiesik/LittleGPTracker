@@ -181,7 +181,8 @@ SDLGUIWindowImp::SDLGUIWindowImp(GUICreateWindowParams &p) {
 };
 
 SDLGUIWindowImp::~SDLGUIWindowImp() {
-    if (scaleToHeight_) SDL_FreeSurface(surface_);
+    if (scaleToHeight_)
+        SDL_FreeSurface(surface_);
 }
 
 static SDL_Surface *fonts[FONT_COUNT];
@@ -289,9 +290,14 @@ void SDLGUIWindowImp::DrawChar(const char c, GUIPoint &pos,
     if ((!framebuffer_ || scaleToHeight_) && updateCount_ < MAX_OVERLAYS) {
         SDL_Rect *area = updateRects_ + updateCount_++;
         area->x = xx;
-        area->y = yy;
-        area->h = 8 * mult_;
+        area->y = yy - (p.extendBackgroundTop1_ ? 1 : 0);
+        area->h = 8 * mult_ + (p.extendBackgroundTop1_ ? 1 : 0);
         area->w = 8 * mult_;
+    }
+
+    if (p.extendBackgroundTop1_ && yy > 0) {
+        SDL_Rect extension = {xx, yy - 1, 8 * mult_, 1};
+        SDL_FillRect(surface_, &extension, currentColor_);
     }
 
     bool useCache = false;
@@ -334,8 +340,21 @@ void SDLGUIWindowImp::DrawChar(const char c, GUIPoint &pos,
         for (int y = 0; y < 8; y++) {
             for (int n = 0; n < mult_; n++) {
                 for (int x = 0; x < 8; x++) {
+                    const int shift =
+                        p.indicatorEdge_ ==
+                                GUITextProperties::INDICATOR_EDGE_LEFT
+                            ? -1
+                            : (p.indicatorEdge_ ==
+                                       GUITextProperties::
+                                           INDICATOR_EDGE_RIGHT_SHIFT_LEFT
+                                   ? 1
+                                   : 0);
+                    const int sourceX = x + shift;
+                    const bool sourcePixel =
+                        sourceX >= 0 && sourceX < 8 ? src[sourceX] : true;
                     unsigned char *pxlPtr =
-                        ((src[x]) ^ (unsigned char)p.invert_) ? bgPtr : fgPtr;
+                        (sourcePixel ^ (unsigned char)p.invert_) ? bgPtr
+                                                                 : fgPtr;
                     ;
                     for (int m = 0; m < mult_; m++) {
                         memcpy(dest, pxlPtr, pixelSize);
@@ -372,9 +391,14 @@ void SDLGUIWindowImp::DrawString(const char *string, GUIPoint &pos,
     if ((!framebuffer_ || scaleToHeight_) && updateCount_ < MAX_OVERLAYS) {
         SDL_Rect *area = updateRects_ + updateCount_++;
         area->x = xx;
-        area->y = yy;
-        area->h = 8 * mult_;
+        area->y = yy - (p.extendBackgroundTop1_ ? 1 : 0);
+        area->h = 8 * mult_ + (p.extendBackgroundTop1_ ? 1 : 0);
         area->w = len * 8 * mult_;
+    }
+
+    if (p.extendBackgroundTop1_ && yy > 0) {
+        SDL_Rect extension = {xx, yy - 1, len * 8 * mult_, 1};
+        SDL_FillRect(surface_, &extension, currentColor_);
     }
 
     for (int l = 0; l < len; l++) {
@@ -417,9 +441,21 @@ void SDLGUIWindowImp::DrawString(const char *string, GUIPoint &pos,
             for (int y = 0; y < 8; y++) {
                 for (int n = 0; n < mult_; n++) {
                     for (int x = 0; x < 8; x++) {
+                        const int shift =
+                            p.indicatorEdge_ ==
+                                    GUITextProperties::INDICATOR_EDGE_LEFT
+                                ? -1
+                                : (p.indicatorEdge_ ==
+                                           GUITextProperties::
+                                               INDICATOR_EDGE_RIGHT_SHIFT_LEFT
+                                       ? 1
+                                       : 0);
+                        const int sourceX = x + shift;
+                        const bool sourcePixel =
+                            sourceX >= 0 && sourceX < 8 ? src[sourceX] : true;
                         unsigned char *pxlPtr =
-                            ((src[x]) ^ (unsigned char)p.invert_) ? bgPtr
-                                                                  : fgPtr;
+                            (sourcePixel ^ (unsigned char)p.invert_) ? bgPtr
+                                                                     : fgPtr;
                         ;
                         for (int m = 0; m < mult_; m++) {
                             memcpy(dest, pxlPtr, pixelSize);
