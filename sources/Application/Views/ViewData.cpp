@@ -55,20 +55,19 @@ void ViewData::checkSongBoundaries() {
         songX_ = SONG_CHANNEL_COUNT - 1;
     if (songX_ < 0)
         songX_ = 0;
-    if (songY_<0) {
-		songOffset_+=songY_ ;
-		songY_=0 ;
-	} ;
-	if (songY_>View::songRowCount_-1) {
-		songOffset_+=songY_-View::songRowCount_+1 ;
-		songY_=View::songRowCount_-1 ;
-	} ;
-	if (songOffset_>232) {
-		songOffset_=232 ;
-	}
-	if (songOffset_<0) {
-		songOffset_=0 ;
-	}
+    if (songY_ < 0) {
+        songOffset_ += songY_;
+        songY_ = 0;
+    }
+    if (songY_ >= View::songRowCount_) {
+        songOffset_ += songY_ - View::songRowCount_ + 1;
+        songY_ = View::songRowCount_ - 1;
+    }
+    const int maxOffset = SONG_ROW_COUNT - View::songRowCount_;
+    if (songOffset_ > maxOffset)
+        songOffset_ = maxOffset;
+    if (songOffset_ < 0)
+        songOffset_ = 0;
 }
 
 unsigned char *ViewData::GetCurrentSongPointer() {

@@ -160,10 +160,10 @@ There is no hot reload or graphical shortcut editor in this stage.
 | `groove.previous_16` | B+DOWN | Go back 16 grooves |
 | `groove.next_16` | B+UP | Go forward 16 grooves |
 | `groove.clear` | B+A | Clear current step |
-| `groove.decrease` | A+LEFT | Decrease current step |
-| `groove.increase` | A+RIGHT | Increase current step |
-| `groove.decrease_sync` | A+DOWN | Existing vertical decrease action |
-| `groove.increase_sync` | A+UP | Existing vertical increase action |
+| `groove.decrease` | A+LEFT | Decrease current step by one tick |
+| `groove.increase` | A+RIGHT | Increase current step by one tick |
+| `groove.decrease_sync` | A+DOWN | Decrease the high hex digit |
+| `groove.increase_sync` | A+UP | Increase the high hex digit |
 | `groove.insert` | A alone | Initialize empty step |
 | `groove.phrase` | R+DOWN | Switch to Phrase view |
 | `groove.play_from_start` | R+START | Existing modified Phrase playback action |
@@ -172,8 +172,7 @@ There is no hot reload or graphical shortcut editor in this stage.
 | `groove.play` | START | Existing Phrase playback action |
 
 The XML exclusions preserve the old modifier precedence: B, then A, then R.
-The two `*_sync` actions currently behave like the horizontal value changes,
-just as in the previous Groove handler.
+Groove steps range from `01` to `FF` ticks. Empty steps display as `--`.
 
 ## Mixer actions
 

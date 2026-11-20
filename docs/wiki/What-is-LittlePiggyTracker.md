@@ -461,7 +461,8 @@ To get a handle on this, try a groove of 1/F and watch the play arrow in a phras
 In the groove screen there is no copy paste (yet) but the following action exists:
 
 - A: Adds a new step if not existing
-- A+L/R: modifies current step value
+- A+Left/Right decreases or increases the current step by one tick.
+- A+Up/Down increases or decreases the high hex digit. Step values range from `01` to `FF` ticks.
 - B+L/R/U/D: modifies current edited groove
 - B+A: Clear current step
 

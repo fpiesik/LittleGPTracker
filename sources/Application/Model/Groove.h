@@ -8,7 +8,7 @@
 #include "Application/Utils/HexBuffers.h"
 
 #define MAX_GROOVES 0x20
-#define NO_GROOVE_DATA 0xFF
+#define NO_GROOVE_DATA 0
 
 struct ChannelGroove {
 	unsigned char groove_ ; // selected groove

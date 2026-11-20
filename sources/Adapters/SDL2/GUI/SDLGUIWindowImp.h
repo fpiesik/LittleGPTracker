@@ -39,6 +39,7 @@ public: // I_GUIWindowImp implementation
 	virtual void PushEvent(GUIEvent &event) ;
 
 public: // Added functionality
+  void SetRenderSize(int width, int height);
   void RefreshFontCache() {
       if (cacheFonts_)
           prepareFullFonts();
@@ -57,6 +58,7 @@ private:
   SDL_Window *window_;
   bool scaleToHeight_;
   SDL_Surface *surface_;
+  SDL_Rect renderArea_;
   //	SDL_Surface *offscreen_ ;
   GUIRect screenRect_;
   unsigned int currentColor_;

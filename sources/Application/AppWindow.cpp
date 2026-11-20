@@ -23,8 +23,10 @@
 #if defined(PLATFORM_X64)
 #include "Application/Views/RecordOptionsView.h"
 #include "Application/Views/SettingsView.h"
-#include "Adapters/SDL2/GUI/SDLGUIWindowImp.h"
 #include "UIFramework/BasicDatas/FontConfig.h"
+#endif
+#ifdef SDL2
+#include "Adapters/SDL2/GUI/SDLGUIWindowImp.h"
 #endif
 
 AppWindow *instance = 0;
@@ -272,6 +274,16 @@ void AppWindow::Flush() {
 
     SysMutexLocker locker(drawMutex_);
 
+#ifdef SDL2
+    const bool largeText = _currentView && _currentView->UsesLargeText();
+    const GUIRect canvas = GetRect();
+    static_cast<SDLGUIWindowImp *>(GetImpWindow())
+        ->SetRenderSize(largeText ? View::largeTextColumns_ * charWidth_
+                                  : canvas.Width(),
+                        largeText ? View::largeTextRows_ * charHeight_ + 2
+                                  : canvas.Height());
+#endif
+
     Lock();
     long flushStart = System::GetInstance()->GetClock();
 
@@ -471,7 +483,7 @@ void AppWindow::LoadProject(const Path &p) {
     _fxView->AddObserver(*this);
 
     _currentView = _songView;
-    _currentView->OnFocus();
+    _currentView->SetFocus(VT_SONG);
 
     if (!playerOK) {
         MessageBox *mb =

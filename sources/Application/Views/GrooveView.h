@@ -14,13 +14,13 @@ public:
 	virtual void OnFocus() ;
 
 protected:
-	void updateCursorValue(int val,bool sync=false) ;
-	void updateCursor(int dir) ;
-	void initCursorValue() ;
-	void clearCursorValue() ;
-	void warpGroove(int dir) ;
-	void processNormalButtonMask(unsigned short mask) ;
-	void processSelectionButtonMask(unsigned short mask) ;
+  void updateCursorValue(int delta);
+  void updateCursor(int dir);
+  void initCursorValue();
+  void clearCursorValue();
+  void warpGroove(int dir);
+  void processNormalButtonMask(unsigned short mask);
+  void processSelectionButtonMask(unsigned short mask);
 
 private:
 	int position_ ;

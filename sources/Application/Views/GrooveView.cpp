@@ -19,15 +19,14 @@ void GrooveView::updateCursor(int dir) {
 	isDirty_=true;
 } ;
 
-void GrooveView::updateCursorValue(int val,bool sync) {
-	unsigned char *grooveData=Groove::GetInstance()->GetGrooveData(viewData_->currentGroove_) ;
-	int value=grooveData[position_] ;
-	val+=value ;
-	if (val<1) val=1 ;
-	if (val>0xF) val=0xF ;
-	grooveData[position_]=val ;
-	isDirty_=true; 
-} ;
+void GrooveView::updateCursorValue(int delta) {
+    unsigned char &step = Groove::GetInstance()->GetGrooveData(
+        viewData_->currentGroove_)[position_];
+    const int value = step == NO_GROOVE_DATA ? 1 : step;
+    const int updated = value + delta;
+    step = updated >= 1 && updated <= 0xFF ? updated : value;
+    isDirty_ = true;
+}
 
 void GrooveView::warpGroove(int dir) {
 	int current=viewData_->currentGroove_ ;
@@ -81,10 +80,10 @@ void GrooveView::ProcessButtonMask(unsigned short mask, bool pressed) {
         updateCursorValue(1);
     }
     if (shortcuts.Matches(Shortcuts::GrooveDecreaseSync, mask, pressed)) {
-        updateCursorValue(-1, true);
+        updateCursorValue(-0x10);
     }
     if (shortcuts.Matches(Shortcuts::GrooveIncreaseSync, mask, pressed)) {
-        updateCursorValue(1, true);
+        updateCursorValue(0x10);
     }
     if (shortcuts.Matches(Shortcuts::GrooveInsert, mask, pressed)) {
         initCursorValue();

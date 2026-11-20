@@ -74,6 +74,9 @@ SDLGUIWindowImp::SDLGUIWindowImp(GUICreateWindowParams &p) {
     // The 30 eight-pixel rows end with the track indicators and navigator.
     appHeight = widescreen ? 242 : 240;
     const int windowHeight = widescreen ? 270 : appHeight;
+    renderArea_.x = renderArea_.y = 0;
+    renderArea_.w = appWidth;
+    renderArea_.h = appHeight;
 
     bool fullscreen = false;
 
@@ -138,7 +141,7 @@ SDLGUIWindowImp::SDLGUIWindowImp(GUICreateWindowParams &p) {
     surface_ = SDL_GetWindowSurface(window_);
 
     NAssert(surface_);
-    scaleToHeight_ = fullscreen || (widescreen && windowed_);
+    scaleToHeight_ = fullscreen || widescreen;
     if (scaleToHeight_) {
         // Scale the complete logical surface, including pixel overlays.
         surface_ = SDL_CreateRGBSurfaceWithFormat(0, appWidth, appHeight, 32,
@@ -283,7 +286,7 @@ void SDLGUIWindowImp::DrawChar(const char c, GUIPoint &pos,
     if ((xx >= screenRect_._bottomRight._x) ||
         (yy >= screenRect_._bottomRight._y))
         return;
-    if ((!framebuffer_) && (updateCount_ < MAX_OVERLAYS)) {
+    if ((!framebuffer_ || scaleToHeight_) && updateCount_ < MAX_OVERLAYS) {
         SDL_Rect *area = updateRects_ + updateCount_++;
         area->x = xx;
         area->y = yy;
@@ -366,7 +369,7 @@ void SDLGUIWindowImp::DrawString(const char *string, GUIPoint &pos,
     int xx, yy;
     transform(pos, &xx, &yy);
 
-    if ((!framebuffer_) && (updateCount_ < MAX_OVERLAYS)) {
+    if ((!framebuffer_ || scaleToHeight_) && updateCount_ < MAX_OVERLAYS) {
         SDL_Rect *area = updateRects_ + updateCount_++;
         area->x = xx;
         area->y = yy;
@@ -457,7 +460,7 @@ void SDLGUIWindowImp::Clear(GUIColor &c, bool overlay) {
     }
     SDL_FillRect(surface_, &rect, backgroundColor_);
 
-    if (!framebuffer_) {
+    if (!framebuffer_ || scaleToHeight_) {
         SDL_Rect *area = updateRects_;
         area->x = rect.x;
         area->y = rect.y;
@@ -515,6 +518,14 @@ void SDLGUIWindowImp::Unlock() {
     }
 }
 
+void SDLGUIWindowImp::SetRenderSize(int width, int height) {
+    if (renderArea_.w != width || renderArea_.h != height) {
+        renderArea_.w = width;
+        renderArea_.h = height;
+        updateCount_ = MAX_OVERLAYS;
+    }
+}
+
 void SDLGUIWindowImp::Flush() {
     if (scaleToHeight_) {
         if (updateCount_) {
@@ -536,7 +547,8 @@ void SDLGUIWindowImp::Flush() {
                 SDL_GetRGB(backgroundColor_, surface_->format, &r, &g, &b);
                 SDL_FillRect(windowSurface, NULL,
                              SDL_MapRGB(windowSurface->format, r, g, b));
-                SDL_BlitScaled(surface_, NULL, windowSurface, &destination);
+                SDL_BlitScaled(surface_, &renderArea_, windowSurface,
+                               &destination);
                 SDL_UpdateWindowSurface(window_);
             }
         }

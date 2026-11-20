@@ -264,12 +264,12 @@ void SongView::extendSelection() {
     } else {
         if (viewData_->songY_ < clipboard_.y_) {
             viewData_->songY_ = 0;
-            clipboard_.y_ =
-                std::min(0x17, SONG_ROW_COUNT - 1 - clipboard_.offset_);
+            clipboard_.y_ = std::min(songRowCount_ - 1,
+                                     SONG_ROW_COUNT - 1 - clipboard_.offset_);
         } else {
             clipboard_.y_ = 0;
-            viewData_->songY_ =
-                std::min(0x17, SONG_ROW_COUNT - 1 - viewData_->songOffset_);
+            viewData_->songY_ = std::min(
+                songRowCount_ - 1, SONG_ROW_COUNT - 1 - viewData_->songOffset_);
         }
         isDirty_ = true;
     }
@@ -525,12 +525,10 @@ void SongView::jumpToNextSection(int direction) {
 
     // Update viewdata position from current
 
-    if ((current - viewData_->songOffset_ > 0x17) ||
+    if ((current - viewData_->songOffset_ >= songRowCount_) ||
         (current - viewData_->songOffset_ < 0)) {
-        viewData_->songOffset_ = current - 4;
-        if (viewData_->songOffset_ < 0) {
-            viewData_->songOffset_ = 0;
-        }
+        viewData_->songOffset_ =
+            std::min(std::max(0, current - 4), SONG_ROW_COUNT - songRowCount_);
     }
     viewData_->songY_ = current - viewData_->songOffset_;
     isDirty_ = true;

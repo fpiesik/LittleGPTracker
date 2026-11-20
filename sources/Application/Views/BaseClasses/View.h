@@ -105,6 +105,7 @@ class View : public Observable {
     void ProcessButton(unsigned short mask, bool pressed);
 
     void Redraw();
+    bool UsesLargeText() const;
 
     // Override in subclasses
 
@@ -187,7 +188,7 @@ class View : public Observable {
 
   public:
     static int margin_;
-    static int songRowCount_;
+    enum { songRowCount_ = 16, largeTextColumns_ = 48, largeTextRows_ = 23 };
     static bool miniLayout_;
     static int altRowNumber_;
 };

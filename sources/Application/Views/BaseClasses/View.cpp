@@ -8,8 +8,7 @@
 
 bool View::initPrivate_=false ;
 
-int View::margin_=0 ;
-int View::songRowCount_; //=21 sets screen height among other things
+int View::margin_ = 0;
 bool View::miniLayout_=false ;
 int View::altRowNumber_ = 4;
 
@@ -23,12 +22,11 @@ View::View(GUIWindow &w,ViewData *viewData):
   {
 	   GUIRect rect=w.GetRect() ;
      miniLayout_=(rect.Width()<320);
-	   View::margin_=0 ;
-		songRowCount_ = miniLayout_ ? 16:22; // 22 is row display count among other things
+     View::margin_ = 0;
 
-		const char *altRowStr = Config::GetInstance()->GetValue("ALTROWNUMBER");
-		if (altRowStr) {
-			altRowNumber_ = atoi(altRowStr);
+     const char *altRowStr = Config::GetInstance()->GetValue("ALTROWNUMBER");
+     if (altRowStr) {
+         altRowNumber_ = atoi(altRowStr);
 		}
 
      initPrivate_=true ;
@@ -48,11 +46,15 @@ View::View(GUIWindow &w,ViewData *viewData):
 } ;
 
 GUIPoint View::GetAnchor() {
-	int width=40 ;
-	int height=30 ;
+    const int width = 40;
     // Reclaim the former navigation column while retaining mixer label space.
     return GUIPoint(miniLayout_ ? (width - SONG_CHANNEL_COUNT * 3) / 2 + 2 : 5,
-                    (height - View::songRowCount_) / 2);
+                    miniLayout_ ? 7 : 4);
+}
+
+bool View::UsesLargeText() const {
+    return hasFocus_ && (viewType_ == VT_SONG || viewType_ == VT_PHRASE) &&
+           w_.GetRect().Width() == 480;
 }
 
 GUIPoint View::GetTitlePosition() {
@@ -80,7 +82,11 @@ void View::Unlock() {
 void View::drawMap() {
     if (!miniLayout_) {
         GUIPoint anchor=GetAnchor() ;
-        GUIPoint pos(anchor._x + SONG_CHANNEL_COUNT * 3 + 1, 26);
+        const bool largeText = UsesLargeText();
+        // Leave room for the Song meter beside the last visible row.
+        GUIPoint pos(anchor._x + SONG_CHANNEL_COUNT * 3 + (largeText ? 3 : 1),
+                     largeText ? largeTextRows_ - 4 : 26);
+        const int mapTop = pos._y;
         GUITextProperties props;
 
         // draw entire map
@@ -103,7 +109,7 @@ void View::drawMap() {
 
         // draw current screen on map
         SetColor(CD_HILITE2) ;
-        pos._y = 26;
+        pos._y = mapTop;
         switch (viewType_) {
         case VT_CHAIN:
             pos._x += 1;
@@ -167,7 +173,7 @@ void View::drawNotes() {
 
 		GUIPoint anchor=GetAnchor() ;
         int initialX = anchor._x;
-        int initialY = anchor._y + 23;
+        int initialY = UsesLargeText() ? largeTextRows_ - 3 : anchor._y + 23;
         GUIPoint pos(initialX, initialY);
         GUITextProperties props;
 

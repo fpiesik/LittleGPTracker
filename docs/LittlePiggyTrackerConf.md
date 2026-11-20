@@ -96,14 +96,13 @@ To have the screen bigger than the original GP2X resolution, use **SCREEMULT** t
 Be careful as large values take a lot of juice and interfere with sound playback.
 
 SDL2 builds use a 480 x 270 (16:9) canvas and twelve tracks (00 through 11).
-The text display spans 60 columns. `WIDESCREEN` is no longer required for these
-builds: the wider canvas is mandatory so all twelve tracks remain visible.
+SDL2 builds always use the wider canvas so all twelve tracks remain visible.
 Other display backends retain eight tracks.
 
-Fullscreen uses the native desktop resolution and scales the canvas
-to fit. The widescreen layout scales all 30 text rows into the 16:9 display
-area and centers it horizontally. Two logical pixels separate the track
-indicators from the bottom edge in both windowed and fullscreen mode.
+Fullscreen uses the native desktop resolution and centers the 16:9 canvas.
+In the widescreen layout, Song and Phrase use larger text across 48 columns.
+Both show 16 rows, with the track indicators directly below the grid. Other
+screens use the usual 60-column text scale.
 `SCREENMULT` applies to windowed mode.
 The navigation map sits beside the playing-note indicators at the bottom.
 
